@@ -12,7 +12,8 @@ const ESDT_SYSTEM_SC_ADDRESS: [u8; 32] = [
 
 const ESDT_ISSUE_COST: u64 = 5000000000000000000;
 const ESDT_ISSUE_STRING: &[u8] = b"issue";
-const ESDT_MINT_STRING: &[u8] = b"mint";
+// const ESDT_MINT_STRING: &[u8] = b"mint";
+const EMPTY_DATA: &[u8] = b"";
 
 const E_TOKEN_PREFIX: &[u8] = b"E";
 const E_TOKEN_NAME: &[u8] = b"IntBearing";
@@ -45,17 +46,19 @@ pub trait ETokenHandler {
     #[storage_set("supportedTokens")]
     fn set_supported_tokens(&self, esdt_token: &TokenIdentifier, e_token: &TokenIdentifier);
 
+    #[view(getSupportedTokens)]
     #[storage_get("supportedTokens")]
     fn get_supported_tokens(&self, esdt_token: &TokenIdentifier) -> TokenIdentifier;
 
     #[storage_set("balance")]
     fn set_esdt_token_balance(&self, token: &TokenIdentifier, balance: &BigUint);
 
+    #[view(getESDTBalance)]
     #[storage_get("balance")]
     fn get_esdt_token_balance(&self, token: &TokenIdentifier) -> BigUint;
 
     #[storage_set("latestEsdtIdentifier")]
-    fn set_lates_esdt_identifier(&self, token: &TokenIdentifier);
+    fn set_latest_esdt_identifier(&self, token: &TokenIdentifier);
 
     #[storage_clear("latestEsdtIdentifier")]
     fn clear_latest_esdt_identifier(&self, empty_token: &TokenIdentifier);
@@ -74,11 +77,8 @@ pub trait ETokenHandler {
     #[storage_clear("latestEtokenIdentifier")]
     fn clear_latest_e_token_identifier(&self, empty_token: &TokenIdentifier);
 
-    
-
     #[init]
     fn init(&self) {}
-
 
     #[payable("EGLD")]
     #[endpoint]
@@ -105,7 +105,7 @@ pub trait ETokenHandler {
             num_decimals,
         );
 
-        self.set_lates_esdt_identifier(&token);
+        self.set_latest_esdt_identifier(&token);
 
         Ok(e_token_ticker)
     }
@@ -117,13 +117,19 @@ pub trait ETokenHandler {
         #[payment_token] token_to_deposit: TokenIdentifier,
         #[payment] value: BigUint,
     ) -> SCResult<()> {
-
         let result = self.get_supported_tokens(&token_to_deposit);
         let emtpy_token_identifier = b"EGLD";
-        require!( result.as_name() != emtpy_token_identifier, "token not supported");
-        let empty_data: &[u8] = b"";
+        require!(
+            result.as_name() != emtpy_token_identifier,
+            "token not supported"
+        );
 
-        self.send().direct_esdt_via_transf_exec(&self.get_caller(), &result.as_slice(), &value, empty_data);
+        self.send().direct_esdt_via_transf_exec(
+            &self.get_caller(),
+            &result.as_slice(),
+            &value,
+            EMPTY_DATA,
+        );
 
         Ok(())
     }
@@ -173,7 +179,6 @@ pub trait ETokenHandler {
         );
     }
 
-
     #[callback_raw]
     fn callback_raw(&self, result: Vec<Vec<u8>>) {
         // "0" is serialized as "nothing", so len == 0 for the first item is error code of 0, which means success
@@ -213,7 +218,7 @@ pub trait ETokenHandler {
         // nothing to do in case of error
     }
 
-   /*  fn add_total_esdt_token(&self, amount: &BigUint) {
+    /*  fn add_total_esdt_token(&self, amount: &BigUint) {
         let mut total_wrapped = self.get_esdt_token_balance();
         total_wrapped += amount;
         self.set_esdt_token_balance(&total_wrapped);
