@@ -77,26 +77,38 @@ pub trait ETokenHandler {
     #[storage_clear("latestEtokenIdentifier")]
     fn clear_latest_e_token_identifier(&self, empty_token: &TokenIdentifier);
 
+    #[view(successCallback)]
+    #[storage_get("successCallback")]
+    fn get_success_callback(&self) -> u8;
+
+    #[storage_set("successCallback")]
+    fn set_success_callback(&self, cnt: u8);
+
     #[init]
-    fn init(&self) {}
+    fn init(&self) {
+        self.set_success_callback(0);
+    }
 
     #[payable("EGLD")]
     #[endpoint]
     fn issue(
         &self,
-        token: TokenIdentifier,
+        token_ticker: TokenIdentifier,
+        ticker_as_name: BoxedBytes,
         initial_supply: BigUint,
         num_decimals: u8,
         #[payment] issue_cost: BigUint,
-    ) -> SCResult<Vec<u8>> {
+    ) -> SCResult<()> {
         only_owner!(self, "only owner can issue new eTokens");
         require!(
             issue_cost == BigUint::from(ESDT_ISSUE_COST),
             "you need exactly 5 egld to issue egld"
         );
 
-        let e_token_name = [E_TOKEN_NAME, token.as_name()].concat();
-        let e_token_ticker = [E_TOKEN_PREFIX, token.as_name()].concat();
+        self.set_latest_esdt_identifier(&token_ticker);
+
+        let e_token_name = [E_TOKEN_NAME, ticker_as_name.as_slice()].concat();
+        let e_token_ticker = [E_TOKEN_PREFIX, ticker_as_name.as_slice()].concat();
 
         self.issue_esdt_token(
             e_token_name.as_slice(),
@@ -105,9 +117,7 @@ pub trait ETokenHandler {
             num_decimals,
         );
 
-        self.set_latest_esdt_identifier(&token);
-
-        Ok(e_token_ticker)
+        Ok(())
     }
 
     #[payable("*")]
@@ -180,9 +190,11 @@ pub trait ETokenHandler {
     }
 
     #[callback_raw]
-    fn callback_raw(&self, result: Vec<Vec<u8>>) {
-        // "0" is serialized as "nothing", so len == 0 for the first item is error code of 0, which means success
-        let success = result[0].len() == 0;
+    fn callback_raw(&self, #[var_args] result: AsyncCallResult<VarArgs<BoxedBytes>>) {
+        let success = match result {
+            AsyncCallResult::Ok(_) => true,
+            AsyncCallResult::Err(_) => false,
+        };
         let original_tx_hash = self.get_tx_hash();
 
         let esdt_operation = self.get_temporary_storage_esdt_operation(&original_tx_hash);
@@ -203,14 +215,20 @@ pub trait ETokenHandler {
 
         if success {
             self.set_latest_e_token_identifier(&token_identifier);
-            self.set_supported_tokens(&self.get_latest_esdt_indetifier(), &token_identifier);
+
+            let last_esdt_identifier = self.get_latest_esdt_indetifier(); 
+            self.set_supported_tokens(&last_esdt_identifier, &token_identifier);
             self.set_esdt_token_balance(&token_identifier, &initial_supply);
+        } else {
+            let mut cnt = self.get_success_callback();
+            cnt += 1;
+            self.set_success_callback(cnt);
         }
 
         // nothing to do in case of error
     }
 
-    fn perform_esdt_mint_callback(&self, success: bool, amount: &BigUint) {
+    fn perform_esdt_mint_callback(&self, success: bool, _amount: &BigUint) {
         if success {
             //self.add_total_esdt_token(amount);
         }
