@@ -18,6 +18,8 @@ const EMPTY_DATA: &[u8] = b"";
 const E_TOKEN_PREFIX: &[u8] = b"E";
 const E_TOKEN_NAME: &[u8] = b"IntBearing";
 
+const EMPTY_TOKEN_ID: &[u8] = b"EGLD";
+
 #[derive(TopEncode, TopDecode)]
 pub enum EsdtOperation<BigUint: BigUintApi> {
     None,
@@ -51,43 +53,21 @@ pub trait ETokenHandler {
     fn get_supported_tokens(&self, esdt_token: &TokenIdentifier) -> TokenIdentifier;
 
     #[storage_set("balance")]
-    fn set_esdt_token_balance(&self, token: &TokenIdentifier, balance: &BigUint);
+    fn set_e_token_balance(&self, token: &TokenIdentifier, balance: &BigUint);
 
-    #[view(getESDTBalance)]
+    #[view(getETokenBalance)]
     #[storage_get("balance")]
-    fn get_esdt_token_balance(&self, token: &TokenIdentifier) -> BigUint;
+    fn get_e_token_balance(&self, token: &TokenIdentifier) -> BigUint;
 
     #[storage_set("latestEsdtIdentifier")]
     fn set_latest_esdt_identifier(&self, token: &TokenIdentifier);
-
-    #[storage_clear("latestEsdtIdentifier")]
-    fn clear_latest_esdt_identifier(&self, empty_token: &TokenIdentifier);
 
     #[view(latestEsdtIndetifier)]
     #[storage_get("latestEsdtIdentifier")]
     fn get_latest_esdt_indetifier(&self) -> TokenIdentifier;
 
-    #[storage_set("latestEtokenIdentifier")]
-    fn set_latest_e_token_identifier(&self, e_token_identifier: &TokenIdentifier);
-
-    #[view(latestEIndentifier)]
-    #[storage_get("latestEtokenIdentifier")]
-    fn get_latest_e_token_identifier(&self) -> TokenIdentifier;
-
-    #[storage_clear("latestEtokenIdentifier")]
-    fn clear_latest_e_token_identifier(&self, empty_token: &TokenIdentifier);
-
-    #[view(successCallback)]
-    #[storage_get("successCallback")]
-    fn get_success_callback(&self) -> u8;
-
-    #[storage_set("successCallback")]
-    fn set_success_callback(&self, cnt: u8);
-
     #[init]
-    fn init(&self) {
-        self.set_success_callback(0);
-    }
+    fn init(&self) {}
 
     #[payable("EGLD")]
     #[endpoint]
@@ -103,6 +83,12 @@ pub trait ETokenHandler {
         require!(
             issue_cost == BigUint::from(ESDT_ISSUE_COST),
             "you need exactly 5 egld to issue egld"
+        );
+
+        let existing_e_token = self.get_supported_tokens(&token_ticker);
+        require!(
+            existing_e_token.as_name() == EMPTY_TOKEN_ID,
+            "eToken already issued for this identifier"
         );
 
         self.set_latest_esdt_identifier(&token_ticker);
@@ -122,20 +108,31 @@ pub trait ETokenHandler {
 
     #[payable("*")]
     #[endpoint]
-    fn exchange(
+    fn swap_esdt(
         &self,
+        initial_caller: Address,
         #[payment_token] token_to_deposit: TokenIdentifier,
         #[payment] value: BigUint,
     ) -> SCResult<()> {
-        let result = self.get_supported_tokens(&token_to_deposit);
-        let emtpy_token_identifier = b"EGLD";
+        only_owner!(self, "only owner can call this function");
+
+        require!(value > 0, "payment must be greater than 0");
         require!(
-            result.as_name() != emtpy_token_identifier,
-            "token not supported"
+            initial_caller != Address::zero(),
+            "invalid address provided"
         );
 
+        let result = self.get_supported_tokens(&token_to_deposit);
+        require!(result.as_name() != EMPTY_TOKEN_ID, "token not supported");
+
+        // TODO: check if e_token(ticker).balance > swap_value, otherwise mint
+
+        let mut balance = self.get_e_token_balance(&result);
+        balance -= value.clone();
+        self.set_e_token_balance(&result, &balance);
+
         self.send().direct_esdt_via_transf_exec(
-            &self.get_caller(),
+            &initial_caller,
             &result.as_slice(),
             &value,
             EMPTY_DATA,
@@ -214,15 +211,10 @@ pub trait ETokenHandler {
         let initial_supply = self.call_value().esdt_value();
 
         if success {
-            self.set_latest_e_token_identifier(&token_identifier);
+            let last_esdt_identifier = self.get_latest_esdt_indetifier();
 
-            let last_esdt_identifier = self.get_latest_esdt_indetifier(); 
             self.set_supported_tokens(&last_esdt_identifier, &token_identifier);
-            self.set_esdt_token_balance(&token_identifier, &initial_supply);
-        } else {
-            let mut cnt = self.get_success_callback();
-            cnt += 1;
-            self.set_success_callback(cnt);
+            self.set_e_token_balance(&token_identifier, &initial_supply);
         }
 
         // nothing to do in case of error
