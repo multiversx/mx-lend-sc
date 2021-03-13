@@ -1,4 +1,5 @@
-use eTokens_handler::*;
+extern crate router;
+use router::*;
 use elrond_wasm_debug::api::RustBigInt;
 use elrond_wasm_debug::TxContext;
 

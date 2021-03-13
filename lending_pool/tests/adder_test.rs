@@ -1,4 +1,5 @@
-use eTokens_handler::*;
+extern crate lending_pool;
+use lending_pool::*;
 use elrond_wasm_debug::api::RustBigInt;
 use elrond_wasm_debug::TxContext;
 

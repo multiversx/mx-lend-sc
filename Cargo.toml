@@ -1,5 +1,7 @@
 [workspace]
 members = [
     "etokens_handler",
-    "liquidity_pool"
+    "liquidity_pool",
+    "lending_pool",
+    "router"
 ]

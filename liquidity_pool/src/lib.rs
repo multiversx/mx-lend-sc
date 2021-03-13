@@ -1,12 +1,11 @@
 #![no_std]
 
-use elrond_wasm::{only_owner, require};
+use elrond_wasm::{require};
 
 elrond_wasm::imports!();
 
 #[elrond_wasm_derive::contract(LiquidityPoolImpl)]
 pub trait LiquidityPool {
-
     #[view(getReserveName)]
     #[storage_get("reserve_name")]
     fn get_reserve_name(&self) -> TokenIdentifier;
@@ -33,7 +32,7 @@ pub trait LiquidityPool {
         self.set_reserve_name(&esdt_token);
     }
 
-    #[payable("ESDT")]
+    #[payable("*")]
     #[endpoint]
     fn receive_deposit(&self, #[payment] amount: BigUint) -> SCResult<()> {
         require!(amount != BigUint::zero(), "Amount can not be zero!");
@@ -71,15 +70,5 @@ pub trait LiquidityPool {
         let utilisation = borrowed_amount / reserve_amount;
 
         Ok(utilisation)
-    }
-
-    #[payable("EGLD")]
-    #[view]
-    fn owner(&self, #[payment] cost: BigUint) -> SCResult<BigUint> {
-        only_owner!(self, "only european comission members can view!");
-        require!(cost == BigUint::from(5u32), "too much provided");
-        let reserve = self.get_reserve_amount();
-
-        Ok(reserve)
     }
 }
