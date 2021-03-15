@@ -28,9 +28,9 @@ pub trait Router {
 
         require!(
             !self.pools_map().contains_key(&base_asset.clone()),
-            "Asset already supported"
+            "asset already supported"
         );
-        require!(base_asset.is_esdt(), "Non-ESDT asset provided");
+        require!(base_asset.is_esdt(), "non-ESDT asset provided");
 
         let address = self.pool_factory().create_pool(&base_asset, &pool_bytecode);
 

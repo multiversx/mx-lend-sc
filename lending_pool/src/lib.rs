@@ -1,6 +1,6 @@
 #![no_std]
 
-use elrond_wasm::{contract_call, require, sc_error};
+use elrond_wasm::{require, sc_error};
 
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
@@ -40,9 +40,15 @@ pub trait LendingPool {
 
         require!(!pool_address.is_zero(), "invalid liquidity pool address");
 
-        Ok(contract_call!(self, pool_address, LiquidityPoolProxy)
-            .deposit_asset(initial_caller, asset, amount)
-            .async_call()
+        let mut contract_call = ContractCall::new(
+            pool_address,
+            asset,
+            amount,
+            BoxedBytes::from(&b"deposit_asset"[..])
+        );
+        contract_call.push_argument_raw_bytes(initial_caller.as_bytes());
+
+        Ok(contract_call.async_call()
             .with_callback(
                 self.callbacks().deposit_callback()
             )
