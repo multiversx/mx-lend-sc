@@ -32,7 +32,7 @@ pub trait LiquidityPool {
     
     #[init]
     fn init(&self, asset: TokenIdentifier) {
-        self.pool_asset().set(&asset);
+        self.pool_asset().set(&asset); 
     }
 
     #[payable("*")]
@@ -43,7 +43,6 @@ pub trait LiquidityPool {
         #[payment_token] asset: TokenIdentifier, 
         #[payment] amount: BigUint
     ) -> SCResult<()> {
-
         require!(amount > 0, "payment must be greater than 0");
         require!(!initial_caller.is_zero(), "invalid address provided");
 
@@ -55,8 +54,11 @@ pub trait LiquidityPool {
 
         let lend_token = self.lend_token().get();
 
-        let mut lend_reserve = self.reserves().get(&lend_token.clone()).unwrap();
-        let mut asset_reserve = self.reserves().get(&pool_asset.clone()).unwrap();
+        let mut lend_reserve = self.reserves().get(&lend_token.clone()).unwrap_or(BigUint::zero());
+        let mut asset_reserve = self.reserves().get(&pool_asset.clone()).unwrap_or(BigUint::zero());
+        
+        require!(lend_reserve != BigUint::zero(), "lend reserve empty");
+        require!(asset_reserve != BigUint::zero(), "asset reserve empty");
 
         if !(lend_reserve.clone() > amount.clone()) {
             // mint more lend tokens
@@ -197,34 +199,56 @@ pub trait LiquidityPool {
 
         if success {
             let latest_prefix = self.latest_prefix().get();
-            
+
             if latest_prefix == BoxedBytes::from(LEND_TOKEN_PREFIX) {
                 self.lend_token().set(&token_identifier);
-                self.reserves().insert(token_identifier, initial_supply);
+                self.reserves().insert(token_identifier.clone(), initial_supply);
+                self.send_callback_result(token_identifier, b"setLendTokenAddress");
             } else {
                 self.borrow_token().set(&token_identifier);
-                self.reserves().insert(token_identifier, initial_supply);
+                self.reserves().insert(token_identifier.clone(), initial_supply);
+                self.send_callback_result(token_identifier, b"setBorrowTokenAddress");
             }
         }
 
         // nothing to do in case of error
     }
 
+    fn send_callback_result(&self, token: TokenIdentifier, endpoint: &[u8]) {
+        let owner = self.get_owner_address();
+
+        let mut args = ArgBuffer::new();
+        args.push_argument_bytes(token.as_slice());
+
+        self.send().execute_on_dest_context(
+            self.get_gas_left(),
+            &owner,
+            &BigUint::zero(),
+            endpoint,
+            &args
+        )
+    }
+
     /// VIEWS
 
+    #[view(getReserve)]
+    fn get_reserve(&self, token: TokenIdentifier) -> BigUint {
+        self.reserves().get(&token).unwrap_or(BigUint::zero())
+    }
+
     #[view(poolAsset)]
-    fn get_pool_asset(&self) -> SCResult<TokenIdentifier> {
-        Ok(self.pool_asset().get())
+    fn get_pool_asset(&self) -> TokenIdentifier {
+        self.pool_asset().get()
     }
 
     #[view(lendToken)]
-    fn get_lend_token(&self) -> SCResult<TokenIdentifier> {
-        Ok(self.lend_token().get())
+    fn get_lend_token(&self) -> TokenIdentifier {
+        self.lend_token().get()
     }
 
     #[view(borrowToken)]
-    fn get_borrow_token(&self) -> SCResult<TokenIdentifier> {
-        Ok(self.borrow_token().get())
+    fn get_borrow_token(&self) -> TokenIdentifier {
+        self.borrow_token().get()
     }
 
     /// pool asset
