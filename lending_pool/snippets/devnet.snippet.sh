@@ -52,3 +52,4 @@ setPoolAddress() {
 getPoolAddress() {
     erdpy contract query ${ADDRESS} --function="getPoolAddress" --arguments ${ESDT_TICKER} --proxy=${PROXY}
 }
+
