@@ -15,11 +15,11 @@ AMOUNT=1000000000000000000 # 1 token (18 decimals)
 
 ESDT_TICKER=0x454343 # ECC
 ESDT_TICKER_FULL=0x4543432d316237343533 # add after ESDT issue
-LEND_TICKER=0x4c4543432d376166376632
+LEND_TICKER=0x4c4543432d616565356431
 
 
 deploy() {
-    erdpy contract deploy --project=${PROJECT} --recall-nonce --pem=${ALICE} --gas-limit=85000000 --outfile="deploy.json" --proxy=${PROXY} --chain=${CHAIN_ID} --arguments ${ESDT_TICKER_FULL} --send || return
+    erdpy contract deploy --project=${PROJECT} --recall-nonce --pem=${ALICE} --gas-limit=150000000 --outfile="deploy.json" --proxy=${PROXY} --chain=${CHAIN_ID} --arguments ${ESDT_TICKER_FULL} --send || return
 
     TRANSACTION=$(erdpy data parse --file="deploy.json" --expression="data['emitted_tx']['hash']")
     ADDRESS=$(erdpy data parse --file="deploy.json" --expression="data['emitted_tx']['address']")
@@ -46,6 +46,10 @@ deposit_asset() {
 }
 
 # Queries
+
+getPoolAsset() {
+    erdpy contract query ${ADDRESS} --function="poolAsset" --proxy=${PROXY}
+}
 
 getAssetReserve() {
     erdpy contract query ${ADDRESS} --function="getReserve" --arguments ${ESDT_TICKER_FULL} --proxy=${PROXY}

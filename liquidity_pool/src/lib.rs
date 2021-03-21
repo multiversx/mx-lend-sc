@@ -203,22 +203,22 @@ pub trait LiquidityPool {
             if latest_prefix == BoxedBytes::from(LEND_TOKEN_PREFIX) {
                 self.lend_token().set(&token_identifier);
                 self.reserves().insert(token_identifier.clone(), initial_supply);
-                self.send_callback_result(token_identifier, b"setLendTokenAddress");
+                // self.send_callback_result(token_identifier, b"setLendTokenAddress");
             } else {
                 self.borrow_token().set(&token_identifier);
                 self.reserves().insert(token_identifier.clone(), initial_supply);
-                self.send_callback_result(token_identifier, b"setBorrowTokenAddress");
+                // self.send_callback_result(token_identifier, b"setBorrowTokenAddress");
             }
         }
 
         // nothing to do in case of error
     }
 
-    fn send_callback_result(&self, token: TokenIdentifier, endpoint: &[u8]) {
+    fn send_callback_result(&self, token: TokenIdentifier, endpoint: &[u8]) -> Vec<BoxedBytes> {
         let owner = self.get_owner_address();
 
         let mut args = ArgBuffer::new();
-        args.push_argument_bytes(token.as_slice());
+        args.push_argument_bytes(token.as_esdt_identifier());
 
         self.send().execute_on_dest_context(
             self.get_gas_left(),
