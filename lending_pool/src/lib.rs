@@ -45,7 +45,7 @@ pub trait LendingPool {
         args.push_argument_bytes(b"deposit_asset");
         args.push_argument_bytes(initial_caller.as_bytes());
 
-        self.send().execute_on_dest_context(
+        self.send().execute_on_dest_context_raw(
             self.get_gas_left(), 
             &pool_address,
             &BigUint::zero(), 

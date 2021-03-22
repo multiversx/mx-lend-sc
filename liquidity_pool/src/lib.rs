@@ -203,11 +203,11 @@ pub trait LiquidityPool {
             if latest_prefix == BoxedBytes::from(LEND_TOKEN_PREFIX) {
                 self.lend_token().set(&token_identifier);
                 self.reserves().insert(token_identifier.clone(), initial_supply);
-                // self.send_callback_result(token_identifier, b"setLendTokenAddress");
+                self.send_callback_result(token_identifier, b"setLendTokenAddress");
             } else {
                 self.borrow_token().set(&token_identifier);
                 self.reserves().insert(token_identifier.clone(), initial_supply);
-                // self.send_callback_result(token_identifier, b"setBorrowTokenAddress");
+                self.send_callback_result(token_identifier, b"setBorrowTokenAddress");
             }
         }
 
@@ -220,7 +220,7 @@ pub trait LiquidityPool {
         let mut args = ArgBuffer::new();
         args.push_argument_bytes(token.as_esdt_identifier());
 
-        self.send().execute_on_dest_context(
+        self.send().execute_on_dest_context_raw(
             self.get_gas_left(),
             &owner,
             &BigUint::zero(),

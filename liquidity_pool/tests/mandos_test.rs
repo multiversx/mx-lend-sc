@@ -19,5 +19,5 @@ fn test_deploy() {
 
 #[test]
 fn test() {
-	parse_execute_mandos("mandos/liquidity_pool-init.scen.json", &contract_map());
+	parse_execute_mandos("mandos/liquidity_pool-deposit.scen.json", &contract_map());
 }

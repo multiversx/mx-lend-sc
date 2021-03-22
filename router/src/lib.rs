@@ -33,7 +33,7 @@ pub trait Router {
     ) -> ArgBuffer {
         
         let mut args = ArgBuffer::new();
-        args.push_argument_bytes(token_ticker.as_slice());
+        args.push_argument_bytes(token_ticker.as_esdt_identifier());
         args.push_argument_bytes(token_ticker.as_name());
         args.push_argument_bytes(prefix);
         args.push_argument_bytes(token_supply.to_bytes_be().as_slice());
@@ -119,7 +119,7 @@ pub trait Router {
             LEND_TOKEN_PREFIX
         ); 
 
-        self.send().execute_on_dest_context(
+        self.send().execute_on_dest_context_raw(
             self.get_gas_left(),
             &pool_address,
             &amount,
@@ -153,7 +153,7 @@ pub trait Router {
             BORROW_TOKEN_PREFIX
         ); 
 
-        self.send().execute_on_dest_context(
+        self.send().execute_on_dest_context_raw(
             self.get_gas_left(),
             &pool_address,
             &amount,

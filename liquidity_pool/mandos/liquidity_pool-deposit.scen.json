@@ -39,8 +39,8 @@
             }
         },
         {
-            "step": "sc",
-            "txId": "deploy",
+            "step": "scCall",
+            "txId": "deposit",
             "tx": {
                 "from": "address:my_address",
                 "to": "address:liqpool_address",
