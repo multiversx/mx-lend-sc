@@ -25,14 +25,14 @@
                     "nonce": "0",
                     "balance": "0",
                     "esdt": {
-                        "str:ECC-abcdef": "500,000",
+                        "str:ECC-abcdef": "1,000,000",
                         "str:LECC-abcdef": "1,000,000"
                     },
                     "storage": {
                         "str:pool_asset": "str:ECC-abcdef",
                         "str:lend_token": "str:LECC-abcdef",
-                        "str:reserves|str:LECC-abcdef": "500,000",
-                        "str:reserves|str:ECC-abcdef": "1,000,000"
+                        "str:reserves|str:ECC-abcdef": "1,000,000",
+                        "str:reserves|str:LECC-abcdef": "1,000,000"
                     },
                     "code": "file:../output/liquidity-pool.wasm"
                 }
@@ -84,10 +84,10 @@
                     "nonce": "0",
                     "balance": "0",
                     "storage": {
-                        "str:pool_asset": "str:WBT-abcdef",
+                        "str:pool_asset": "str:ECC-abcdef",
                         "str:lend_token": "str:LECC-abcdef",
                         "str:reserves|str:LECC-abcdef": "500,000",
-                        "str:reserves|str:ECC-abcdef": "1,000,000"
+                        "str:reserves|str:ECC-abcdef": "1,500,000"
                     },
                     "code": "file:../output/liquidity-pool.wasm"
                 }

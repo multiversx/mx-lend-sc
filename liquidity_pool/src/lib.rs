@@ -58,7 +58,6 @@ pub trait LiquidityPool {
         let mut asset_reserve = self.reserves().get(&pool_asset.clone()).unwrap_or(BigUint::zero());
         
         require!(lend_reserve != BigUint::zero(), "lend reserve empty");
-        require!(asset_reserve != BigUint::zero(), "asset reserve empty");
 
         if !(lend_reserve.clone() > amount.clone()) {
             // mint more lend tokens
