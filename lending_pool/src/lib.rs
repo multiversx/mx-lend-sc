@@ -23,10 +23,12 @@ pub trait LendingPool {
     #[endpoint]
     fn deposit(
         &self,
-        initial_caller: Address,
+        #[var_args] caller: OptionalArg<Address>,
         #[payment_token] asset: TokenIdentifier,
         #[payment] amount: BigUint,
     ) -> SCResult<()> {
+        
+        let initial_caller = caller.into_option().unwrap_or(self.get_caller());
 
         require!(amount > 0, "amount must be greater than 0");
         require!(!initial_caller.is_zero(), "invalid address provided");
@@ -70,7 +72,66 @@ pub trait LendingPool {
 
     #[payable("*")]
     #[endpoint]
-    fn borrow(&self) -> SCResult<()> {
+    fn borrow(
+        &self,
+        asset_to_put_as_collateral: TokenIdentifier,
+        asset_to_borrow: TokenIdentifier,
+        #[var_args] caller: OptionalArg<Address>,
+        #[payment_token] asset_collateral_lend_token: TokenIdentifier,
+        #[payment] amount: BigUint,
+    ) -> SCResult<()> {
+        
+        let initial_caller = caller.into_option().unwrap_or(self.get_caller());
+
+        require!(amount > 0, "amount must be greater than 0");
+        require!(!initial_caller.is_zero(), "invalid address provided");
+        require!(self.pools_map().contains_key(&asset_to_put_as_collateral.clone()), "asset not supported");
+        require!(self.pools_map().contains_key(&asset_to_borrow.clone()), "asset not supported");
+
+        let collateral_token_pool_address = self
+            .pools_map()
+            .get(&asset_to_put_as_collateral.clone())
+            .unwrap_or(Address::zero());
+
+        let borrow_token_pool_address = self
+            .pools_map()
+            .get(&asset_to_borrow.clone())
+            .unwrap_or(Address::zero());
+
+
+        require!(!collateral_token_pool_address.is_zero(), "invalid liquidity pool address");
+        require!(!borrow_token_pool_address.is_zero(), "invalid liquidity pool address");
+
+
+        let mut args_add_collateral = ArgBuffer::new();
+        args_add_collateral.push_argument_bytes(asset_collateral_lend_token.as_esdt_identifier());
+        args_add_collateral.push_argument_bytes(amount.to_bytes_be().as_slice());
+        args_add_collateral.push_argument_bytes(b"addCollateral");
+        
+
+
+        self.send().execute_on_dest_context(
+            self.get_gas_left(), 
+            &collateral_token_pool_address,
+            &BigUint::zero(), 
+            ESDT_TRANSFER_STRING, 
+            &args_add_collateral
+        );
+        
+        let mut args_borrow = ArgBuffer::new();
+        args_borrow.push_argument_bytes(amount.to_bytes_be().as_slice());
+        args_borrow.push_argument_bytes(b"borrow");
+        args_borrow.push_argument_bytes(initial_caller.as_bytes());
+
+
+        self.send().execute_on_dest_context(
+            self.get_gas_left(), 
+            &collateral_token_pool_address,
+            &BigUint::zero(), 
+            ESDT_TRANSFER_STRING, 
+            &args_borrow
+        );
+
         Ok(())
     }
 

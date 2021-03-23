@@ -31,8 +31,9 @@ pub enum EsdtOperation<BigUint: BigUintApi> {
 pub trait LiquidityPool {
     
     #[init]
-    fn init(&self, asset: TokenIdentifier) {
-        self.pool_asset().set(&asset); 
+    fn init(&self, asset:TokenIdentifier, lending_pool: Address) {
+        self.pool_asset().set(&asset);
+        self.set_lending_pool(lending_pool); 
     }
 
     #[payable("*")]
@@ -70,6 +71,70 @@ pub trait LiquidityPool {
 
         self.reserves().insert(lend_token, lend_reserve);
         self.reserves().insert(pool_asset, asset_reserve);
+
+        Ok(())
+    }
+
+    #[endpoint]
+    fn borrow(
+        &self,
+        initial_caller : Address, 
+        amount: BigUint
+    ) -> SCResult<()> {
+
+        require!(self.get_caller() == self.get_lending_pool(), "can only be called through lending pool");
+
+        require!(amount > 0, "lend amount must be bigger then 0");
+        
+        require!(!initial_caller.is_zero(), "invalid address provided");
+
+        let borrows_token = self.get_borrow_token();
+        let asset = self.get_pool_asset();
+
+        let mut borrows_reserve = self.reserves().get(&borrows_token.clone()).unwrap_or(BigUint::zero());
+        let mut asset_reserve = self.reserves().get(&asset.clone()).unwrap_or(BigUint::zero());
+        
+        
+        require!(borrows_reserve != BigUint::zero(), "borrow reserve is empty");
+        require!(asset_reserve != BigUint::zero(), "asset reserve is empty");
+
+        self.send().direct(&initial_caller, &borrows_token, &amount, &[]);
+        self.send().direct(&initial_caller, &asset, &amount, &[]);
+
+        borrows_reserve -= amount.clone();
+        asset_reserve -= amount.clone();
+
+        let mut total_borrow = self.get_total_borrow();
+        total_borrow += amount.clone();
+        self.set_total_borrow(total_borrow);
+
+        self.reserves().insert(borrows_token, borrows_reserve);
+        self.reserves().insert(asset, asset_reserve);
+
+        Ok(())
+    }
+
+    #[payable]
+    #[endpoint(addCollateral)]
+    fn add_collateral(
+        &self,
+        #[payment_token] lend_token: TokenIdentifier,
+        #[payment] amount: BigUint
+    ) -> SCResult<()> {
+
+        require!(self.get_lending_pool() == self.get_caller(), "can only be called by lending pool");
+        require!(amount > 0, "amount must be bigger then 0");
+        require!(lend_token == self.get_lend_token(), "lend token is not supported by this pool");
+        
+        let mut lend_reserve = self.reserves().get(&lend_token.clone()).unwrap_or(BigUint::zero());
+
+        lend_reserve += amount.clone();
+
+        let mut total_collateral = self.get_total_collateral();
+        total_collateral += amount.clone();
+        self.set_total_collateral(amount);
+        
+        self.reserves().insert(lend_token, lend_reserve);
 
         Ok(())
     }
@@ -225,7 +290,7 @@ pub trait LiquidityPool {
             &BigUint::zero(),
             endpoint,
             &args
-        )
+        );
     }
 
     /// VIEWS
@@ -249,6 +314,7 @@ pub trait LiquidityPool {
     fn get_borrow_token(&self) -> TokenIdentifier {
         self.borrow_token().get()
     }
+
 
     /// pool asset
 
@@ -274,6 +340,40 @@ pub trait LiquidityPool {
     fn reserves(&self) -> MapMapper<Self::Storage, TokenIdentifier, BigUint>;
 
     ///
+
+    //liending pool [set, get]
+
+
+    #[storage_set("lendingPool")]
+    fn set_lending_pool(&self, lending_pool:Address);
+    
+    #[view(getLendingPool)]
+    #[storage_get("lendingPool")]
+    fn get_lending_pool(&self) -> Address;
+
+    //
+
+    //total borrowing from pool
+
+    #[storage_set("totalBorrow")]
+    fn set_total_borrow(&self, total: BigUint);
+
+    #[view(totalBorrow)]
+    #[storage_get("totalBorrow")]
+    fn get_total_borrow(&self) -> BigUint;
+
+    //
+
+    //total collateral from pool
+    #[storage_set("totalCollateral")]
+    fn set_total_collateral(&self, amount:BigUint);
+
+
+    #[view(totalCollateral)]
+    #[storage_get("totalCollateral")]
+    fn get_total_collateral(&self) -> BigUint;
+
+
     /// [set, get, clear] ESDT operation type
 
     #[storage_set("temporaryStorageEsdtOperation")]
