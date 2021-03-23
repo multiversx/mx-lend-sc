@@ -5,12 +5,6 @@ use elrond_wasm::{HexCallDataSerializer, only_owner, require, sc_error};
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-const ESDT_SYSTEM_SC_ADDRESS: [u8; 32] = [
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xff,
-];
-
-const ESDT_ISSUE_STRING: &[u8] = b"issue";
 const ESDT_ISSUE_COST: u64 = 5000000000000000000;
 
 const LEND_TOKEN_PREFIX: &[u8] = b"L";
@@ -20,11 +14,17 @@ const DEBT_TOKEN_NAME: &[u8] = b"DebtBearing";
 
 const EMPTY_TOKEN_ID: &[u8] = b"EGLD";
 
-#[derive(TopEncode, TopDecode)]
-pub enum EsdtOperation<BigUint: BigUintApi> {
-    None,
-    Issue,
-    Mint(BigUint), // amount minted
+
+#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi)]
+pub struct IssueData<BigUint: BigUintApi> {
+    pub name: BoxedBytes,
+    pub ticker: TokenIdentifier,
+    pub existing_token: TokenIdentifier
+}
+
+#[derive(TopEncode, TopDecode, TypeAbi)]
+pub struct PositionMetadata<BigUint: BigUintApi> {
+	timestamp: u64
 }
 
 #[elrond_wasm_derive::contract(LiquidityPoolImpl)]
@@ -144,12 +144,9 @@ pub trait LiquidityPool {
     fn issue(
         &self,
         token_ticker: TokenIdentifier,
-        ticker_as_name: BoxedBytes,
         token_prefix: BoxedBytes,
-        token_supply: BigUint,
-        num_decimals: u8,
         #[payment] issue_cost: BigUint
-    ) -> SCResult<()> {
+    ) -> AsyncCall<BigUint> {
 
         only_owner!(self, "only owner can issue new tokens");
         require!(
@@ -162,120 +159,83 @@ pub trait LiquidityPool {
             "wrong ESDT asset identifier"
         );
 
-        let existing_token;
-        let interest_token_name;
-
-        if token_prefix == BoxedBytes::from(LEND_TOKEN_PREFIX) {
-            existing_token = self.lend_token().get();
-            interest_token_name = [LEND_TOKEN_NAME, ticker_as_name.as_slice()].concat();
-            self.latest_prefix().set(&BoxedBytes::from(LEND_TOKEN_PREFIX));
-        } else if token_prefix == BoxedBytes::from(BORROW_TOKEN_PREFIX) {
-            existing_token = self.borrow_token().get();
-            interest_token_name = [DEBT_TOKEN_NAME, ticker_as_name.as_slice()].concat();
-            self.latest_prefix().set(&BoxedBytes::from(BORROW_TOKEN_PREFIX));
-        } else {
-            return sc_error!("wrong token prefix")
-        }
-        
-        let interest_token_ticker = [token_prefix.as_slice(), ticker_as_name.as_slice()].concat();
+        let issue_data = self.prepare_issue_data(token_prefix, token_ticker);
         
         require!(
-            existing_token.as_name() == EMPTY_TOKEN_ID,
+            issue_data.name != Default::default(), 
+            "invalid input. could not prepare issue data"
+        );
+        require!(
+            issue_data.ticker == EMPTY_TOKEN_ID,
             "token already issued for this identifier"
         );
 
-        self.issue_esdt(
-            interest_token_name.as_slice(),
-            interest_token_ticker.as_slice(),
-            &token_supply,
-            num_decimals
-        );
-
-        Ok(())
+        ESDTSystemSmartContractProxy::new()
+            .issue_non_fungible(
+                issue_cost,
+                &issue_data.name,
+                &issue_data.ticker,
+                NonFungibleTokenProperties {
+                    can_freeze: true,
+                    can_wipe: true,
+                    can_pause: true,
+                    can_change_owner: true,
+                    can_upgrade: true,
+                    can_add_special_roles: true,
+                },
+            )
+            .async_call()
+            .with_callback(self.callbacks().issue_callback(&token_prefix))
     }
 
-    #[endpoint]
-    fn issue_esdt(
-        &self,
-        token_display_name: &[u8],
-        token_ticker: &[u8],
-        supply: &BigUint,
-        num_decimals: u8
+    #[callback]
+    fn issue_callback(
+        &self, 
+        prefix: &BoxedBytes,
+		#[payment_token] ticker: TokenIdentifier,
+		#[payment] amount: BigUint,
+		#[call_result] result: AsyncCallResult<()>
     ) {
-        let mut serializer = HexCallDataSerializer::new(ESDT_ISSUE_STRING);
-
-        serializer.push_argument_bytes(token_display_name);
-        serializer.push_argument_bytes(token_ticker);
-        serializer.push_argument_bytes(&supply.to_bytes_be());
-        serializer.push_argument_bytes(&[num_decimals]);
-
-        serializer.push_argument_bytes(&b"canFreeze"[..]);
-        serializer.push_argument_bytes(&b"false"[..]);
-
-        serializer.push_argument_bytes(&b"canWipe"[..]);
-        serializer.push_argument_bytes(&b"false"[..]);
-
-        serializer.push_argument_bytes(&b"canPause"[..]);
-        serializer.push_argument_bytes(&b"false"[..]);
-
-        serializer.push_argument_bytes(&b"canMint"[..]);
-        serializer.push_argument_bytes(&b"true"[..]);
-
-        serializer.push_argument_bytes(&b"canBurn"[..]);
-        serializer.push_argument_bytes(&b"false"[..]);
-
-        serializer.push_argument_bytes(&b"canChangeOwner"[..]);
-        serializer.push_argument_bytes(&b"false"[..]);
-
-        serializer.push_argument_bytes(&b"canUpgrade"[..]);
-        serializer.push_argument_bytes(&b"true"[..]);
-
-        self.set_temporary_storage_esdt_operation(&self.get_tx_hash(), &EsdtOperation::Issue);
-
-        self.send().async_call_raw(
-            &Address::from(ESDT_SYSTEM_SC_ADDRESS),
-            &BigUint::from(ESDT_ISSUE_COST),
-            serializer.as_slice(),
-        );
-    }
-
-    #[callback_raw]
-    fn callback_raw(&self, #[var_args] result: AsyncCallResult<VarArgs<BoxedBytes>>) {
-        let success = match result {
-            AsyncCallResult::Ok(_) => true,
-            AsyncCallResult::Err(_) => false,
-        };
-        let original_tx_hash = self.get_tx_hash();
-        let esdt_operation = self.get_temporary_storage_esdt_operation(&original_tx_hash);
-
-        match esdt_operation {
-            EsdtOperation::None => return,
-            EsdtOperation::Issue => self.perform_esdt_issue_callback(success),
-            EsdtOperation::Mint(_amount) => ()
-        }
-
-        self.clear_temporary_storage_esdt_operation(&original_tx_hash);
-    }
-
-    fn perform_esdt_issue_callback(&self, success: bool) {
-        let token_identifier = self.call_value().token();
-        let initial_supply = self.call_value().esdt_value();
-
-        if success {
-            let latest_prefix = self.latest_prefix().get();
-
-            if latest_prefix == BoxedBytes::from(LEND_TOKEN_PREFIX) {
-                self.lend_token().set(&token_identifier);
-                self.reserves().insert(token_identifier.clone(), initial_supply);
-                self.send_callback_result(token_identifier, b"setLendTokenAddress");
-            } else {
-                self.borrow_token().set(&token_identifier);
-                self.reserves().insert(token_identifier.clone(), initial_supply);
-                self.send_callback_result(token_identifier, b"setBorrowTokenAddress");
+        match result {
+            AsyncCallResult::Ok(()) => {
+                if prefix == BoxedBytes::from(LEND_TOKEN_PREFIX) {
+                    self.lend_token().set(&ticker);
+                    self.send_callback_result(ticker, b"setLendTokenAddress");
+                } else {
+                    self.borrow_token().set(&ticker);
+                    self.send_callback_result(ticker, b"setBorrowTokenAddress");
+                }
+            },
+            AsyncCallResult::Err(message) => {
+                let caller = self.get_owner_address();
+                if ticker.is_egld() && amount > 0 {
+                    self.send().direct_egld(&caller, &amount, &[]);
+                }
+                self.last_error().set(&message.err_msg);
             }
         }
+    }
 
-        // nothing to do in case of error
+    fn mint(&self, amount: BigUint, metadata: PositionMetadata<BigUint>, ticker: TokenIdentifier) {
+        self.send().esdt_nft_create::<PositionMetadata<>>(
+			self.get_gas_left(),
+			ticker.as_esdt_identifier(),
+			&amount,
+			&BoxedBytes::empty(),
+			&BigUint::zero(),
+			&H256::zero(),
+			&metadata,
+			&[uri],
+		);
+    }
+
+    fn burn(&self, amount: BigUint, nonce: u64, ticker: TokenIdentifier) {
+		self.send().esdt_nft_burn(
+			self.get_gas_left(),
+			ticker.as_esdt_identifier(),
+			nonce,
+			&amount,
+		);
     }
 
     fn send_callback_result(&self, token: TokenIdentifier, endpoint: &[u8]) -> Vec<BoxedBytes> {
@@ -291,6 +251,34 @@ pub trait LiquidityPool {
             endpoint,
             &args
         );
+    }
+
+    fn prepare_issue_data(
+        &self,
+        prefix: BoxedBytes,
+        ticker: TokenIdentifier
+    ) -> IssueData<BigUint> {
+
+        let prefixed_ticker = [prefix.as_slice(), ticker.as_esdt_identifier()].concat();
+        let mut issue_data = IssueData{
+            name: BoxedBytes::zeros(0),
+            ticker: TokenIdentifier::from(BoxedBytes::from(prefixed_ticker)),
+            existing_token: TokenIdentifier::from(BoxedBytes::zeros(0))
+        };
+        
+        if prefix == BoxedBytes::from(LEND_TOKEN_PREFIX) {
+            issue_data.name = [LEND_TOKEN_NAME, ticker.as_name()].concat();
+            issue_data.existing_token = self.lend_token().get();
+            
+            issue_data;
+        } else if prefix == BoxedBytes::from(BORROW_TOKEN_PREFIX) {
+            issue_data.name = [BORROW_TOKEN_PREFIX, ticker.as_name()].concat();
+            issue_data.existing_token = self.borrow_token().get();
+
+            issue_data;
+        }
+
+        Default::default();
     }
 
     /// VIEWS
@@ -314,7 +302,6 @@ pub trait LiquidityPool {
     fn get_borrow_token(&self) -> TokenIdentifier {
         self.borrow_token().get()
     }
-
 
     /// pool asset
 
@@ -340,8 +327,9 @@ pub trait LiquidityPool {
     fn reserves(&self) -> MapMapper<Self::Storage, TokenIdentifier, BigUint>;
 
     ///
-
-    //liending pool [set, get]
+    /// last error
+    #[storage_mapper("last_error")]
+    fn last_error(&self) -> SingleValueMapper<Self::Storage, BoxedBytes>;
 
 
     #[storage_set("lendingPool")]
@@ -364,35 +352,16 @@ pub trait LiquidityPool {
 
     //
 
-    //total collateral from pool
+    // total collateral from pool
     #[storage_set("totalCollateral")]
     fn set_total_collateral(&self, amount:BigUint);
-
 
     #[view(totalCollateral)]
     #[storage_get("totalCollateral")]
     fn get_total_collateral(&self) -> BigUint;
 
+    //
 
-    /// [set, get, clear] ESDT operation type
-
-    #[storage_set("temporaryStorageEsdtOperation")]
-    fn set_temporary_storage_esdt_operation(
-        &self,
-        original_tx_hash: &H256,
-        esdt_operation: &EsdtOperation<BigUint>,
-    );
-
-    #[storage_get("temporaryStorageEsdtOperation")]
-    fn get_temporary_storage_esdt_operation(
-        &self,
-        original_tx_hash: &H256,
-    ) -> EsdtOperation<BigUint>;
-
-    #[storage_clear("temporaryStorageEsdtOperation")]
-    fn clear_temporary_storage_esdt_operation(&self, original_tx_hash: &H256);
-
-    ///
     /// temporary token prefix for ESDT operation
 
     #[view(latestPrefix)]
