@@ -139,6 +139,38 @@ pub trait LiquidityPool {
         Ok(())
     }
 
+    #[payable("*")]
+    #[endpoint]
+    fn withdraw(
+        &self,
+        initial_caller: Address,
+        #[payment_token] lend_token: TokenIdentifier,
+        #[payment] amount: BigUint
+    ) -> SCResult<()>{
+        require!(self.get_caller() == self.get_lending_pool(), "can only be called by lending pool");
+        require!(amount >0 "amount must be bigger then 0");
+        require!(lend_token == self.get_lend_token(), "lend token is not supported by this pool");
+        require!(!initial_caller.is_zero(), "invalid address");
+
+        let pool_asset = self.get_pool_asset();
+
+        let mut lend_reserve = self.reserves().get(&lend_token.clone()).unwrap_or(BigUint::zero());
+        let mut asset_reserve = self.reserves().get(&pool_asset.clone()).unwrap_or(BigUint::zero());
+
+        require!(asset_reserve != BigUint::zero(), "asset reserve is empty");
+
+        self.send().direct(&initial_caller, &pool_asset, &amount, &[]);
+
+        lend_reserve += amount;
+        asset_reserve -= amount;
+
+        self.reserves().insert(lend_token, lend_reserve);
+        self.reserves().insert(pool_asset, asset_reserve);
+        
+        Ok(())
+    }
+    
+
     #[payable("EGLD")]
     #[endpoint]
     fn issue(
