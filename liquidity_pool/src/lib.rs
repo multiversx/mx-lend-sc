@@ -71,23 +71,29 @@ pub trait LiquidityPool {
             "asset not supported for this liquidity pool"
         );
 
+        let interest_metadata = InterestMetadata{
+            timestamp: self.get_block_timestamp()
+        };
+
+        self.mint_interest(amount, interest_metadata);
+
         let lend_token = self.lend_token().get();
-
-        let mut lend_reserve = self.reserves().get(&lend_token.clone()).unwrap_or(BigUint::zero());
+        let nonce = self.get_current_esdt_nft_nonce(
+            &self.get_sc_address(), 
+            lend_token.as_esdt_identifier()
+        );
+        
+        self.send().direct_esdt_nft_via_transfer_exec(
+            &initial_caller, 
+            &lend_token.as_esdt_identifier(), 
+            &nonce, 
+            amount,
+            &[]
+        );
+        
         let mut asset_reserve = self.reserves().get(&pool_asset.clone()).unwrap_or(BigUint::zero());
-        
-        require!(lend_reserve != BigUint::zero(), "lend reserve empty");
-
-        if !(lend_reserve.clone() > amount.clone()) {
-            // mint more lend tokens
-        }
-        
-        self.send().direct(&initial_caller, &lend_token, &amount, &[]);
-
-        lend_reserve -= amount.clone();
         asset_reserve += amount.clone();
-
-        self.reserves().insert(lend_token, lend_reserve);
+        
         self.reserves().insert(pool_asset, asset_reserve);
 
         Ok(())
@@ -234,14 +240,27 @@ pub trait LiquidityPool {
         }
     }
 
-    fn mint(&self, amount: BigUint, metadata: PositionMetadata<BigUint>, ticker: TokenIdentifier) {
+    fn mint_interest(&self, amount: BigUint, metadata: InterestMetadata<BigUint>) {
+        self.send().esdt_nft_create::<InterestMetadata<BigUint>>(
+            self.get_gas_left(),
+            self.lend_token().get().as_esdt_identifier(),
+            &amount,
+            &BoxedBytes::empty(),
+            &BigUint::zero(),
+            &H256::zero(),
+            &metadata,
+            &[]
+        )
+    }
+
+    fn mint_debt(&self, amount: BigUint, metadata: DebtMetadata<BigUint>, position_id: H256) {
         self.send().esdt_nft_create::<PositionMetadata<>>(
 			self.get_gas_left(),
 			ticker.as_esdt_identifier(),
 			&amount,
 			&BoxedBytes::empty(),
 			&BigUint::zero(),
-			&H256::zero(),
+			position_id,
 			&metadata,
 			&[uri],
 		);
