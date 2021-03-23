@@ -1,5 +1,7 @@
 #![no_std]
 
+use core::time;
+
 use elrond_wasm::{HexCallDataSerializer, only_owner, require, sc_error};
 
 elrond_wasm::imports!();
@@ -24,7 +26,6 @@ pub struct IssueData<BigUint: BigUintApi> {
 
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi)]
 pub struct DebtPosition<BigUint: BigUintApi> {
-    pub id: H256,
     pub size: BigUint,
     pub health_factor: u32,
     pub is_liquidated: bool,
@@ -102,7 +103,8 @@ pub trait LiquidityPool {
     #[endpoint]
     fn borrow(
         &self,
-        initial_caller : Address, 
+        initial_caller : Address,
+        lend_token: TokenIdentifier, 
         amount: BigUint
     ) -> SCResult<()> {
 
@@ -117,15 +119,41 @@ pub trait LiquidityPool {
 
         let mut borrows_reserve = self.reserves().get(&borrows_token.clone()).unwrap_or(BigUint::zero());
         let mut asset_reserve = self.reserves().get(&asset.clone()).unwrap_or(BigUint::zero());
-        
-        
-        require!(borrows_reserve != BigUint::zero(), "borrow reserve is empty");
+                
         require!(asset_reserve != BigUint::zero(), "asset reserve is empty");
 
-        self.send().direct(&initial_caller, &borrows_token, &amount, &[]);
+        // TODO: serialize token data + nonce and hash & extract to separate func 
+        let mut debt_nonce = self.debt_nonce().get();
+        let position_id = self.keccak256(Vec<u8>::from(debt_nonce.clone()));
+        self.increment_debt_nonce(debt_nonce);
+        
+        let debt_metadata = DebtMetadata{
+            timestamp: self.get_block_timestamp(),
+            collateral_amount: amount,
+            collateral_identifier: lend_token
+        };
+        self.mint_debt(amount, debt_metadata, position_id);
+        
+        let nonce = self.get_current_esdt_nft_nonce(
+            &self.get_sc_address(),
+            borrows_token.as_esdt_identifier()
+        );
+
+        // send debt position tokens
+
+        self.send().direct_esdt_nft_via_transfer_exec(
+            &initial_caller, 
+            &borrows_token.as_esdt_identifier(),
+            &nonce, 
+            &amount, 
+            &[]
+        );
+        
+        // send collateral requested to the user
+        
         self.send().direct(&initial_caller, &asset, &amount, &[]);
 
-        borrows_reserve -= amount.clone();
+        borrows_reserve += amount.clone();
         asset_reserve -= amount.clone();
 
         let mut total_borrow = self.get_total_borrow();
@@ -134,6 +162,16 @@ pub trait LiquidityPool {
 
         self.reserves().insert(borrows_token, borrows_reserve);
         self.reserves().insert(asset, asset_reserve);
+
+        let current_health = self.compute_health_factor();
+        let debt_position = DebtPosition{
+            size: amount,
+            health_factor: current_health,
+            is_liquidated: false,
+            collateral_amount: amount,
+            collateral_identifier: lend_token
+        };
+        self.debt_positions().insert(position_id, debt_position);
 
         Ok(())
     }
@@ -145,7 +183,7 @@ pub trait LiquidityPool {
         #[payment_token] lend_token: TokenIdentifier,
         #[payment] amount: BigUint
     ) -> SCResult<()> {
-
+        // TODO: check if this is not a duplicate impl of deposit_asset ???
         require!(self.get_lending_pool() == self.get_caller(), "can only be called by lending pool");
         require!(amount > 0, "amount must be bigger then 0");
         require!(lend_token == self.get_lend_token(), "lend token is not supported by this pool");
@@ -182,7 +220,7 @@ pub trait LiquidityPool {
             token_ticker.clone() == pool_asset.clone(),
             "wrong ESDT asset identifier"
         );
-
+        
         let issue_data = self.prepare_issue_data(token_prefix, token_ticker);
         
         require!(
@@ -262,7 +300,7 @@ pub trait LiquidityPool {
 			&BigUint::zero(),
 			position_id,
 			&metadata,
-			&[uri],
+			&[],
 		);
     }
 
@@ -334,6 +372,10 @@ pub trait LiquidityPool {
     #[view(borrowToken)]
     fn get_borrow_token(&self) -> TokenIdentifier {
         self.borrow_token().get()
+    }
+
+    fn increment_debt_nonce(&self, current: u64) {
+        self.debt_nonce().set(&u64::from(current + 1));
     }
 
     //
