@@ -162,7 +162,7 @@ pub trait LiquidityPool {
         let issue_data = self.prepare_issue_data(token_prefix, token_ticker);
         
         require!(
-            issue_data.name != Default::default(), 
+            issue_data.name != BoxedBytes::zeros(0), 
             "invalid input. could not prepare issue data"
         );
         require!(
@@ -269,16 +269,12 @@ pub trait LiquidityPool {
         if prefix == BoxedBytes::from(LEND_TOKEN_PREFIX) {
             issue_data.name = [LEND_TOKEN_NAME, ticker.as_name()].concat();
             issue_data.existing_token = self.lend_token().get();
-            
-            issue_data;
         } else if prefix == BoxedBytes::from(BORROW_TOKEN_PREFIX) {
             issue_data.name = [BORROW_TOKEN_PREFIX, ticker.as_name()].concat();
             issue_data.existing_token = self.borrow_token().get();
-
-            issue_data;
         }
 
-        Default::default();
+        return issue_data;
     }
 
     /// VIEWS
