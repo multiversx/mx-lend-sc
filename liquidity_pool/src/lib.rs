@@ -22,9 +22,26 @@ pub struct IssueData<BigUint: BigUintApi> {
     pub existing_token: TokenIdentifier
 }
 
+#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi)]
+pub struct DebtPosition<BigUint: BigUintApi> {
+    pub id: H256,
+    pub size: BigUint,
+    pub health_factor: u32,
+    pub is_liquidated: bool,
+    pub collateral_amount: BigUint,
+    pub collateral_identifier: TokenIdentifier
+}
+
 #[derive(TopEncode, TopDecode, TypeAbi)]
-pub struct PositionMetadata<BigUint: BigUintApi> {
-	timestamp: u64
+pub struct InterestMetadata<BigUint: BigUintApi> {
+	pub timestamp: u64
+}
+
+#[derive(TopEncode, TopDecode, TypeAbi)]
+pub struct DebtMetadata<BigUint: BigUintApi> {
+    pub timestamp: u64,
+    pub collateral_amount: BigUint,
+    pub collateral_identifier: TokenIdentifier
 }
 
 #[elrond_wasm_derive::contract(LiquidityPoolImpl)]
@@ -33,7 +50,8 @@ pub trait LiquidityPool {
     #[init]
     fn init(&self, asset:TokenIdentifier, lending_pool: Address) {
         self.pool_asset().set(&asset);
-        self.set_lending_pool(lending_pool); 
+        self.set_lending_pool(lending_pool);
+        self.debt_nonce().set(1u64);
     }
 
     #[payable("*")]
@@ -299,35 +317,47 @@ pub trait LiquidityPool {
         self.borrow_token().get()
     }
 
+    //
     /// pool asset
 
     #[storage_mapper("pool_asset")]
     fn pool_asset(&self) -> SingleValueMapper<Self::Storage, TokenIdentifier>;
 
-    ///
+    //
     /// lend token supported for asset
     
     #[storage_mapper("lend_token")]
     fn lend_token(&self) -> SingleValueMapper<Self::Storage, TokenIdentifier>;
 
-    ///  
+    //
     /// borrow token supported for collateral
 
     #[storage_mapper("borrow_token")]
     fn borrow_token(&self) -> SingleValueMapper<Self::Storage, TokenIdentifier>;
     
-    ///
+    //
     /// pool reserves
 
     #[storage_mapper("reserves")]
     fn reserves(&self) -> MapMapper<Self::Storage, TokenIdentifier, BigUint>;
 
-    ///
+    //
     /// last error
     #[storage_mapper("last_error")]
     fn last_error(&self) -> SingleValueMapper<Self::Storage, BoxedBytes>;
 
+    //
+    /// debt positions
+    #[storage_mapper("debt_positions")]
+    fn debt_positions(&self) -> MapMapper<Self::Storage, H256, DebtPosition<BigUint>>;
 
+    //
+    /// debt nonce
+    #[storage_mapper("debt_nonce")]
+    fn debt_nonce(&self) -> SingleValueMapper<Self::Storage, u64>;
+
+    //
+    /// lending pool address 
     #[storage_set("lendingPool")]
     fn set_lending_pool(&self, lending_pool:Address);
     
@@ -336,8 +366,7 @@ pub trait LiquidityPool {
     fn get_lending_pool(&self) -> Address;
 
     //
-
-    //total borrowing from pool
+    // total borrowing from pool
 
     #[storage_set("totalBorrow")]
     fn set_total_borrow(&self, total: BigUint);
@@ -347,7 +376,6 @@ pub trait LiquidityPool {
     fn get_total_borrow(&self) -> BigUint;
 
     //
-
     // total collateral from pool
     #[storage_set("totalCollateral")]
     fn set_total_collateral(&self, amount:BigUint);
@@ -355,12 +383,4 @@ pub trait LiquidityPool {
     #[view(totalCollateral)]
     #[storage_get("totalCollateral")]
     fn get_total_collateral(&self) -> BigUint;
-
-    //
-
-    /// temporary token prefix for ESDT operation
-
-    #[view(latestPrefix)]
-    #[storage_mapper("latest_prefix")]
-    fn latest_prefix(&self) -> SingleValueMapper<Self::Storage, BoxedBytes>;
 }
