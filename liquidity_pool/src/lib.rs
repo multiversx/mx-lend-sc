@@ -105,6 +105,10 @@ pub trait LiquidityPool {
         borrows_reserve -= amount.clone();
         asset_reserve -= amount.clone();
 
+        let mut total_borrow = self.get_total_borrow();
+        total_borrow += amount.clone();
+        self.set_total_borrow(total_borrow);
+
         self.reserves().insert(borrows_token, borrows_reserve);
         self.reserves().insert(asset, asset_reserve);
 
@@ -126,6 +130,10 @@ pub trait LiquidityPool {
         let mut lend_reserve = self.reserves().get(&lend_token.clone()).unwrap_or(BigUint::zero());
 
         lend_reserve += amount.clone();
+
+        let mut total_collateral = self.get_total_collateral();
+        total_collateral += amount.clone();
+        self.set_total_collateral(amount);
         
         self.reserves().insert(lend_token, lend_reserve);
 
@@ -345,6 +353,26 @@ pub trait LiquidityPool {
     fn get_lending_pool(&self) -> Address;
 
     //
+
+    //total borrowing from pool
+
+    #[storage_set("totalBorrow")]
+    fn set_total_borrow(&self, total: BigUint);
+
+    #[view(totalBorrow)]
+    #[storage_get("totalBorrow")]
+    fn get_total_borrow(&self) -> BigUint;
+
+    //
+
+    //total collateral from pool
+    #[storage_set("totalCollateral")]
+    fn set_total_collateral(&self, amount:BigUint);
+
+
+    #[view(totalCollateral)]
+    #[storage_get("totalCollateral")]
+    fn get_total_collateral(&self) -> BigUint;
 
 
     /// [set, get, clear] ESDT operation type
