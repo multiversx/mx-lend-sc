@@ -1,0 +1,97 @@
+{
+    "name": "liquidity-pool",
+    "steps": [
+        {
+            "step": "setState",
+            "accounts": {
+                "address:my_address": {
+                    "nonce": "0",
+                    "balance": "1,000,000",
+                    "esdt": {
+                        "str:ECC-abcdef": "1,000,000"
+                    },
+                    "storage": {}
+                },
+                "address:some_user": {
+                    "nonce": "0",
+                    "balance": "1,000,000",
+                    "esdt": {
+                        "str:ECC-abcdef": "1,000,000",
+                        "str:LECC-abcdef": "0"
+                    },
+                    "storage": {}
+                },
+                "address:liqpool_address": {
+                    "nonce": "0",
+                    "balance": "0",
+                    "esdt": {
+                        "str:ECC-abcdef": "1,000,000",
+                        "str:LECC-abcdef": "1,000,000"
+                    },
+                    "storage": {
+                        "str:pool_asset": "str:ECC-abcdef",
+                        "str:lend_token": "str:LECC-abcdef",
+                        "str:reserves|str:ECC-abcdef": "1,000,000",
+                        "str:reserves|str:LECC-abcdef": "1,000,000"
+                    },
+                    "code": "file:../output/liquidity-pool.wasm"
+                }
+            }
+        },
+        {
+            "step": "scCall",
+            "txId": "deposit",
+            "tx": {
+                "from": "address:my_address",
+                "to": "address:liqpool_address",
+                "value": "0",
+                "esdtTokenName": "str:ECC-abcdef",
+                "esdtValue": "500,000",
+                "function": "deposit_asset",
+                "arguments": [
+                    "address:some_user"
+                ],
+                "gasLimit": "1,000,000",
+                "gasPrice": "0"
+            },
+            "expect": {
+                "status": "",
+                "gas": "*",
+                "refund": "*"
+            }
+        },
+        {
+            "step": "checkState",
+            "accounts": {
+                "address:my_address": {
+                    "nonce": "1",
+                    "balance": "1,000,000",
+                    "esdt": {
+                        "str:ECC-abcdef": "500,000"
+                    },
+                    "storage": {}
+                },
+                "address:some_user": {
+                    "nonce": "0",
+                    "balance": "1,000,000",
+                    "esdt": {
+                        "str:ECC-abcdef": "1,000,000",
+                        "str:LECC-abcdef": "500,000"
+                    },
+                    "storage": {}
+                },
+                "address:liqpool_address": {
+                    "nonce": "0",
+                    "balance": "0",
+                    "storage": {
+                        "str:pool_asset": "str:ECC-abcdef",
+                        "str:lend_token": "str:LECC-abcdef",
+                        "str:reserves|str:LECC-abcdef": "500,000",
+                        "str:reserves|str:ECC-abcdef": "1,500,000"
+                    },
+                    "code": "file:../output/liquidity-pool.wasm"
+                }
+            }
+        }
+    ]
+}

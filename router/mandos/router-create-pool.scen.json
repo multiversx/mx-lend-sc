@@ -1,0 +1,86 @@
+{
+    "name": "router",
+    "steps": [
+        {
+            "step": "setState",
+            "accounts": {
+                "address:my_address": {
+                    "nonce": "0",
+                    "balance": "1,000,000",
+                    "storage": {}
+                }
+            },
+            "newAddresses": [
+                {
+                    "creatorAddress": "address:my_address",
+                    "creatorNonce": "0",
+                    "newAddress": "address:router_contract"
+                }
+            ]
+        },
+        {
+            "step": "scDeploy",
+            "txId": "deploy",
+            "tx": {
+                "from": "address:my_address",
+                "value": "0",
+                "contractCode": "file:../output/router.wasm",
+                "gasLimit": "100,000,000",
+                "gasPrice": "0"
+            },
+            "expect": {
+                "status": "0",
+                "gas": "*",
+                "refund": "*"
+            }
+        },
+        {
+            "step": "setState",
+            "newAddresses": [
+                {
+                    "creatorAddress": "address:router_contract",
+                    "creatorNonce": "0",
+                    "newAddress": "address:pool_address"
+                }
+            ]
+        },
+        {
+            "step": "scCall",
+            "txId": "create",
+            "tx": {
+                "from": "address:my_address",
+                "to": "address:router_contract",
+                "value": "0",
+                "function": "createLiquidityPool", 
+                "arguments": [
+                    "str:WBTC-abcdef",
+                    "file:../output/router.wasm"
+                ],
+                "gasLimit": "100,000,000",
+                "gasPrice": "0"
+            },
+            "expect": {
+                "status": "0",
+                "gas": "*",
+                "refund": "*"
+            }
+        },
+        {
+            "step": "checkState",
+            "accounts": {
+                "address:my_address": {
+                    "nonce": "0",
+                    "storage": {}
+                },
+                "address:router_contract": {
+                    "nonce": "0",
+                    "balance": "0",
+                    "storage": {
+                        "str:pools_map|str:WBTC-abcdef": "address:pool_address"
+                    },
+                    "code": "file:../output/router.wasm"
+                }
+            }
+        }
+    ]
+}

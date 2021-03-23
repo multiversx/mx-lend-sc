@@ -1,24 +1,23 @@
 #![no_std]
 
-use elrond_wasm::{contract_call, require, sc_error};
+use elrond_wasm::{require, sc_error};
 
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-#[elrond_wasm_derive::callable(LiquidityPoolProxy)]
-pub trait LiquidityPool {
-    fn deposit_asset(
-        &self,
-        initial_caller: Address,
-        #[payment_token] asset: TokenIdentifier,
-        #[payment] amount: BigUint,
-    ) -> ContractCall<BigUint>;
-}
+const ESDT_TRANSFER_STRING: &[u8] = b"ESDTTransfer";
 
 #[elrond_wasm_derive::contract(LendingPoolImpl)]
 pub trait LendingPool {
     #[init]
     fn init(&self) {}
+
+    #[storage_set("debug")]
+    fn set_debug(&self, value: u8);
+
+    #[view]
+    #[storage_get("debug")]
+    fn get_debug(&self) -> u8;
 
     #[payable("*")]
     #[endpoint]
@@ -27,7 +26,7 @@ pub trait LendingPool {
         initial_caller: Address,
         #[payment_token] asset: TokenIdentifier,
         #[payment] amount: BigUint,
-    ) -> SCResult<AsyncCall<BigUint>> {
+    ) -> SCResult<()> {
 
         require!(amount > 0, "amount must be greater than 0");
         require!(!initial_caller.is_zero(), "invalid address provided");
@@ -39,14 +38,22 @@ pub trait LendingPool {
             .unwrap_or(Address::zero());
 
         require!(!pool_address.is_zero(), "invalid liquidity pool address");
+        
+        let mut args = ArgBuffer::new();
+        args.push_argument_bytes(asset.as_esdt_identifier());
+        args.push_argument_bytes(amount.to_bytes_be().as_slice());
+        args.push_argument_bytes(b"deposit_asset");
+        args.push_argument_bytes(initial_caller.as_bytes());
 
-        Ok(contract_call!(self, pool_address, LiquidityPoolProxy)
-            .deposit_asset(initial_caller, asset, amount)
-            .async_call()
-            .with_callback(
-                self.callbacks().deposit_callback()
-            )
-        )
+        self.send().execute_on_dest_context_raw(
+            self.get_gas_left(), 
+            &pool_address,
+            &BigUint::zero(), 
+            ESDT_TRANSFER_STRING, 
+            &args
+        );
+        
+        Ok(())
     }
 
     #[payable("*")]

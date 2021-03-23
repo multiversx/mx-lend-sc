@@ -1,7 +1,5 @@
 elrond_wasm::imports!();
 
-const GAS: u64 = 60000000;
-
 #[elrond_wasm_derive::module(PoolFactoryModuleImpl)]
 pub trait PoolFactoryModule {
     fn init(&self) {}
@@ -15,10 +13,10 @@ pub trait PoolFactoryModule {
         let amount = BigUint::from(0u32);
 
         let mut arg_buffer = ArgBuffer::new();
-        arg_buffer.push_argument_bytes(base_asset.as_slice());
+        arg_buffer.push_argument_bytes(base_asset.as_esdt_identifier());
 
         let pool_address = self.send().deploy_contract(
-            GAS, 
+            self.get_gas_left(), 
             &amount, 
             bytecode, 
             code_metadata, 
