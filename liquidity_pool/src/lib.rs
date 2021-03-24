@@ -1,6 +1,6 @@
 #![no_std]
 
-use core::time;
+use core::{array::FixedSizeArray, time};
 
 use elrond_wasm::{HexCallDataSerializer, only_owner, require, sc_error};
 
@@ -109,9 +109,7 @@ pub trait LiquidityPool {
     ) -> SCResult<()> {
 
         require!(self.get_caller() == self.get_lending_pool(), "can only be called through lending pool");
-
         require!(amount > 0, "lend amount must be bigger then 0");
-        
         require!(!initial_caller.is_zero(), "invalid address provided");
 
         let borrows_token = self.get_borrow_token();
@@ -122,9 +120,9 @@ pub trait LiquidityPool {
                 
         require!(asset_reserve != BigUint::zero(), "asset reserve is empty");
 
-        // TODO: serialize token data + nonce and hash & extract to separate func 
+        // TODO : extract in separate
         let mut debt_nonce = self.debt_nonce().get();
-        let position_id = self.keccak256(Vec<u8>::from(debt_nonce.clone()));
+        let position_id = self.keccak256(debt_nonce.clone().as_ne_bytes().as_slice()); 
         self.increment_debt_nonce(debt_nonce);
         
         let debt_metadata = DebtMetadata{
@@ -210,29 +208,26 @@ pub trait LiquidityPool {
         #[payment] amount: BigUint
     ) -> SCResult<()>{
         require!(self.get_caller() == self.get_lending_pool(), "can only be called by lending pool");
-        require!(amount >0 "amount must be bigger then 0");
+        require!(amount > 0 "amount must be bigger then 0");
         require!(lend_token == self.get_lend_token(), "lend token is not supported by this pool");
         require!(!initial_caller.is_zero(), "invalid address");
 
         let pool_asset = self.get_pool_asset();
-
-        let mut lend_reserve = self.reserves().get(&lend_token.clone()).unwrap_or(BigUint::zero());
         let mut asset_reserve = self.reserves().get(&pool_asset.clone()).unwrap_or(BigUint::zero());
 
         require!(asset_reserve != BigUint::zero(), "asset reserve is empty");
 
+        let nonce = self.call_value().esdt_token_nonce();
+        self.burn(amount, nonce, lend_token);
+
         self.send().direct(&initial_caller, &pool_asset, &amount, &[]);
 
-        lend_reserve += amount;
         asset_reserve -= amount;
-
-        self.reserves().insert(lend_token, lend_reserve);
         self.reserves().insert(pool_asset, asset_reserve);
         
         Ok(())
     }
     
-
     #[payable("EGLD")]
     #[endpoint]
     fn issue(
