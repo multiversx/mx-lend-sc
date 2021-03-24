@@ -60,7 +60,41 @@ pub trait LendingPool {
 
     #[payable("*")]
     #[endpoint]
-    fn withdraw(&self) -> SCResult<()> {
+    fn withdraw(
+        &self,
+        asset_to_withdraw: TokenIdentifier,
+        #[var_args] initial_caller: OptionalArg<Address>,
+        #[paymnet_token] lend_token: TokenIdentifier,
+        #[payment] amount: BigUint
+    ) -> SCResult<()> {
+        let caller = initial_caller.into_option().unwrap_or(self.get_caller());
+
+        require!(amount > 0, "amount must be greater than 0");
+        require!(!caller.is_zero(), "invalid address provided");
+        require!(self.pools_map().contains_key(&asset_to_withdraw.clone()), "asset not supported");
+
+
+        let asset_token_pool_address = self
+            .pools_map()
+            .get(&asset_to_withdraw.clone())
+            .unwrap_or(Address::zero());
+
+        require!(!asset_token_pool_address.is_zero(), "invalid liquidity pool address");
+
+        let mut args = ArgBuffer::new();
+        args.push_argument_bytes(lend_token.as_esdt_identifier());
+        args.push_argument_bytes(amount.to_bytes_be().as_slice());
+        args.push_argument_bytes(b"withdraw");
+        args.push_argument_bytes(caller.as_bytes());
+
+        self.send().execute_on_dest_context_raw(
+            self.get_gas_left(), 
+            &asset_token_pool_address,
+            &BigUint::zero(), 
+            ESDT_TRANSFER_STRING, 
+            &args
+        );
+
         Ok(())
     }
 
@@ -110,7 +144,7 @@ pub trait LendingPool {
         
 
 
-        self.send().execute_on_dest_context(
+        self.send().execute_on_dest_context_raw(
             self.get_gas_left(), 
             &collateral_token_pool_address,
             &BigUint::zero(), 
@@ -124,7 +158,7 @@ pub trait LendingPool {
         args_borrow.push_argument_bytes(initial_caller.as_bytes());
 
 
-        self.send().execute_on_dest_context(
+        self.send().execute_on_dest_context_raw(
             self.get_gas_left(), 
             &collateral_token_pool_address,
             &BigUint::zero(), 
