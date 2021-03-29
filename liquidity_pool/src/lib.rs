@@ -1,6 +1,7 @@
 #![no_std]
 
-mod library;
+pub mod library;
+pub use library::*;
 
 use elrond_wasm::{only_owner, require, sc_error};
 
@@ -404,12 +405,13 @@ pub trait LiquidityPool {
     fn get_deposit_rate(&self) -> BigUint {
         let utilisation = self.get_capital_utilisation();
         let reserve_data = self.reserve_data().get();
-        let borrow_rate = self._get_borrow_rate(reserve_data, OptionalArg::Some(utilisation));
+        let reserve_factor = reserve_data.reserve_factor.clone();
+        let borrow_rate = self._get_borrow_rate(reserve_data, OptionalArg::Some(utilisation.clone()));
 
         return self.library_module().compute_deposit_rate(
             utilisation,
             borrow_rate,
-            reserve_data.reserve_factor,
+            reserve_factor,
         );
     }
 
@@ -422,7 +424,7 @@ pub trait LiquidityPool {
 
         return self
             .library_module()
-            .compute_debt(amount, time_diff, borrow_amount);
+            .compute_debt(amount, time_diff, borrow_rate);
     }
 
     #[view(getCapitalUtilisation)]
@@ -438,7 +440,7 @@ pub trait LiquidityPool {
     #[view(getReserve)]
     fn get_reserve(&self) -> BigUint {
         self.reserves()
-            .get(self.pool_asset().get())
+            .get(&self.pool_asset().get())
             .unwrap_or(BigUint::zero())
     }
 
@@ -502,7 +504,7 @@ pub trait LiquidityPool {
             reserve_data.r_slope1,
             reserve_data.r_slope2,
             reserve_data.u_optimal,
-            utilisation,
+            u_current,
         );
     }
 
