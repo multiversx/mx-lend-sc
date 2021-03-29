@@ -413,6 +413,18 @@ pub trait LiquidityPool {
         );
     }
 
+    #[view(getDebt)]
+    fn get_debt(&self, amount: BigUint, timestamp: u64) -> BigUint {
+        let now = self.get_block_timestamp();
+        let time_diff = BigUint::from(now - timestamp);
+
+        let borrow_rate = self.get_borrow_rate();
+
+        return self
+            .library_module()
+            .compute_debt(amount, time_diff, borrow_amount);
+    }
+
     #[view(getCapitalUtilisation)]
     fn get_capital_utilisation(&self) -> BigUint {
         let reserve_amount = self.get_reserve();

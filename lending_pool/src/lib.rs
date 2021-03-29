@@ -196,7 +196,4 @@ pub trait LendingPool {
 
     #[storage_mapper("pools_map")]
     fn pools_map(&self) -> MapMapper<Self::Storage, TokenIdentifier, Address>;
-
-    #[storage_mapper("reserve_data")]
-    fn reserve_data(&self) -> MapMapper<Self::Storage, TokenIdentifier, ReserveData<BigUint>>;
 }

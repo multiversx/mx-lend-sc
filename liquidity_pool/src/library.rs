@@ -1,7 +1,10 @@
 elrond_wasm::imports!();
 
-// base precision 
-const BP: u32 = 100000;
+// base precision
+const BP: u32 = 1000000000;
+
+// number of seconds in one year
+const SECONDS_IN_YEAR: u32 = 31556926;
 
 #[elrond_wasm_derive::module(LibraryModuleImpl)]
 pub trait LibraryModule {
@@ -49,5 +52,25 @@ pub trait LibraryModule {
     ) -> BigUint {
         let bp = BigUint::from(BP);
         return BigUint::from((borrowed_amount * bp) / total_pool_reserves);
+    }
+
+    fn compute_debt(
+        &self, 
+        amount: BigUint,
+        time_diff: BigUint,
+        borrow_rate: BigUint
+    ) -> BigUint {
+        let bp = BigUint::from(BP);
+        let secs_year = BigUint::from(SECONDS_IN_YEAR);
+        let time_unit_percentage = (time_diff * bp.clone()) / secs_year;
+
+        let debt_percetange = (time_unit_percentage * borrow_rate) / bp.clone();
+
+        if debt_percetange <= bp {
+            let amount_diff = ((bp - debt_percetange) * amount.clone()) / bp;
+            return amount - amount_diff;
+        }
+
+        return (debt_percetange * amount) / bp;
     }
 }
