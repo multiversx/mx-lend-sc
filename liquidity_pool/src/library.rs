@@ -66,8 +66,8 @@ pub trait LibraryModule {
 
         let debt_percetange = (time_unit_percentage * borrow_rate) / bp.clone();
 
-        if debt_percetange <= bp {
-            let amount_diff = ((bp - debt_percetange) * amount.clone()) / bp;
+        if debt_percetange <= bp.clone() {
+            let amount_diff = ((bp.clone() - debt_percetange) * amount.clone()) / bp.clone();
             return amount - amount_diff;
         }
 
