@@ -5,19 +5,14 @@ use elrond_wasm::{require, sc_error};
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-const ESDT_TRANSFER_STRING: &[u8] = b"ESDTTransfer";
+const ESDT_TRANSFER_STRING: &[u8] = b"ESDTNFTTransfer";
+
 
 #[elrond_wasm_derive::contract(LendingPoolImpl)]
 pub trait LendingPool {
+    
     #[init]
     fn init(&self) {}
-
-    #[storage_set("debug")]
-    fn set_debug(&self, value: u8);
-
-    #[view]
-    #[storage_get("debug")]
-    fn get_debug(&self) -> u8;
 
     #[payable("*")]
     #[endpoint]
@@ -195,10 +190,13 @@ pub trait LendingPool {
     }
 
     #[view(getPoolAddress)]
-    fn get_pool_address(&self, base_asset: TokenIdentifier) -> SCResult<Address> {
-        Ok(self.pools_map().get(&base_asset).unwrap_or(Address::zero()))
+    fn get_pool_address(&self, base_asset: TokenIdentifier) -> Address {
+        self.pools_map().get(&base_asset).unwrap_or(Address::zero())
     }
 
     #[storage_mapper("pools_map")]
     fn pools_map(&self) -> MapMapper<Self::Storage, TokenIdentifier, Address>;
+
+    #[storage_mapper("reserve_data")]
+    fn reserve_data(&self) -> MapMapper<Self::Storage, TokenIdentifier, ReserveData<BigUint>>;
 }

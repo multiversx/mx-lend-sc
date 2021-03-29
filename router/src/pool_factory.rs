@@ -7,6 +7,7 @@ pub trait PoolFactoryModule {
     fn create_pool(
         &self, 
         base_asset: &TokenIdentifier,
+        lending_pool_address: &Address,
         bytecode: &BoxedBytes
     ) -> Address {
         let code_metadata = CodeMetadata::UPGRADEABLE;
