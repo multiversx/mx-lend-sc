@@ -29,6 +29,7 @@ pub struct DebtPosition<BigUint: BigUintApi> {
     pub size: BigUint,
     pub health_factor: u32,
     pub is_liquidated: bool,
+    pub timestamp: u64,
     pub collateral_amount: BigUint,
     pub collateral_identifier: TokenIdentifier
 }
@@ -367,6 +368,40 @@ pub trait LiquidityPool {
         
         Ok(())
     }
+
+    #[payable("*")]
+    #[endpoint(liquidate)]
+    fn liquidate(
+        &self,
+        position_id: H256,
+        initial_caller: Address,
+        #[payment_token] token: TokenIdentifier,
+        #[payment] amount: BigUint
+    ) -> SCResult<()> {
+        require!(self.get_caller() == self.get_lending_pool(),"function can only be called by lending pool");
+        require!(amount >0, "amount must be bigger then 0");
+
+        let mut debt_position = self.debt_positions().get(&position_id.clone()).unwrap_or(BigUint::zero());
+        require!(debt_position != BigUint::zero(), "invalid debt position id");
+        require!(debt_position.is_liquidated == false ,"position is already liquidated");
+        require!(debt_position.health_factor < self.get_health_factor_threshold(), "the health factor is not low enough");
+
+
+        let interest = self.calculate_interest(debt_position.timestamp);
+
+        if debt_position.size + interest <= amount {
+            debt_position.is_liquidated=true;
+
+        }else if debt_position.size + interest > amount {
+            debt_position.size -= amount;
+
+        }
+    
+        self.debt_positions().insert(position_id, debt_position);
+
+
+        Ok(())
+    }
     
 
     #[payable("EGLD")]
@@ -589,6 +624,27 @@ pub trait LiquidityPool {
     // repay position
     #[storage_mapper("repay_position")]
     fn repay_position(&self) -> MapMapper<Self::Storage, H256, RepayPostion<BigUint>>;
+
+
+    //health factor threshold
+    #[storage_set("healthFactorThreshold")]
+    fn set_health_factor_threshold(&self, health_factor_threashdol: u32);
+
+    #[view(healthFactorThreshold)]
+    #[storage_get("healthFactorThreshold")]
+    fn get_health_factor_threshold(&self) -> u32;
+
+    #[endpoint(setHealthFactorThreshold)]
+    fn set_HealthFactor_Threshold(
+        &self,
+        health_factor_threashdol: u32
+    ) -> SCResult<u32>{
+        require!(self.get_caller() != self.get_lending_pool(), "can only be called by lending pool");
+        let  old_health_factor_threshold = self.get_health_factor_threshold();
+        require!(old_health_factor_threshold != health_factor_threashdol, "new value must be different from old value");
+
+        self.set_health_factor_threshold(health_factor_threashdol);
+    }
 
     //
     /// lending pool address 
