@@ -21,90 +21,7 @@ const DEBT_TOKEN_NAME: &[u8] = b"DebtBearing";
 
 const EMPTY_TOKEN_ID: &[u8] = b"EGLD";
 
-#[derive(TopEncode, TopDecode, TypeAbi)]
-pub struct IssueData {
-    pub name: BoxedBytes,
-    pub ticker: TokenIdentifier,
-    pub existing_token: TokenIdentifier,
-}
 
-#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi, PartialEq, Clone)]
-pub struct DebtPosition<BigUint: BigUintApi> {
-    pub size: BigUint,
-    pub health_factor: u32,
-    pub is_liquidated: bool,
-    pub timestamp: u64,
-    pub collateral_amount: BigUint,
-    pub collateral_identifier: TokenIdentifier,
-}
-
-#[derive(TopEncode, TopDecode, TypeAbi)]
-pub struct InterestMetadata {
-    pub timestamp: u64,
-}
-
-
-#[derive(TopEncode, TopDecode, TypeAbi)]
-pub struct LiquidateData<BigUint: BigUintApi>{
-    pub collateral_token: TokenIdentifier,
-    pub amount: BigUint
-}
-
-#[derive(TopEncode, TopDecode, TypeAbi, Clone)]
-pub struct DebtMetadata<BigUint: BigUintApi> {
-    pub timestamp: u64,
-    pub collateral_amount: BigUint,
-    pub collateral_identifier: TokenIdentifier,
-    pub collateral_timestamp: u64
-}
-
-#[derive(TopEncode, TopDecode, TypeAbi, PartialEq, Clone)]
-pub struct RepayPostion<BigUint: BigUintApi> {
-    pub identifier: TokenIdentifier,
-    pub amount: BigUint,
-    pub nonce: u64,
-    pub borrow_timestamp: u64,
-    pub collateral_identifier: TokenIdentifier,
-    pub collateral_amount: BigUint,
-    pub collateral_timestamp: u64
-}
-
-#[derive(TopEncode, TopDecode, TypeAbi)]
-pub struct ReserveData<BigUint: BigUintApi> {
-    pub r_base: BigUint,         // base ratio
-    pub r_slope1: BigUint,       // slope before optimal utilisation
-    pub r_slope2: BigUint,       // slope after optimal utilisation
-    pub u_optimal: BigUint,      // optimal capital utilisation
-    pub reserve_factor: BigUint, // safety module percentage fee
-}
-
-
-impl<BigUint: BigUintApi> Default for DebtPosition<BigUint> {
-    fn default() -> Self{
-        DebtPosition{
-             size: BigUint::zero(),
-             health_factor: 0u32,
-             is_liquidated: bool::default(),
-             timestamp: 0u64,
-             collateral_amount: BigUint::zero(),
-             collateral_identifier: TokenIdentifier::egld(),
-        }
-    }
-}
-
-impl<BigUint: BigUintApi> Default for RepayPostion<BigUint>{
-    fn default() -> Self {
-        RepayPostion{
-             identifier: TokenIdentifier::egld(),
-             amount: BigUint::zero(),
-             nonce: 0u64,
-             borrow_timestamp: 0u64,
-             collateral_identifier: TokenIdentifier::egld(),
-             collateral_amount: BigUint::zero(),
-             collateral_timestamp: 0u64
-        }
-    }
-}
 
 #[elrond_wasm_derive::contract(LiquidityPoolImpl)]
 pub trait LiquidityPool {
@@ -402,40 +319,6 @@ pub trait LiquidityPool {
     }
 
     #[payable("*")]
-    #[endpoint(addCollateral)]
-    fn add_collateral(
-        &self,
-        #[payment_token] lend_token: TokenIdentifier,
-        #[payment] amount: BigUint,
-    ) -> SCResult<()> {
-        // TODO: check if this is not a duplicate impl of deposit_asset ???
-        require!(
-            self.get_lending_pool() == self.get_caller(),
-            "can only be called by lending pool"
-        );
-        require!(amount > 0, "amount must be bigger then 0");
-        require!(
-            lend_token == self.get_lend_token(),
-            "lend token is not supported by this pool"
-        );
-
-        let mut lend_reserve = self
-            .reserves()
-            .get(&lend_token.clone())
-            .unwrap_or(BigUint::zero());
-
-        lend_reserve += amount.clone();
-
-        let mut total_collateral = self.get_total_collateral();
-        total_collateral += amount.clone();
-        self.set_total_collateral(amount);
-
-        self.reserves().insert(lend_token, lend_reserve);
-
-        Ok(())
-    }
-
-    #[payable("*")]
     #[endpoint]
     fn withdraw(
         &self,
@@ -723,6 +606,14 @@ pub trait LiquidityPool {
 
         return issue_data;
     }
+
+    fn get_nft_hash(&self) -> H256 {
+        let debt_nonce = self.debt_nonce().get();
+        let hash = self.keccak256(&debt_nonce.to_be_bytes()[..]);
+        self.debt_nonce().set(&u64::from(debt_nonce + 1));
+        return hash;
+    }
+
 
     fn increment_debt_nonce(&self, current: u64) {
         self.debt_nonce().set(&u64::from(current + 1));
