@@ -24,33 +24,20 @@ pub trait Router {
         self.pool_factory().init();
     }
 
-    fn prepare_issue_args(
-        &self,
-        token_ticker: TokenIdentifier,
-        token_supply: BigUint,
-        num_decimals: u8,
-        prefix: &[u8]
-    ) -> ArgBuffer {
-        
-        let mut args = ArgBuffer::new();
-        args.push_argument_bytes(token_ticker.as_esdt_identifier());
-        args.push_argument_bytes(token_ticker.as_name());
-        args.push_argument_bytes(prefix);
-        args.push_argument_bytes(token_supply.to_bytes_be().as_slice());
-        args.push_argument_bytes(&[num_decimals]);
-
-        args
-    }
-
     /// ENDPOINTS
 
     #[endpoint(createLiquidityPool)]
     fn create_liquidity_pool(
         &self,
         base_asset: TokenIdentifier,
+        lending_pool_address: Address,
+        r_base: BigUint,
+        r_slope1: BigUint,       
+        r_slope2: BigUint,       
+        u_optimal: BigUint,      
+        reserve_factor: BigUint,
         pool_bytecode: BoxedBytes,
     ) -> SCResult<Address> {
-
         only_owner!(self, "only owner can create new pools");
 
         require!(
@@ -59,7 +46,16 @@ pub trait Router {
         );
         require!(base_asset.is_esdt(), "non-ESDT asset provided");
 
-        let address = self.pool_factory().create_pool(&base_asset, &pool_bytecode);
+        let address = self.pool_factory().create_pool(
+            &base_asset,
+            &lending_pool_address,
+            r_base,
+            r_slope1,
+            r_slope2,
+            u_optimal,
+            reserve_factor,
+             &pool_bytecode
+        );
 
         if !address.is_zero() {
             self.pools_map().insert(base_asset, address.clone());
@@ -75,7 +71,6 @@ pub trait Router {
         base_asset: TokenIdentifier,
         new_bytecode: BoxedBytes,
     ) -> SCResult<()> {
-
         only_owner!(self, "only owner can upgrade existing pools");
 
         require!(
@@ -99,68 +94,62 @@ pub trait Router {
     #[payable("EGLD")]
     #[endpoint(issueLendToken)]
     fn issue_lend_token(
-        &self, 
+        &self,
         token_ticker: TokenIdentifier,
         token_supply: BigUint,
         num_decimals: u8,
-        #[payment] amount: BigUint
+        #[payment] amount: BigUint,
     ) -> SCResult<()> {
-
         only_owner!(self, "only owner may call this function");
 
-        let pool_address = self.pools_map()
-            .get(&token_ticker.clone())
-            .unwrap();
+        let pool_address = self.pools_map().get(&token_ticker.clone()).unwrap();
 
         let args = self.prepare_issue_args(
             token_ticker, 
             token_supply, 
             num_decimals, 
             LEND_TOKEN_PREFIX
-        ); 
+        );
 
         self.send().execute_on_dest_context_raw(
             self.get_gas_left(),
             &pool_address,
             &amount,
             ISSUE_ENDPOINT,
-            &args
-        );        
-        
+            &args,
+        );
+
         Ok(())
     }
 
     #[payable("EGLD")]
     #[endpoint(issueBorrowToken)]
     fn issue_borrow_token(
-        &self, 
+        &self,
         token_ticker: TokenIdentifier,
         token_supply: BigUint,
         num_decimals: u8,
-        #[payment] amount: BigUint
+        #[payment] amount: BigUint,
     ) -> SCResult<()> {
-
         only_owner!(self, "only owner may call this function");
 
-        let pool_address = self.pools_map()
-            .get(&token_ticker.clone())
-            .unwrap();
+        let pool_address = self.pools_map().get(&token_ticker.clone()).unwrap();
 
         let args = self.prepare_issue_args(
-            token_ticker, 
-            token_supply, 
+            token_ticker,
+            token_supply,
             num_decimals,
-            BORROW_TOKEN_PREFIX
-        ); 
+            BORROW_TOKEN_PREFIX,
+        );
 
         self.send().execute_on_dest_context_raw(
             self.get_gas_left(),
             &pool_address,
             &amount,
             ISSUE_ENDPOINT,
-            &args
-        );        
-        
+            &args,
+        );
+
         Ok(())
     }
 
@@ -172,7 +161,7 @@ pub trait Router {
 
         require!(lend_ticker != EMPTY_TOKEN_ID, "invalid ticker provided");
 
-        self.pools_map().insert(lend_ticker, caller);   
+        self.pools_map().insert(lend_ticker, caller);
 
         Ok(())
     }
@@ -185,7 +174,7 @@ pub trait Router {
 
         require!(borrow_ticker != EMPTY_TOKEN_ID, "invalid ticker provided");
 
-        self.pools_map().insert(borrow_ticker, caller);   
+        self.pools_map().insert(borrow_ticker, caller);
 
         Ok(())
     }
@@ -197,6 +186,26 @@ pub trait Router {
         self.pools_map().get(&asset).unwrap_or(Address::zero())
     }
 
+    /// UTILS
+
+    fn prepare_issue_args(
+        &self,
+        token_ticker: TokenIdentifier,
+        token_supply: BigUint,
+        num_decimals: u8,
+        prefix: &[u8],
+    ) -> ArgBuffer {
+        let mut args = ArgBuffer::new();
+        args.push_argument_bytes(token_ticker.as_esdt_identifier());
+        args.push_argument_bytes(token_ticker.as_name());
+        args.push_argument_bytes(prefix);
+        args.push_argument_bytes(token_supply.to_bytes_be().as_slice());
+        args.push_argument_bytes(&[num_decimals]);
+
+        return args;
+    }
+
+    //
     /// STORAGE
 
     #[storage_mapper("pools_map")]

@@ -3,6 +3,9 @@
 pub mod library;
 pub use library::*;
 
+pub mod models;
+pub use models::*;
+
 use elrond_wasm::{only_owner, require, sc_error};
 
 
@@ -109,11 +112,27 @@ pub trait LiquidityPool {
     fn library_module(&self) -> LibraryModuleImpl<T, BigInt, BigUint>;
 
     #[init]
-    fn init(&self, asset: TokenIdentifier, lending_pool: Address) {
+    fn init(
+        &self,
+        asset: TokenIdentifier,
+        lending_pool: Address,
+        r_base: BigUint,
+        r_slope1: BigUint,
+        r_slope2: BigUint,
+        u_optimal: BigUint,
+        reserve_factor: BigUint,
+    ) {
+        self.library_module().init();
         self.pool_asset().set(&asset);
         self.set_lending_pool(lending_pool);
         self.debt_nonce().set(&1u64);
-        self.library_module().init();
+        self.reserve_data().set(&ReserveData {
+            r_base,
+            r_slope1,
+            r_slope2,
+            u_optimal,
+            reserve_factor
+        });
     }
 
     #[payable("*")]
@@ -166,7 +185,7 @@ pub trait LiquidityPool {
     fn borrow(
         &self,
         initial_caller : Address,
-        lend_token: TokenIdentifier, 
+        lend_token: TokenIdentifier,
         amount: BigUint,
         timestamp: u64
     ) -> SCResult<()> {
@@ -194,9 +213,7 @@ pub trait LiquidityPool {
         // TODO : extract in separate
         let debt_nonce = self.debt_nonce().get();
 
-        let position_id = self.keccak256(&debt_nonce.to_be_bytes()[..]);
-        self.increment_debt_nonce(debt_nonce);
-
+        let position_id = self.get_nft_hash();
         let debt_metadata = DebtMetadata {
             timestamp: self.get_block_timestamp(),
             collateral_amount: amount.clone(),
@@ -374,10 +391,10 @@ pub trait LiquidityPool {
         );
 
         self.send().direct_esdt_nft_via_transfer_exec(
-            &initial_caller, 
+            &initial_caller,
             &lend_token.as_esdt_identifier(),
-            nonce, 
-            &amount, 
+            nonce,
+            &amount,
             &[]
         );
 
@@ -478,9 +495,9 @@ pub trait LiquidityPool {
         let interest = self.get_debt_interest(debt_position.size.clone(), debt_position.timestamp.clone());
 
         require!(debt_position.size.clone() + interest == amount, "position can't be liquidated, not enough or to much tokens send");
-        
+
         debt_position.is_liquidated=true;
-        
+
         self.debt_positions().insert(position_id, debt_position.clone());
 
         let liquidate_data = LiquidateData{
@@ -490,7 +507,7 @@ pub trait LiquidityPool {
 
         Ok(liquidate_data)
     }
-    
+
 
     #[payable("EGLD")]
     #[endpoint]
@@ -797,7 +814,7 @@ pub trait LiquidityPool {
     }
 
     //
-    /// lending pool address 
+    /// lending pool address
     /// reserve data
     #[storage_mapper("reserve_data")]
     fn reserve_data(&self) -> SingleValueMapper<Self::Storage, ReserveData<BigUint>>;
@@ -819,13 +836,4 @@ pub trait LiquidityPool {
     #[view(totalBorrow)]
     #[storage_get("totalBorrow")]
     fn get_total_borrow(&self) -> BigUint;
-
-    //
-    // total collateral from pool
-    #[storage_set("totalCollateral")]
-    fn set_total_collateral(&self, amount: BigUint);
-
-    #[view(totalCollateral)]
-    #[storage_get("totalCollateral")]
-    fn get_total_collateral(&self) -> BigUint;
 }
