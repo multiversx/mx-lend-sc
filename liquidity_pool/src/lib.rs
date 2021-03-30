@@ -123,12 +123,8 @@ pub trait LiquidityPool {
 
         require!(asset_reserve != BigUint::zero(), "asset reserve is empty");
 
-        // TODO : extract in separate
-        let debt_nonce = self.debt_nonce().get();
 
-        let position_id = self.keccak256(&debt_nonce.to_be_bytes()[..]);
-        self.increment_debt_nonce(debt_nonce);
-
+        let position_id = self.get_nft_hash();
         let debt_metadata = DebtMetadata {
             timestamp: self.get_block_timestamp(),
             collateral_amount: amount.clone(),
@@ -429,6 +425,13 @@ pub trait LiquidityPool {
         }
 
         return issue_data;
+    }
+
+    fn get_nft_hash(&self) -> H256 {
+        let debt_nonce = self.debt_nonce().get();
+        let hash = self.keccak256(&debt_nonce.to_be_bytes()[..]);
+        self.debt_nonce().set(&u64::from(debt_nonce + 1));
+        return hash;
     }
 
     fn increment_debt_nonce(&self, current: u64) {
