@@ -26,11 +26,27 @@ pub trait LiquidityPool {
     fn library_module(&self) -> LibraryModuleImpl<T, BigInt, BigUint>;
 
     #[init]
-    fn init(&self, asset: TokenIdentifier, lending_pool: Address) {
+    fn init(
+        &self, 
+        asset: TokenIdentifier, 
+        lending_pool: Address,
+        r_base: BigUint,
+        r_slope1: BigUint,       
+        r_slope2: BigUint,       
+        u_optimal: BigUint,      
+        reserve_factor: BigUint,
+    ) {
+        self.library_module().init();
         self.pool_asset().set(&asset);
         self.set_lending_pool(lending_pool);
         self.debt_nonce().set(&1u64);
-        self.library_module().init();
+        self.reserve_data().set(&ReserveData {
+            r_base,
+            r_slope1,
+            r_slope2,
+            u_optimal,
+            reserve_factor
+        });
     }
 
     #[payable("*")]
