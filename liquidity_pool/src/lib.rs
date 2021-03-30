@@ -3,6 +3,9 @@
 pub mod library;
 pub use library::*;
 
+pub mod models;
+pub use models::*;
+
 use elrond_wasm::{only_owner, require, sc_error};
 
 elrond_wasm::imports!();
@@ -16,43 +19,6 @@ const LEND_TOKEN_NAME: &[u8] = b"IntBearing";
 const DEBT_TOKEN_NAME: &[u8] = b"DebtBearing";
 
 const EMPTY_TOKEN_ID: &[u8] = b"EGLD";
-
-#[derive(TopEncode, TopDecode, TypeAbi)]
-pub struct IssueData {
-    pub name: BoxedBytes,
-    pub ticker: TokenIdentifier,
-    pub existing_token: TokenIdentifier,
-}
-
-#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi)]
-pub struct DebtPosition<BigUint: BigUintApi> {
-    pub size: BigUint,
-    pub health_factor: u32,
-    pub is_liquidated: bool,
-    pub collateral_amount: BigUint,
-    pub collateral_identifier: TokenIdentifier,
-}
-
-#[derive(TopEncode, TopDecode, TypeAbi)]
-pub struct InterestMetadata {
-    pub timestamp: u64,
-}
-
-#[derive(TopEncode, TopDecode, TypeAbi)]
-pub struct DebtMetadata<BigUint: BigUintApi> {
-    pub timestamp: u64,
-    pub collateral_amount: BigUint,
-    pub collateral_identifier: TokenIdentifier,
-}
-
-#[derive(TopEncode, TopDecode, TypeAbi)]
-pub struct ReserveData<BigUint: BigUintApi> {
-    pub r_base: BigUint,         // base ratio
-    pub r_slope1: BigUint,       // slope before optimal utilisation
-    pub r_slope2: BigUint,       // slope after optimal utilisation
-    pub u_optimal: BigUint,      // optimal capital utilisation
-    pub reserve_factor: BigUint, // safety module percentage fee
-}
 
 #[elrond_wasm_derive::contract(LiquidityPoolImpl)]
 pub trait LiquidityPool {
@@ -194,40 +160,6 @@ pub trait LiquidityPool {
         Ok(())
     }
 
-    #[payable]
-    #[endpoint(addCollateral)]
-    fn add_collateral(
-        &self,
-        #[payment_token] lend_token: TokenIdentifier,
-        #[payment] amount: BigUint,
-    ) -> SCResult<()> {
-        // TODO: check if this is not a duplicate impl of deposit_asset ???
-        require!(
-            self.get_lending_pool() == self.get_caller(),
-            "can only be called by lending pool"
-        );
-        require!(amount > 0, "amount must be bigger then 0");
-        require!(
-            lend_token == self.get_lend_token(),
-            "lend token is not supported by this pool"
-        );
-
-        let mut lend_reserve = self
-            .reserves()
-            .get(&lend_token.clone())
-            .unwrap_or(BigUint::zero());
-
-        lend_reserve += amount.clone();
-
-        let mut total_collateral = self.get_total_collateral();
-        total_collateral += amount.clone();
-        self.set_total_collateral(amount);
-
-        self.reserves().insert(lend_token, lend_reserve);
-
-        Ok(())
-    }
-
     #[payable("*")]
     #[endpoint]
     fn withdraw(
@@ -332,6 +264,7 @@ pub trait LiquidityPool {
                     self.borrow_token().set(&ticker);
                     self.send_callback_result(ticker, b"setBorrowTokenAddress");
                 }
+                self.last_error().set(&BoxedBytes::zeros(0));
             }
             AsyncCallResult::Err(message) => {
                 let caller = self.get_owner_address();
@@ -565,13 +498,4 @@ pub trait LiquidityPool {
     #[view(totalBorrow)]
     #[storage_get("totalBorrow")]
     fn get_total_borrow(&self) -> BigUint;
-
-    //
-    // total collateral from pool
-    #[storage_set("totalCollateral")]
-    fn set_total_collateral(&self, amount: BigUint);
-
-    #[view(totalCollateral)]
-    #[storage_get("totalCollateral")]
-    fn get_total_collateral(&self) -> BigUint;
 }
