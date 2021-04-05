@@ -1,10 +1,9 @@
 #![no_std]
 
-use core::array::FixedSizeArray;
-
 use elrond_wasm::{contract_call, require, sc_error};
 mod liquidity_pool_proxy;
 use liquidity_pool_proxy::*;
+use elrond_wasm::*;
 
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
@@ -13,7 +12,7 @@ const ESDT_TRANSFER_STRING: &[u8] = b"ESDTNFTTransfer";
 
 
 #[derive(TopEncode, TopDecode, TypeAbi)]
-pub struct InterestMetadata<BigUint: BigUintApi> {
+pub struct InterestMetadata{
 	pub timestamp: u64
 }
 
@@ -136,18 +135,18 @@ pub trait LendingPool {
         require!(amount > 0, "amount must be greater than 0");
         require!(!initial_caller.is_zero(), "invalid address provided");
 
-        asset_address = self.get_pool_address(asset_to_repay);
+        let asset_address = self.get_pool_address(asset_to_repay);
 
         require!(self.pools_map().contains_key(&asset_to_repay.clone()), "asset not supported");
 
 
-        nft_nonce = self.call_value().esdt_token_nonce();
+        let nft_nonce = self.call_value().esdt_token_nonce();
 
         let mut args = ArgBuffer::new();
         args.push_argument_bytes(borrow_token.as_esdt_identifier());
         args.push_argument_bytes(amount.to_bytes_be().as_slice());
         args.push_argument_bytes(b"lockBTokens");
-        args.push_argument_bytes(caller.as_bytes());
+        args.push_argument_bytes(initial_caller.as_bytes());
 
 
         self.send().execute_on_dest_context_raw(
@@ -168,7 +167,7 @@ pub trait LendingPool {
     fn repay(
         &self,
         repay_unique_id : H256,
-        #[var_args] caller: OptionalArg<Address>,
+        #[var_args] initial_caller: OptionalArg<Address>,
         #[payment_token] asset: TokenIdentifier,
         #[payment] amount: BigUint
     ) -> SCResult<()> {
@@ -179,26 +178,26 @@ pub trait LendingPool {
         require!(!caller.is_zero(), "invalid address provided");
         require!(self.pools_map().contains_key(&asset.clone()), "asset not supported");
 
-        asset_address = self.get_pool_address(asset);
+        let asset_address = self.get_pool_address(asset.clone());
 
-        let results: RepayPostion<BigUint>= contract_call!(self, asset_address, LiquidtyPool)
-                                    .with_token_transfer(asset, amount)
-                                    .repay(self.get_caller(), repay_unique_id, asset,amount)
+        let results = contract_call!(&self, asset_address, LiquidtyPool)
+                                    .with_token_transfer(asset.clone(), amount.clone())
+                                    .repay(self.get_caller(), repay_unique_id.clone())
                                     .execute_on_dest_context(self.get_gas_left(), self.send());
-        
+
 
         let collateral_token_address = self.pools_map()
                                                 .get(&results.collateral_identifier.clone())
-                                                .unwrap_or(BigUint::zero());
+                                                .unwrap_or(Address::zero());
 
-        require!(collateral_token_address != BigUint::zero(), "asset is not supported");
+        require!(collateral_token_address != Address::zero(), "asset is not supported");
 
         let mut args_mint_lend = ArgBuffer::new();
         args_mint_lend.push_argument_bytes(results.collateral_identifier.as_esdt_identifier());
         args_mint_lend.push_argument_bytes(results.collateral_amount.to_bytes_be().as_slice());
         args_mint_lend.push_argument_bytes(b"mintLTokens");
         args_mint_lend.push_argument_bytes(caller.as_bytes());
-        args_mint_lend.push_argument_bytes(results.collateral_timestamp.as_ne_bytes().as_slice());
+        args_mint_lend.push_argument_bytes(results.collateral_timestamp.to_be_bytes()[..]);
 
         self.send().execute_on_dest_context_raw(
             self.get_gas_left(), 
@@ -208,7 +207,7 @@ pub trait LendingPool {
             &args_mint_lend
         );
 
-        Ok()
+        Ok(())
     }
 
     #[payable("*")]

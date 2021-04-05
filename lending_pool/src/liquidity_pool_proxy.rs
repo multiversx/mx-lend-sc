@@ -17,9 +17,9 @@ pub trait LiquidtyPool {
         &self,
         intitial_caller: Address,
         unique_id: H256,
-        #[payment_token] asset: TokendIdentifier,
-        #[payment] amount:BigUint
-    ) -> ContractCall<RepayPostion<BigUint>>;
+        #[payment_token] asset: TokenIdentifier,
+        #[payment] amount: BigUint
+    ) -> ContractCall<BigUint, RepayPostion<BigUint>>;
 
 	#[payable("*")]
 	fn reject_funds(&self) -> ContractCall<BigUint, ()>;
