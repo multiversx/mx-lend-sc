@@ -3,7 +3,6 @@
 use elrond_wasm::{contract_call, require, sc_error};
 mod liquidity_pool_proxy;
 use liquidity_pool_proxy::*;
-use elrond_wasm::*;
 
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
@@ -32,6 +31,12 @@ pub struct RepayPostion<BigUint: BigUintApi> {
     pub collateral_identifier: TokenIdentifier,
     pub collateral_amount: BigUint,
     pub collateral_timestamp: u64
+}
+
+#[derive(TopEncode, TopDecode, TypeAbi)]
+pub struct LiquidateData<BigUint: BigUintApi>{
+    pub collateral_token: TokenIdentifier,
+    pub amount: BigUint
 }
 
 
@@ -135,7 +140,7 @@ pub trait LendingPool {
         require!(amount > 0, "amount must be greater than 0");
         require!(!initial_caller.is_zero(), "invalid address provided");
 
-        let asset_address = self.get_pool_address(asset_to_repay);
+        let asset_address = self.get_pool_address(asset_to_repay.clone());
 
         require!(self.pools_map().contains_key(&asset_to_repay.clone()), "asset not supported");
 
@@ -180,9 +185,8 @@ pub trait LendingPool {
 
         let asset_address = self.get_pool_address(asset.clone());
 
-        let results = contract_call!(&self, asset_address, LiquidtyPool)
-                                    .with_token_transfer(asset.clone(), amount.clone())
-                                    .repay(self.get_caller(), repay_unique_id.clone())
+        let results = contract_call!(&self, asset_address, LiquidtyPoolProxy)
+                                    .repay(caller.clone(), repay_unique_id.clone(), asset.clone(), amount.clone())
                                     .execute_on_dest_context(self.get_gas_left(), self.send());
 
 
@@ -197,13 +201,61 @@ pub trait LendingPool {
         args_mint_lend.push_argument_bytes(results.collateral_amount.to_bytes_be().as_slice());
         args_mint_lend.push_argument_bytes(b"mintLTokens");
         args_mint_lend.push_argument_bytes(caller.as_bytes());
-        args_mint_lend.push_argument_bytes(results.collateral_timestamp.to_be_bytes()[..]);
+        args_mint_lend.push_argument_bytes(&results.collateral_timestamp.to_be_bytes()[..]);
 
         self.send().execute_on_dest_context_raw(
             self.get_gas_left(), 
             &collateral_token_address,
             &BigUint::zero(), 
             ESDT_TRANSFER_STRING, 
+            &args_mint_lend
+        );
+
+        Ok(())
+    }
+
+    #[payable("*")]
+    #[endpoint]
+    fn liquidate(
+        &self,
+        liquidate_unique_id : H256,
+        #[var_args] initial_caller: OptionalArg<Address>,
+        #[payment_token] asset: TokenIdentifier,
+        #[payment] amount: BigUint
+    ) -> SCResult<()>{
+
+        let caller = initial_caller.into_option().unwrap_or(self.get_caller());
+
+        require!(amount > 0, "amount must be greater than 0");
+        require!(!caller.is_zero(), "invalid address provided");
+        require!(self.pools_map().contains_key(&asset.clone()), "asset not supported");
+
+        let asset_address = self.get_pool_address(asset.clone());
+
+
+        let results = contract_call!(&self, asset_address, LiquidtyPoolProxy)
+            .liquidate(liquidate_unique_id.clone(), asset.clone(), amount.clone())
+            .execute_on_dest_context(self.get_gas_left(), self.send());
+
+
+        let collateral_token_address = self.pools_map()
+            .get(&results.collateral_token.clone())
+            .unwrap_or(Address::zero());
+
+        require!(collateral_token_address != Address::zero(), "asset is not supported");
+
+        let mut args_mint_lend = ArgBuffer::new();
+        args_mint_lend.push_argument_bytes(results.collateral_token.as_esdt_identifier());
+        args_mint_lend.push_argument_bytes(results.amount.to_bytes_be().as_slice());
+        args_mint_lend.push_argument_bytes(b"mintLTokens");
+        args_mint_lend.push_argument_bytes(caller.as_bytes());
+        args_mint_lend.push_argument_bytes(&self.get_block_timestamp().to_be_bytes()[..]);
+
+        self.send().execute_on_dest_context_raw(
+            self.get_gas_left(),
+            &collateral_token_address,
+            &BigUint::zero(),
+            ESDT_TRANSFER_STRING,
             &args_mint_lend
         );
 

@@ -1,9 +1,10 @@
 use crate::RepayPostion;
+use crate::LiquidateData;
 
 elrond_wasm::imports!();
 
 #[elrond_wasm_derive::callable(LiquidtyPoolProxy)]
-pub trait LiquidtyPool {
+pub trait LiquidtyPoolProxyImpl {
 	fn echo_arguments(
 		&self,
 		args: &VarArgs<BoxedBytes>,
@@ -20,6 +21,14 @@ pub trait LiquidtyPool {
         #[payment_token] asset: TokenIdentifier,
         #[payment] amount: BigUint
     ) -> ContractCall<BigUint, RepayPostion<BigUint>>;
+
+	#[payable("*")]
+	fn liquidate(
+		&self,
+		position_id: H256,
+		#[payment_token] token: TokenIdentifier,
+		#[payment] amount: BigUint
+	) -> ContractCall<BigUint, LiquidateData<BigUint>>;
 
 	#[payable("*")]
 	fn reject_funds(&self) -> ContractCall<BigUint, ()>;
