@@ -1,0 +1,18 @@
+{
+    "emitted_tx": {
+        "tx": {
+            "nonce": 1,
+            "value": "5000000000000000000",
+            "receiver": "erd1qqqqqqqqqqqqqqqpqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzllls8a5w6u",
+            "sender": "erd1spyavw0956vq68xj8y4tenjpq2wd5a9p2c6j8gsz7ztyrnpxrruqzu66jx",
+            "gasPrice": 1000000000,
+            "gasLimit": 1000000000,
+            "data": "aXNzdWVANTc0NTQ3NEM0NEA1NzQ1NDc0QzQ0QDAxODZhMEAwYQ==",
+            "chainID": "local-testnet",
+            "version": 1,
+            "signature": "7d5aa71e5d8264d4bc625530171f1fac6dca28ef0276c03a16baa4ebed4f1b39762be59eaddd8202a0be067fd323ccfec0242924f22e0fb044027a1c2445de08"
+        },
+        "hash": "097dee9df0facf66fca0f5174ae0f724e5fa488529db575dee6ee5eb75aea25a",
+        "data": "issue@5745474C44@5745474C44@0186a0@0a"
+    }
+}

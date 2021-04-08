@@ -1,0 +1,8 @@
+[networking]
+port_proxy = 7950
+
+[folders]
+elrond_go = "/home/cvg/elrondsdk/elrond_go/EN-9146-nfts-like-esdt-unit-tests/elrond-go-EN-9146-nfts-like-esdt-unit-tests"
+[features]
+loglevel = "*:DEBUG,arwen:TRACE"
+proxy = true
