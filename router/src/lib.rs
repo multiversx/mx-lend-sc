@@ -8,7 +8,6 @@ use elrond_wasm::{only_owner, require, sc_error};
 pub mod pool_factory;
 pub use pool_factory::*;
 
-const EMPTY_TOKEN_ID: &[u8] = b"EGLD";
 const LEND_TOKEN_PREFIX: &[u8] = b"L";
 const BORROW_TOKEN_PREFIX: &[u8] = b"B";
 
@@ -32,9 +31,9 @@ pub trait Router {
         base_asset: TokenIdentifier,
         lending_pool_address: Address,
         r_base: BigUint,
-        r_slope1: BigUint,       
-        r_slope2: BigUint,       
-        u_optimal: BigUint,      
+        r_slope1: BigUint,
+        r_slope2: BigUint,
+        u_optimal: BigUint,
         reserve_factor: BigUint,
         pool_bytecode: BoxedBytes,
     ) -> SCResult<Address> {
@@ -54,7 +53,7 @@ pub trait Router {
             r_slope2,
             u_optimal,
             reserve_factor,
-             &pool_bytecode
+            &pool_bytecode,
         );
 
         if !address.is_zero() {
@@ -96,20 +95,11 @@ pub trait Router {
     fn issue_lend_token(
         &self,
         token_ticker: TokenIdentifier,
-        token_supply: BigUint,
-        num_decimals: u8,
         #[payment] amount: BigUint,
     ) -> SCResult<()> {
         only_owner!(self, "only owner may call this function");
-
         let pool_address = self.pools_map().get(&token_ticker.clone()).unwrap();
-
-        let args = self.prepare_issue_args(
-            token_ticker, 
-            token_supply, 
-            num_decimals, 
-            LEND_TOKEN_PREFIX
-        );
+        let args = self.prepare_issue_args(token_ticker, LEND_TOKEN_PREFIX);
 
         self.send().execute_on_dest_context_raw(
             self.get_gas_left(),
@@ -127,20 +117,11 @@ pub trait Router {
     fn issue_borrow_token(
         &self,
         token_ticker: TokenIdentifier,
-        token_supply: BigUint,
-        num_decimals: u8,
         #[payment] amount: BigUint,
     ) -> SCResult<()> {
         only_owner!(self, "only owner may call this function");
-
         let pool_address = self.pools_map().get(&token_ticker.clone()).unwrap();
-
-        let args = self.prepare_issue_args(
-            token_ticker,
-            token_supply,
-            num_decimals,
-            BORROW_TOKEN_PREFIX,
-        );
+        let args = self.prepare_issue_args(token_ticker, BORROW_TOKEN_PREFIX);
 
         self.send().execute_on_dest_context_raw(
             self.get_gas_left(),
@@ -153,29 +134,13 @@ pub trait Router {
         Ok(())
     }
 
-    #[endpoint(setLendTokenAddress)]
-    fn set_lend_asset_address(&self, lend_ticker: TokenIdentifier) -> SCResult<()> {
+    #[endpoint(setTickerAfterIssue)]
+    fn set_ticker_after_issue(&self, token_ticker: TokenIdentifier) -> SCResult<()> {
         let caller = self.get_caller();
         let is_pool_allowed = self.pools_allowed().get(&caller).unwrap_or_default();
         require!(is_pool_allowed, "access restricted: unknown caller address");
-
-        require!(lend_ticker != EMPTY_TOKEN_ID, "invalid ticker provided");
-
-        self.pools_map().insert(lend_ticker, caller);
-
-        Ok(())
-    }
-
-    #[endpoint(setBorrowTokenAddress)]
-    fn set_borrow_asset_address(&self, borrow_ticker: TokenIdentifier) -> SCResult<()> {
-        let caller = self.get_caller();
-        let is_pool_allowed = self.pools_allowed().get(&caller).unwrap_or_default();
-        require!(is_pool_allowed, "access restricted: unknown caller address");
-
-        require!(borrow_ticker != EMPTY_TOKEN_ID, "invalid ticker provided");
-
-        self.pools_map().insert(borrow_ticker, caller);
-
+        require!(!token_ticker.is_egld(), "invalid ticker provided");
+        self.pools_map().insert(ticker, caller);
         Ok(())
     }
 
@@ -188,20 +153,10 @@ pub trait Router {
 
     /// UTILS
 
-    fn prepare_issue_args(
-        &self,
-        token_ticker: TokenIdentifier,
-        token_supply: BigUint,
-        num_decimals: u8,
-        prefix: &[u8],
-    ) -> ArgBuffer {
+    fn prepare_issue_args(&self, token_ticker: TokenIdentifier, prefix: &[u8]) -> ArgBuffer {
         let mut args = ArgBuffer::new();
         args.push_argument_bytes(token_ticker.as_esdt_identifier());
-        args.push_argument_bytes(token_ticker.as_name());
         args.push_argument_bytes(prefix);
-        args.push_argument_bytes(token_supply.to_bytes_be().as_slice());
-        args.push_argument_bytes(&[num_decimals]);
-
         return args;
     }
 
