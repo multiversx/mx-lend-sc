@@ -12,6 +12,8 @@ ISSUE_VALUE=5000000000000000000 # 5 EGLD
 LEND_TICKER=0x
 BORROW_TICKER=0x
 
+QUERY_TOKEN_ID=0x
+
 deploy() {
   erdpy contract deploy --project=${PROJECT} --recall-nonce --pem="${ALICE}" --gas-limit=150000000 --outfile="deploy.json" --proxy=${PROXY} --chain=${CHAIN_ID} --send || return
 
@@ -44,4 +46,3 @@ issueBorrowToken() {
 getPoolAddress() {
   erdpy contract query "${ADDRESS}" --function="getPoolAddress" --arguments ${QUERY_TOKEN_ID} --proxy="${PROXY}"
 }
-

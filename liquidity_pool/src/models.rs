@@ -10,7 +10,6 @@ pub struct InterestMetadata {
     pub timestamp: u64,
 }
 
-
 #[derive(TopEncode, TopDecode, TypeAbi)]
 pub struct ReserveData<BigUint: BigUintApi> {
     pub r_base: BigUint,         // base ratio
@@ -38,9 +37,9 @@ pub struct DebtPosition<BigUint: BigUintApi> {
 }
 
 #[derive(TopEncode, TopDecode, TypeAbi)]
-pub struct LiquidateData<BigUint: BigUintApi>{
+pub struct LiquidateData<BigUint: BigUintApi> {
     pub collateral_token: TokenIdentifier,
-    pub amount: BigUint
+    pub amount: BigUint,
 }
 
 #[derive(TopEncode, TopDecode, TypeAbi, Clone)]
@@ -48,7 +47,7 @@ pub struct DebtMetadata<BigUint: BigUintApi> {
     pub timestamp: u64,
     pub collateral_amount: BigUint,
     pub collateral_identifier: TokenIdentifier,
-    pub collateral_timestamp: u64
+    pub collateral_timestamp: u64,
 }
 
 #[derive(TopEncode, TopDecode, TypeAbi, PartialEq, Clone)]
@@ -59,13 +58,12 @@ pub struct RepayPostion<BigUint: BigUintApi> {
     pub borrow_timestamp: u64,
     pub collateral_identifier: TokenIdentifier,
     pub collateral_amount: BigUint,
-    pub collateral_timestamp: u64
+    pub collateral_timestamp: u64,
 }
 
-
 impl<BigUint: BigUintApi> Default for DebtPosition<BigUint> {
-    fn default() -> Self{
-        DebtPosition{
+    fn default() -> Self {
+        DebtPosition {
             size: BigUint::zero(),
             health_factor: 0u32,
             is_liquidated: bool::default(),
@@ -76,16 +74,16 @@ impl<BigUint: BigUintApi> Default for DebtPosition<BigUint> {
     }
 }
 
-impl<BigUint: BigUintApi> Default for RepayPostion<BigUint>{
+impl<BigUint: BigUintApi> Default for RepayPostion<BigUint> {
     fn default() -> Self {
-        RepayPostion{
+        RepayPostion {
             identifier: TokenIdentifier::egld(),
             amount: BigUint::zero(),
             nonce: 0u64,
             borrow_timestamp: 0u64,
             collateral_identifier: TokenIdentifier::egld(),
             collateral_amount: BigUint::zero(),
-            collateral_timestamp: 0u64
+            collateral_timestamp: 0u64,
         }
     }
 }
