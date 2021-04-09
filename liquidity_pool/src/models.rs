@@ -23,7 +23,7 @@ pub struct ReserveData<BigUint: BigUintApi> {
 pub struct IssueData {
     pub name: BoxedBytes,
     pub ticker: TokenIdentifier,
-    pub existing_token: TokenIdentifier,
+    pub is_empty_ticker: bool,
 }
 
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi, PartialEq, Clone)]

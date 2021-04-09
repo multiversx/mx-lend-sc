@@ -18,8 +18,6 @@ const BORROW_TOKEN_PREFIX: &[u8] = b"B";
 const LEND_TOKEN_NAME: &[u8] = b"IntBearing";
 const DEBT_TOKEN_NAME: &[u8] = b"DebtBearing";
 
-const EMPTY_TOKEN_ID: &[u8] = b"EGLD";
-
 #[elrond_wasm_derive::contract(LiquidityPoolImpl)]
 pub trait LiquidityPool {
     #[module(LibraryModuleImpl)]
@@ -123,9 +121,6 @@ pub trait LiquidityPool {
             .unwrap_or(BigUint::zero());
 
         require!(asset_reserve != BigUint::zero(), "asset reserve is empty");
-
-        // TODO : extract in separate
-        let debt_nonce = self.debt_nonce().get();
 
         let position_id = self.get_nft_hash();
         let debt_metadata = DebtMetadata {
@@ -470,6 +465,7 @@ pub trait LiquidityPool {
     #[endpoint]
     fn issue(
         &self,
+        plain_ticker: BoxedBytes,
         token_ticker: TokenIdentifier,
         token_prefix: BoxedBytes,
         #[payment] issue_cost: BigUint,
@@ -479,29 +475,27 @@ pub trait LiquidityPool {
             issue_cost == BigUint::from(ESDT_ISSUE_COST),
             "payment should be exactly 5 EGLD"
         );
-        let pool_asset = self.pool_asset().get();
         require!(
-            token_ticker.clone() == pool_asset.clone(),
+            token_ticker.clone() == self.pool_asset().get(),
             "wrong ESDT asset identifier"
         );
 
-        let issue_data = self.prepare_issue_data(token_prefix.clone(), token_ticker);
-
+        let issue_data = self.prepare_issue_data(token_prefix.clone(), plain_ticker);
         require!(
             issue_data.name != BoxedBytes::zeros(0),
             "invalid input. could not prepare issue data"
         );
         require!(
-            issue_data.ticker == EMPTY_TOKEN_ID,
+            issue_data.is_empty_ticker,
             "token already issued for this identifier"
         );
 
         Ok(ESDTSystemSmartContractProxy::new()
-            .issue_non_fungible(
+            .issue_semi_fungible(
                 issue_cost,
                 &issue_data.name,
                 &BoxedBytes::from(issue_data.ticker.as_esdt_identifier()),
-                NonFungibleTokenProperties {
+                SemiFungibleTokenProperties {
                     can_freeze: true,
                     can_wipe: true,
                     can_pause: true,
@@ -518,12 +512,10 @@ pub trait LiquidityPool {
     fn issue_callback(
         &self,
         prefix: &BoxedBytes,
-        #[payment_token] ticker: TokenIdentifier,
-        #[payment] amount: BigUint,
-        #[call_result] result: AsyncCallResult<()>,
+        #[call_result] result: AsyncCallResult<TokenIdentifier>,
     ) {
         match result {
-            AsyncCallResult::Ok(()) => {
+            AsyncCallResult::Ok(ticker) => {
                 if prefix == &BoxedBytes::from(LEND_TOKEN_PREFIX) {
                     self.lend_token().set(&ticker);
                 } else {
@@ -533,9 +525,10 @@ pub trait LiquidityPool {
             }
             AsyncCallResult::Err(message) => {
                 let caller = self.get_owner_address();
-                if ticker.is_egld() && amount > 0 {
-                    self.send().direct_egld(&caller, &amount, &[]);
-                }
+                let (returned_tokens, token_id) = self.call_value().payment_token_pair();
+				if token_id.is_egld() && returned_tokens > 0 {
+					self.send().direct_egld(&caller, &returned_tokens, &[]);
+				}
                 self.last_error().set(&message.err_msg);
             }
         }
@@ -660,22 +653,22 @@ pub trait LiquidityPool {
 
     //
     /// UTILS
-    fn prepare_issue_data(&self, prefix: BoxedBytes, ticker: TokenIdentifier) -> IssueData {
-        let prefixed_ticker = [prefix.as_slice(), ticker.as_esdt_identifier()].concat();
+    fn prepare_issue_data(&self, prefix: BoxedBytes, ticker: BoxedBytes) -> IssueData {
+        let prefixed_ticker = [prefix.as_slice(), ticker.as_slice()].concat();
         let mut issue_data = IssueData {
             name: BoxedBytes::zeros(0),
             ticker: TokenIdentifier::from(BoxedBytes::from(prefixed_ticker)),
-            existing_token: TokenIdentifier::from(BoxedBytes::zeros(0)),
+            is_empty_ticker: true,
         };
 
         if prefix == BoxedBytes::from(LEND_TOKEN_PREFIX) {
-            let name = [LEND_TOKEN_NAME, ticker.as_name()].concat();
+            let name = [LEND_TOKEN_NAME, ticker.as_slice()].concat();
             issue_data.name = BoxedBytes::from(name.as_slice());
-            issue_data.existing_token = self.lend_token().get();
+            issue_data.is_empty_ticker = self.lend_token().is_empty();
         } else if prefix == BoxedBytes::from(BORROW_TOKEN_PREFIX) {
-            let name = [DEBT_TOKEN_NAME, ticker.as_name()].concat();
+            let name = [DEBT_TOKEN_NAME, ticker.as_slice()].concat();
             issue_data.name = BoxedBytes::from(name.as_slice());
-            issue_data.existing_token = self.borrow_token().get();
+            issue_data.is_empty_ticker = self.borrow_token().is_empty();
         }
 
         return issue_data;
@@ -686,10 +679,6 @@ pub trait LiquidityPool {
         let hash = self.keccak256(&debt_nonce.to_be_bytes()[..]);
         self.debt_nonce().set(&u64::from(debt_nonce + 1));
         return hash;
-    }
-
-    fn increment_debt_nonce(&self, current: u64) {
-        self.debt_nonce().set(&u64::from(current + 1));
     }
 
     fn compute_health_factor(&self) -> u32 {

@@ -38,7 +38,6 @@ pub trait Router {
         pool_bytecode: BoxedBytes,
     ) -> SCResult<Address> {
         only_owner!(self, "only owner can create new pools");
-
         require!(
             !self.pools_map().contains_key(&base_asset.clone()),
             "asset already supported"
@@ -94,12 +93,13 @@ pub trait Router {
     #[endpoint(issueLendToken)]
     fn issue_lend_token(
         &self,
+        plain_ticker: BoxedBytes,
         token_ticker: TokenIdentifier,
         #[payment] amount: BigUint,
     ) -> SCResult<()> {
         only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&token_ticker.clone()).unwrap();
-        let args = self.prepare_issue_args(token_ticker, LEND_TOKEN_PREFIX);
+        let args = self.prepare_issue_args(plain_ticker, token_ticker, LEND_TOKEN_PREFIX);
 
         self.send().execute_on_dest_context_raw(
             self.get_gas_left(),
@@ -116,12 +116,13 @@ pub trait Router {
     #[endpoint(issueBorrowToken)]
     fn issue_borrow_token(
         &self,
+        plain_ticker: BoxedBytes,
         token_ticker: TokenIdentifier,
         #[payment] amount: BigUint,
     ) -> SCResult<()> {
         only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&token_ticker.clone()).unwrap();
-        let args = self.prepare_issue_args(token_ticker, BORROW_TOKEN_PREFIX);
+        let args = self.prepare_issue_args(plain_ticker, token_ticker, BORROW_TOKEN_PREFIX);
 
         self.send().execute_on_dest_context_raw(
             self.get_gas_left(),
@@ -140,7 +141,7 @@ pub trait Router {
         let is_pool_allowed = self.pools_allowed().get(&caller).unwrap_or_default();
         require!(is_pool_allowed, "access restricted: unknown caller address");
         require!(!token_ticker.is_egld(), "invalid ticker provided");
-        self.pools_map().insert(ticker, caller);
+        self.pools_map().insert(token_ticker, caller);
         Ok(())
     }
 
@@ -153,8 +154,14 @@ pub trait Router {
 
     /// UTILS
 
-    fn prepare_issue_args(&self, token_ticker: TokenIdentifier, prefix: &[u8]) -> ArgBuffer {
+    fn prepare_issue_args(
+        &self,
+        plain_ticker: BoxedBytes,
+        token_ticker: TokenIdentifier,
+        prefix: &[u8],
+    ) -> ArgBuffer {
         let mut args = ArgBuffer::new();
+        args.push_argument_bytes(plain_ticker.as_slice());
         args.push_argument_bytes(token_ticker.as_esdt_identifier());
         args.push_argument_bytes(prefix);
         return args;
