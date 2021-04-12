@@ -508,6 +508,41 @@ pub trait LiquidityPool {
             .with_callback(self.callbacks().issue_callback(&token_prefix)))
     }
 
+    #[endpoint(setLendTokenRoles)]
+    fn set_lend_token_roles(
+        &self,
+        #[var_args] roles: VarArgs<EsdtLocalRole>,
+    ) -> SCResult<AsyncCall<BigUint>> {
+        only_owner!(self, "only owner can set roles");
+        require!(!self.lend_token().is_empty(), "token not issued yet");
+        Ok(self.set_roles(self.lend_token().get(), roles))
+    }
+
+    #[endpoint(setBorrowTokenRoles)]
+    fn set_borrow_token_roles(
+        &self,
+        #[var_args] roles: VarArgs<EsdtLocalRole>,
+    ) -> SCResult<AsyncCall<BigUint>> {
+        only_owner!(self, "only owner can set roles");
+        require!(!self.borrow_token().is_empty(), "token not issued yet");
+        Ok(self.set_roles(self.borrow_token().get(), roles))
+    }
+
+    fn set_roles(
+        &self,
+        token: TokenIdentifier,
+        #[var_args] roles: VarArgs<EsdtLocalRole>,
+    ) -> AsyncCall<BigUint> {
+        ESDTSystemSmartContractProxy::new()
+            .set_special_roles(
+                &self.get_sc_address(),
+                token.as_esdt_identifier(),
+                roles.as_slice(),
+            )
+            .async_call()
+            .with_callback(self.callbacks().set_roles_callback())
+    }
+
     #[callback]
     fn issue_callback(
         &self,
@@ -521,14 +556,26 @@ pub trait LiquidityPool {
                 } else {
                     self.borrow_token().set(&ticker);
                 }
-                self.send_callback_result(ticker, b"setTickerAfterIssue");
+                // self.send_callback_result(ticker, b"setTickerAfterIssue");
             }
             AsyncCallResult::Err(message) => {
                 let caller = self.get_owner_address();
                 let (returned_tokens, token_id) = self.call_value().payment_token_pair();
-				if token_id.is_egld() && returned_tokens > 0 {
-					self.send().direct_egld(&caller, &returned_tokens, &[]);
-				}
+                if token_id.is_egld() && returned_tokens > 0 {
+                    self.send().direct_egld(&caller, &returned_tokens, &[]);
+                }
+                self.last_error().set(&message.err_msg);
+            }
+        }
+    }
+
+    #[callback]
+    fn set_roles_callback(&self, #[call_result] result: AsyncCallResult<()>) {
+        match result {
+            AsyncCallResult::Ok(()) => {
+                self.last_error().clear();
+            }
+            AsyncCallResult::Err(message) => {
                 self.last_error().set(&message.err_msg);
             }
         }

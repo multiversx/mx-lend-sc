@@ -13,6 +13,16 @@ const BORROW_TOKEN_PREFIX: &[u8] = b"B";
 
 const ISSUE_ENDPOINT: &[u8] = b"issue";
 
+#[elrond_wasm_derive::callable(LiquidityPoolProxy)]
+pub trait LiquidityPool {
+	fn issue(
+		&self,
+        plain_ticker: BoxedBytes,
+        token_ticker: TokenIdentifier,
+        token_prefix: BoxedBytes,
+	) -> ContractCall<BigUint, ()>;
+}
+
 #[elrond_wasm_derive::contract(RouterImpl)]
 pub trait Router {
     #[module(PoolFactoryModuleImpl)]
@@ -99,17 +109,10 @@ pub trait Router {
     ) -> SCResult<()> {
         only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&token_ticker.clone()).unwrap();
-        let args = self.prepare_issue_args(plain_ticker, token_ticker, LEND_TOKEN_PREFIX);
-
-        self.send().execute_on_dest_context_raw(
-            self.get_gas_left(),
-            &pool_address,
-            &amount,
-            ISSUE_ENDPOINT,
-            &args,
-        );
-
-        Ok(())
+        Ok(contract_call!(self, pool_address, LiquidityPoolProxy)
+			.with_token_transfer(TokenIdentifier::egld(), amount)
+			.issue(plain_ticker, token_ticker, BoxedBytes::from(LEND_TOKEN_PREFIX))
+			.execute_on_dest_context(self.get_gas_left(), self.send()))
     }
 
     #[payable("EGLD")]
@@ -122,17 +125,10 @@ pub trait Router {
     ) -> SCResult<()> {
         only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&token_ticker.clone()).unwrap();
-        let args = self.prepare_issue_args(plain_ticker, token_ticker, BORROW_TOKEN_PREFIX);
-
-        self.send().execute_on_dest_context_raw(
-            self.get_gas_left(),
-            &pool_address,
-            &amount,
-            ISSUE_ENDPOINT,
-            &args,
-        );
-
-        Ok(())
+        Ok(contract_call!(self, pool_address, LiquidityPoolProxy)
+        .with_token_transfer(TokenIdentifier::egld(), amount)
+        .issue(plain_ticker, token_ticker, BoxedBytes::from(BORROW_TOKEN_PREFIX))
+        .execute_on_dest_context(self.get_gas_left(), self.send()))
     }
 
     #[endpoint(setTickerAfterIssue)]

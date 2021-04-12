@@ -9,17 +9,19 @@ PROJECT="../../router"
 
 ISSUE_VALUE=5000000000000000000 # 5 EGLD
 
-LEND_TICKER=0x425553442d376435316266
-BORROW_TICKER=0x
+TICKER=0x425553442d323332636338
+TICKER_PLAIN=0x42555344
 
 QUERY_TOKEN_ID=0x
+
+GAS_LIMIT=25000000
 
 forceStoreAddr() {
   erdpy data store --key=address-testnet --value="$1" 
 }
 
 deploy() {
-  erdpy contract deploy --project=${PROJECT} --recall-nonce --pem="${ALICE}" --gas-limit=150000000 --outfile="deploy.json" --proxy=${PROXY} --chain=${CHAIN_ID} --send || return
+  erdpy contract deploy --project=${PROJECT} --recall-nonce --pem="${ALICE}" --gas-limit=${GAS_LIMIT} --outfile="deploy.json" --proxy=${PROXY} --chain=${CHAIN_ID} --send || return
 
   TRANSACTION=$(erdpy data parse --file="deploy.json" --expression="data['emitted_tx']['hash']")
   ADDRESS=$(erdpy data parse --file="deploy.json" --expression="data['emitted_tx']['address']")
@@ -32,17 +34,17 @@ deploy() {
 }
 
 upgrade() {
-  erdpy contract upgrade "${ADDRESS}" --project=${PROJECT} --recall-nonce --pem="${ALICE}" --gas-limit=150000000 --outfile="upgrade.json" --proxy=${PROXY} --chain=${CHAIN_ID} --send || return
+  erdpy contract upgrade "${ADDRESS}" --project=${PROJECT} --recall-nonce --pem="${ALICE}" --gas-limit=${GAS_LIMIT} --outfile="upgrade.json" --proxy=${PROXY} --chain=${CHAIN_ID} --send || return
 }
 
 # SC calls
 
 issueLendToken() {
-  erdpy contract call "${ADDRESS}" --recall-nonce --pem="${ALICE}" --gas-limit=150000000 --value="${ISSUE_VALUE}" --function="issueLendToken" --arguments ${LEND_TICKER} --proxy=${PROXY} --chain=${CHAIN_ID} --send
+  erdpy contract call "${ADDRESS}" --recall-nonce --pem="${ALICE}" --gas-limit=${GAS_LIMIT} --value="${ISSUE_VALUE}" --function="issueLendToken" --arguments ${TICKER_PLAIN} ${TICKER} --proxy=${PROXY} --chain=${CHAIN_ID} --send
 }
 
 issueBorrowToken() {
-  erdpy contract call "${ADDRESS}" --recall-nonce --pem="${ALICE}" --gas-limit=150000000 --value="${ISSUE_VALUE}" --function="issueBorrowToken" --arguments ${BORROW_TICKER} --proxy=${PROXY} --chain=${CHAIN_ID} --send
+  erdpy contract call "${ADDRESS}" --recall-nonce --pem="${ALICE}" --gas-limit=${GAS_LIMIT} --value="${ISSUE_VALUE}" --function="issueBorrowToken" --arguments ${TICKER_PLAIN} ${TICKER} --proxy=${PROXY} --chain=${CHAIN_ID} --send
 }
 
 # Queries
