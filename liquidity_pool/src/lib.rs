@@ -556,6 +556,7 @@ pub trait LiquidityPool {
                 } else {
                     self.borrow_token().set(&ticker);
                 }
+                self.last_error().clear();
                 // self.send_callback_result(ticker, b"setTickerAfterIssue");
             }
             AsyncCallResult::Err(message) => {
@@ -590,7 +591,7 @@ pub trait LiquidityPool {
             &BigUint::zero(),
             &H256::zero(),
             &metadata,
-            &[],
+            &[BoxedBytes::empty()],
         )
     }
 
@@ -603,7 +604,7 @@ pub trait LiquidityPool {
             &BigUint::zero(),
             &position_id,
             &metadata,
-            &[],
+            &[BoxedBytes::empty()],
         );
     }
 
