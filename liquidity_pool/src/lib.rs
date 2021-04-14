@@ -60,7 +60,7 @@ pub trait LiquidityPool {
 
         let pool_asset = self.pool_asset().get();
         require!(
-            asset.clone() == pool_asset.clone(),
+            asset.clone() == pool_asset,
             "asset not supported for this liquidity pool"
         );
 
@@ -78,15 +78,15 @@ pub trait LiquidityPool {
             &initial_caller,
             &lend_token.as_esdt_identifier(),
             nonce,
-            &amount.clone(),
+            &amount,
             &[],
         );
 
         let mut asset_reserve = self
             .reserves()
-            .get(&pool_asset.clone())
-            .unwrap_or(BigUint::zero());
-        asset_reserve += amount.clone();
+            .get(&pool_asset)
+            .unwrap_or_else(BigUint::zero);
+        asset_reserve += amount;
 
         self.reserves().insert(pool_asset, asset_reserve);
 
@@ -113,11 +113,11 @@ pub trait LiquidityPool {
 
         let mut borrows_reserve = self
             .reserves()
-            .get(&borrows_token.clone())
+            .get(&borrows_token)
             .unwrap_or(BigUint::zero());
         let mut asset_reserve = self
             .reserves()
-            .get(&asset.clone())
+            .get(&asset)
             .unwrap_or(BigUint::zero());
 
         require!(asset_reserve != BigUint::zero(), "asset reserve is empty");
@@ -165,8 +165,8 @@ pub trait LiquidityPool {
             health_factor: current_health,
             is_liquidated: false,
             timestamp: debt_metadata.timestamp.clone(),
-            collateral_amount: amount.clone(),
-            collateral_identifier: lend_token.clone(),
+            collateral_amount: amount,
+            collateral_identifier: lend_token,
         };
         self.debt_positions().insert(position_id, debt_position);
 
@@ -557,7 +557,7 @@ pub trait LiquidityPool {
                     self.borrow_token().set(&ticker);
                 }
                 self.last_error().clear();
-                // self.send_callback_result(ticker, b"setTickerAfterIssue");
+                self.send_callback_result(ticker, b"setTickerAfterIssue");
             }
             AsyncCallResult::Err(message) => {
                 let caller = self.get_owner_address();

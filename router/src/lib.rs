@@ -11,7 +11,7 @@ pub use pool_factory::*;
 const LEND_TOKEN_PREFIX: &[u8] = b"L";
 const BORROW_TOKEN_PREFIX: &[u8] = b"B";
 
-const ISSUE_ENDPOINT: &[u8] = b"issue";
+const ISSUE_EXPECTED_GAS_COST: u64 = 90000000 + 30000000;
 
 #[elrond_wasm_derive::callable(LiquidityPoolProxy)]
 pub trait LiquidityPool {
@@ -20,6 +20,16 @@ pub trait LiquidityPool {
         plain_ticker: BoxedBytes,
         token_ticker: TokenIdentifier,
         token_prefix: BoxedBytes,
+    ) -> ContractCall<BigUint, ()>;
+
+    fn set_lend_token_roles(
+        &self,
+        #[var_args] roles: VarArgs<EsdtLocalRole>,
+    ) -> ContractCall<BigUint, ()>;
+
+    fn set_borrow_token_roles(
+        &self,
+        #[var_args] roles: VarArgs<EsdtLocalRole>,
     ) -> ContractCall<BigUint, ()>;
 }
 
@@ -116,7 +126,7 @@ pub trait Router {
                 token_ticker,
                 BoxedBytes::from(LEND_TOKEN_PREFIX),
             )
-            .execute_on_dest_context(self.get_gas_left(), self.send()))
+            .execute_on_dest_context(ISSUE_EXPECTED_GAS_COST, self.send()))
     }
 
     #[payable("EGLD")]
@@ -136,7 +146,37 @@ pub trait Router {
                 token_ticker,
                 BoxedBytes::from(BORROW_TOKEN_PREFIX),
             )
-            .execute_on_dest_context(self.get_gas_left(), self.send()))
+            .execute_on_dest_context(ISSUE_EXPECTED_GAS_COST, self.send()))
+    }
+
+    #[endpoint(setLendRoles)]
+    fn set_lend_roles(
+        &self,
+        asset_ticker: TokenIdentifier,
+        #[var_args] roles: VarArgs<EsdtLocalRole>,
+    ) -> SCResult<()> {
+        only_owner!(self, "only owner may call this function");
+        let pool_address = self.pools_map().get(&asset_ticker).unwrap();
+        contract_call!(self, pool_address, LiquidityPoolProxy)
+            .set_lend_token_roles(roles)
+            .execute_on_dest_context(self.get_gas_left(), self.send());
+
+        Ok(())
+    }
+
+    #[endpoint(setBorrowRoles)]
+    fn set_borrow_roles(
+        &self,
+        asset_ticker: TokenIdentifier,
+        #[var_args] roles: VarArgs<EsdtLocalRole>,
+    ) -> SCResult<()> {
+        only_owner!(self, "only owner may call this function");
+        let pool_address = self.pools_map().get(&asset_ticker).unwrap();
+        contract_call!(self, pool_address, LiquidityPoolProxy)
+            .set_lend_token_roles(roles)
+            .execute_on_dest_context(self.get_gas_left(), self.send());
+
+        Ok(())
     }
 
     #[endpoint(setTickerAfterIssue)]
@@ -154,21 +194,6 @@ pub trait Router {
     #[view(getPoolAddress)]
     fn get_pool_address(&self, asset: TokenIdentifier) -> Address {
         self.pools_map().get(&asset).unwrap_or(Address::zero())
-    }
-
-    /// UTILS
-
-    fn prepare_issue_args(
-        &self,
-        plain_ticker: BoxedBytes,
-        token_ticker: TokenIdentifier,
-        prefix: &[u8],
-    ) -> ArgBuffer {
-        let mut args = ArgBuffer::new();
-        args.push_argument_bytes(plain_ticker.as_slice());
-        args.push_argument_bytes(token_ticker.as_esdt_identifier());
-        args.push_argument_bytes(prefix);
-        return args;
     }
 
     //

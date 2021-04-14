@@ -22,15 +22,15 @@ pub trait LibraryModule {
 
         let borrow_rate: BigUint;
         if u_current < u_optimal {
-            let utilisation_ratio = (u_current.clone() * r_slope1) / u_optimal.clone();
+            let utilisation_ratio = (u_current * r_slope1) / u_optimal;
             borrow_rate = r_base + utilisation_ratio;
         } else {
             let denominator = bp - u_optimal.clone();
-            let numerator = (u_current.clone() - u_optimal.clone()) * r_slope2;
+            let numerator = (u_current - u_optimal) * r_slope2;
             borrow_rate = (r_base + r_slope1) + numerator / denominator;
         }
 
-        return borrow_rate;
+        borrow_rate
     }
 
     fn compute_deposit_rate(
@@ -41,8 +41,8 @@ pub trait LibraryModule {
     ) -> BigUint {
         let bp = BigUint::from(BP);
         let loan_ratio = u_current.clone() * borrow_rate;
-        let deposit_rate = u_current.clone() * loan_ratio * (bp.clone() - reserve_factor);
-        return deposit_rate / (bp.clone() * bp.clone() * bp.clone());
+        let deposit_rate = u_current * loan_ratio * (bp.clone() - reserve_factor);
+        deposit_rate / (bp.clone() * bp.clone() * bp)
     }
 
     fn compute_capital_utilisation(
@@ -51,7 +51,7 @@ pub trait LibraryModule {
         total_pool_reserves: BigUint,
     ) -> BigUint {
         let bp = BigUint::from(BP);
-        return BigUint::from((borrowed_amount * bp) / total_pool_reserves);
+        BigUint::from((borrowed_amount * bp) / total_pool_reserves)
     }
 
     fn compute_debt(
@@ -66,11 +66,11 @@ pub trait LibraryModule {
 
         let debt_percetange = (time_unit_percentage * borrow_rate) / bp.clone();
 
-        if debt_percetange <= bp.clone() {
-            let amount_diff = ((bp.clone() - debt_percetange) * amount.clone()) / bp.clone();
+        if debt_percetange <= bp {
+            let amount_diff = ((bp.clone() - debt_percetange) * amount.clone()) / bp;
             return amount - amount_diff;
         }
 
-        return (debt_percetange * amount) / bp;
+        (debt_percetange * amount) / bp
     }
 }

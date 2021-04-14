@@ -43,6 +43,14 @@ issueBorrowToken() {
   erdpy contract call "${ADDRESS}" --recall-nonce --pem="${ALICE}" --gas-limit=${GAS_LIMIT} --value="${ISSUE_VALUE}" --function="issueBorrowToken" --arguments ${TICKER_PLAIN} ${TICKER}} --proxy=${PROXY} --chain=${CHAIN_ID} --send
 }
 
+setLendRoles() {
+  erdpy contract call "${ADDRESS}" --recall-nonce --pem="${ALICE}" --gas-limit=${GAS_LIMIT} --function="setLendRoles" --arguments 0x03 0x04 0x05 --proxy=${PROXY} --chain=${CHAIN_ID} --send
+}
+
+setBorrowRoles() {
+  erdpy contract call "${ADDRESS}" --recall-nonce --pem="${ALICE}" --gas-limit=${GAS_LIMIT} --function="setBorrowRoles" --arguments 0x03 0x04 0x05 --proxy=${PROXY} --chain=${CHAIN_ID} --send
+}
+
 # Queries
 
 getPoolAddress() {
