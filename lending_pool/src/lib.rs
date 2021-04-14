@@ -101,7 +101,7 @@ pub trait LendingPool {
         let asset_token_pool_address = self
             .pools_map()
             .get(&asset_to_withdraw)
-            .unwrap_or(Address::zero());
+            .unwrap_or_else(Address::zero);
 
         require!(
             !asset_token_pool_address.is_zero(),
@@ -134,7 +134,7 @@ pub trait LendingPool {
         #[payment_token] borrow_token: TokenIdentifier,
         #[payment] amount: BigUint,
     ) -> SCResult<()> {
-        let initial_caller = caller.into_option().unwrap_or(self.get_caller());
+        let initial_caller = caller.into_option().unwrap_or_else(|| self.get_caller());
 
         require!(amount > 0, "amount must be greater than 0");
         require!(!initial_caller.is_zero(), "invalid address provided");
@@ -142,7 +142,7 @@ pub trait LendingPool {
         let asset_address = self.get_pool_address(asset_to_repay.clone());
 
         require!(
-            self.pools_map().contains_key(&asset_to_repay.clone()),
+            self.pools_map().contains_key(&asset_to_repay),
             "asset not supported"
         );
 
@@ -172,30 +172,24 @@ pub trait LendingPool {
         #[payment_token] asset: TokenIdentifier,
         #[payment] amount: BigUint,
     ) -> SCResult<()> {
-        let caller = initial_caller.into_option().unwrap_or(self.get_caller());
+        let caller = initial_caller
+            .into_option()
+            .unwrap_or_else(|| self.get_caller());
 
         require!(amount > 0, "amount must be greater than 0");
         require!(!caller.is_zero(), "invalid address provided");
-        require!(
-            self.pools_map().contains_key(&asset.clone()),
-            "asset not supported"
-        );
+        require!(self.pools_map().contains_key(&asset), "asset not supported");
 
         let asset_address = self.get_pool_address(asset.clone());
 
         let results = contract_call!(&self, asset_address, LiquidtyPoolProxy)
-            .repay(
-                caller.clone(),
-                repay_unique_id.clone(),
-                asset.clone(),
-                amount.clone(),
-            )
+            .repay(caller.clone(), repay_unique_id, asset, amount)
             .execute_on_dest_context(self.get_gas_left(), self.send());
 
         let collateral_token_address = self
             .pools_map()
-            .get(&results.collateral_identifier.clone())
-            .unwrap_or(Address::zero());
+            .get(&results.collateral_identifier)
+            .unwrap_or_else(Address::zero);
 
         require!(
             collateral_token_address != Address::zero(),
@@ -229,25 +223,24 @@ pub trait LendingPool {
         #[payment_token] asset: TokenIdentifier,
         #[payment] amount: BigUint,
     ) -> SCResult<()> {
-        let caller = initial_caller.into_option().unwrap_or(self.get_caller());
+        let caller = initial_caller
+            .into_option()
+            .unwrap_or_else(|| self.get_caller());
 
         require!(amount > 0, "amount must be greater than 0");
         require!(!caller.is_zero(), "invalid address provided");
-        require!(
-            self.pools_map().contains_key(&asset.clone()),
-            "asset not supported"
-        );
+        require!(self.pools_map().contains_key(&asset), "asset not supported");
 
         let asset_address = self.get_pool_address(asset.clone());
 
         let results = contract_call!(&self, asset_address, LiquidtyPoolProxy)
-            .liquidate(liquidate_unique_id.clone(), asset.clone(), amount.clone())
+            .liquidate(liquidate_unique_id, asset, amount)
             .execute_on_dest_context(self.get_gas_left(), self.send());
 
         let collateral_token_address = self
             .pools_map()
-            .get(&results.collateral_token.clone())
-            .unwrap_or(Address::zero());
+            .get(&results.collateral_token)
+            .unwrap_or_else(Address::zero);
 
         require!(
             collateral_token_address != Address::zero(),
@@ -282,29 +275,28 @@ pub trait LendingPool {
         #[payment_token] asset_collateral_lend_token: TokenIdentifier,
         #[payment] amount: BigUint,
     ) -> SCResult<()> {
-        let initial_caller = caller.into_option().unwrap_or(self.get_caller());
+        let initial_caller = caller.into_option().unwrap_or_else(|| self.get_caller());
 
         require!(amount > 0, "amount must be greater than 0");
         require!(!initial_caller.is_zero(), "invalid address provided");
         require!(
-            self.pools_map()
-                .contains_key(&asset_to_put_as_collateral.clone()),
+            self.pools_map().contains_key(&asset_to_put_as_collateral),
             "asset not supported"
         );
         require!(
-            self.pools_map().contains_key(&asset_to_borrow.clone()),
+            self.pools_map().contains_key(&asset_to_borrow),
             "asset not supported"
         );
 
         let collateral_token_pool_address = self
             .pools_map()
-            .get(&asset_to_put_as_collateral.clone())
-            .unwrap_or(Address::zero());
+            .get(&asset_to_put_as_collateral)
+            .unwrap_or_else(Address::zero);
 
         let borrow_token_pool_address = self
             .pools_map()
-            .get(&asset_to_borrow.clone())
-            .unwrap_or(Address::zero());
+            .get(&asset_to_borrow)
+            .unwrap_or_else(Address::zero);
 
         require!(
             !collateral_token_pool_address.is_zero(),
@@ -344,18 +336,10 @@ pub trait LendingPool {
         Ok(())
     }
 
-    #[callback]
-    fn deposit_callback(&self, #[call_result] result: AsyncCallResult<()>) {
-        match result {
-            AsyncCallResult::Ok(_) => {}
-            AsyncCallResult::Err(_) => {}
-        }
-    }
-
     #[endpoint(setPoolAddress)]
     fn set_pool_address(&self, base_asset: TokenIdentifier, pool_address: Address) -> SCResult<()> {
         require!(
-            !self.pools_map().contains_key(&base_asset.clone()),
+            !self.pools_map().contains_key(&base_asset),
             "asset already supported"
         );
 
@@ -366,7 +350,9 @@ pub trait LendingPool {
 
     #[view(getPoolAddress)]
     fn get_pool_address(&self, base_asset: TokenIdentifier) -> Address {
-        self.pools_map().get(&base_asset).unwrap_or(Address::zero())
+        self.pools_map()
+            .get(&base_asset)
+            .unwrap_or_else(Address::zero)
     }
 
     #[storage_mapper("pools_map")]

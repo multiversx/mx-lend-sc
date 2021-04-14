@@ -59,7 +59,7 @@ pub trait Router {
     ) -> SCResult<Address> {
         only_owner!(self, "only owner can create new pools");
         require!(
-            !self.pools_map().contains_key(&base_asset.clone()),
+            !self.pools_map().contains_key(&base_asset),
             "asset already supported"
         );
         require!(base_asset.is_esdt(), "non-ESDT asset provided");
@@ -92,7 +92,7 @@ pub trait Router {
         only_owner!(self, "only owner can upgrade existing pools");
 
         require!(
-            self.pools_map().contains_key(&base_asset.clone()),
+            self.pools_map().contains_key(&base_asset),
             "no pool found for this asset"
         );
 
@@ -118,7 +118,7 @@ pub trait Router {
         #[payment] amount: BigUint,
     ) -> SCResult<()> {
         only_owner!(self, "only owner may call this function");
-        let pool_address = self.pools_map().get(&token_ticker.clone()).unwrap();
+        let pool_address = self.pools_map().get(&token_ticker).unwrap();
         Ok(contract_call!(self, pool_address, LiquidityPoolProxy)
             .with_token_transfer(TokenIdentifier::egld(), amount)
             .issue(
@@ -138,7 +138,7 @@ pub trait Router {
         #[payment] amount: BigUint,
     ) -> SCResult<()> {
         only_owner!(self, "only owner may call this function");
-        let pool_address = self.pools_map().get(&token_ticker.clone()).unwrap();
+        let pool_address = self.pools_map().get(&token_ticker).unwrap();
         Ok(contract_call!(self, pool_address, LiquidityPoolProxy)
             .with_token_transfer(TokenIdentifier::egld(), amount)
             .issue(
@@ -193,7 +193,7 @@ pub trait Router {
 
     #[view(getPoolAddress)]
     fn get_pool_address(&self, asset: TokenIdentifier) -> Address {
-        self.pools_map().get(&asset).unwrap_or(Address::zero())
+        self.pools_map().get(&asset).unwrap_or_else(Address::zero)
     }
 
     //

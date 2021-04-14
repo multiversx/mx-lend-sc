@@ -60,7 +60,7 @@ pub trait LiquidityPool {
 
         let pool_asset = self.pool_asset().get();
         require!(
-            asset.clone() == pool_asset,
+            asset == pool_asset,
             "asset not supported for this liquidity pool"
         );
 
@@ -114,11 +114,8 @@ pub trait LiquidityPool {
         let mut borrows_reserve = self
             .reserves()
             .get(&borrows_token)
-            .unwrap_or(BigUint::zero());
-        let mut asset_reserve = self
-            .reserves()
-            .get(&asset)
-            .unwrap_or(BigUint::zero());
+            .unwrap_or_else(BigUint::zero);
+        let mut asset_reserve = self.reserves().get(&asset).unwrap_or_else(BigUint::zero);
 
         require!(asset_reserve != BigUint::zero(), "asset reserve is empty");
 
@@ -164,7 +161,7 @@ pub trait LiquidityPool {
             size: amount.clone(), // this will be initial L tokens amount
             health_factor: current_health,
             is_liquidated: false,
-            timestamp: debt_metadata.timestamp.clone(),
+            timestamp: debt_metadata.timestamp,
             collateral_amount: amount,
             collateral_identifier: lend_token,
         };
@@ -204,19 +201,17 @@ pub trait LiquidityPool {
         let debt_position_id = esdt_nft_data.hash;
         let debt_position: DebtPosition<BigUint> = self
             .debt_positions()
-            .get(&debt_position_id.clone())
-            .unwrap_or(DebtPosition::default());
+            .get(&debt_position_id)
+            .unwrap_or_default();
+
         require!(
             debt_position != DebtPosition::default(),
             "invalid debt position"
         );
-        require!(
-            debt_position.is_liquidated == false,
-            "position is liquidated"
-        );
+        require!(!debt_position.is_liquidated, "position is liquidated");
 
         let metadata: DebtMetadata<BigUint>;
-        match DebtMetadata::<BigUint>::top_decode(esdt_nft_data.attributes.clone().as_slice()) {
+        match DebtMetadata::<BigUint>::top_decode(esdt_nft_data.attributes.as_slice()) {
             Result::Ok(decoded) => {
                 metadata = decoded;
             }
@@ -230,6 +225,7 @@ pub trait LiquidityPool {
             &nft_nonce.to_be_bytes()[..],
         ]
         .concat();
+
         let unique_repay_id = self.keccak256(&data);
         let repay_position = RepayPostion {
             identifier: borrow_token,
@@ -265,13 +261,10 @@ pub trait LiquidityPool {
         );
 
         require!(
-            self.repay_position().contains_key(&unique_id.clone()),
+            self.repay_position().contains_key(&unique_id),
             "there are no locked borrowed token for this id, lock b tokens first"
         );
-        let mut repay_position = self
-            .repay_position()
-            .get(&unique_id.clone())
-            .unwrap_or(RepayPostion::default());
+        let mut repay_position = self.repay_position().get(&unique_id).unwrap_or_default();
 
         require!(
             repay_position.amount >= amount,
@@ -287,28 +280,24 @@ pub trait LiquidityPool {
         let debt_position_id = esdt_nft_data.hash;
 
         require!(
-            self.debt_positions()
-                .contains_key(&debt_position_id.clone()),
-            "invalid id"
+            self.debt_positions().contains_key(&debt_position_id),
+            "invalid debt position id"
         );
         let debt_position = self
             .debt_positions()
-            .get(&debt_position_id.clone())
-            .unwrap_or(DebtPosition::default());
+            .get(&debt_position_id)
+            .unwrap_or_default();
 
-        require!(
-            debt_position.is_liquidated == false,
-            "position is liquidated"
-        );
+        require!(!debt_position.is_liquidated, "position is liquidated");
 
         let interest = self.get_debt_interest(
             repay_position.amount.clone(),
             repay_position.borrow_timestamp,
         );
 
-        if repay_position.amount.clone() + interest.clone() == amount.clone() {
-            self.repay_position().remove(&unique_id.clone());
-        } else if repay_position.amount.clone() > amount.clone() {
+        if repay_position.amount.clone() + interest == amount {
+            self.repay_position().remove(&unique_id);
+        } else if repay_position.amount > amount {
             repay_position.amount -= amount.clone();
             self.repay_position()
                 .insert(unique_id, repay_position.clone());
@@ -316,13 +305,13 @@ pub trait LiquidityPool {
 
         self.burn(
             amount.clone(),
-            repay_position.nonce.clone(),
+            repay_position.nonce,
             repay_position.identifier.clone(),
         );
 
         repay_position.amount = amount;
 
-        Ok(repay_position.clone())
+        Ok(repay_position)
     }
 
     #[payable("*")]
@@ -388,8 +377,8 @@ pub trait LiquidityPool {
         let pool_asset = self.get_pool_asset();
         let mut asset_reserve = self
             .reserves()
-            .get(&pool_asset.clone())
-            .unwrap_or(BigUint::zero());
+            .get(&pool_asset)
+            .unwrap_or_else(BigUint::zero);
 
         require!(asset_reserve != BigUint::zero(), "asset reserve is empty");
 
@@ -397,7 +386,7 @@ pub trait LiquidityPool {
         self.burn(amount.clone(), nonce, lend_token);
 
         self.send()
-            .direct(&initial_caller, &pool_asset, &amount.clone(), &[]);
+            .direct(&initial_caller, &pool_asset, &amount, &[]);
 
         asset_reserve -= amount;
         self.reserves().insert(pool_asset, asset_reserve);
@@ -423,16 +412,14 @@ pub trait LiquidityPool {
             "asset is not supported by this pool"
         );
 
-        let mut debt_position = self
-            .debt_positions()
-            .get(&position_id.clone())
-            .unwrap_or(DebtPosition::default());
+        let mut debt_position = self.debt_positions().get(&position_id).unwrap_or_default();
+
         require!(
             debt_position != DebtPosition::default(),
             "invalid debt position id"
         );
         require!(
-            debt_position.is_liquidated == false,
+            !debt_position.is_liquidated,
             "position is already liquidated"
         );
         require!(
@@ -440,8 +427,7 @@ pub trait LiquidityPool {
             "the health factor is not low enough"
         );
 
-        let interest =
-            self.get_debt_interest(debt_position.size.clone(), debt_position.timestamp.clone());
+        let interest = self.get_debt_interest(debt_position.size.clone(), debt_position.timestamp);
 
         require!(
             debt_position.size.clone() + interest == amount,
@@ -454,8 +440,8 @@ pub trait LiquidityPool {
             .insert(position_id, debt_position.clone());
 
         let liquidate_data = LiquidateData {
-            collateral_token: debt_position.collateral_identifier.clone(),
-            amount: amount,
+            collateral_token: debt_position.collateral_identifier,
+            amount,
         };
 
         Ok(liquidate_data)
@@ -476,7 +462,7 @@ pub trait LiquidityPool {
             "payment should be exactly 5 EGLD"
         );
         require!(
-            token_ticker.clone() == self.pool_asset().get(),
+            token_ticker == self.pool_asset().get(),
             "wrong ESDT asset identifier"
         );
 
@@ -637,7 +623,7 @@ pub trait LiquidityPool {
     #[view(getBorrowRate)]
     fn get_borrow_rate(&self) -> BigUint {
         let reserve_data = self.reserve_data().get();
-        return self._get_borrow_rate(reserve_data, OptionalArg::None);
+        self._get_borrow_rate(reserve_data, OptionalArg::None)
     }
 
     #[view(getDepositRate)]
@@ -648,11 +634,8 @@ pub trait LiquidityPool {
         let borrow_rate =
             self._get_borrow_rate(reserve_data, OptionalArg::Some(utilisation.clone()));
 
-        return self.library_module().compute_deposit_rate(
-            utilisation,
-            borrow_rate,
-            reserve_factor,
-        );
+        self.library_module()
+            .compute_deposit_rate(utilisation, borrow_rate, reserve_factor)
     }
 
     #[view(getDebtInterest)]
@@ -662,9 +645,8 @@ pub trait LiquidityPool {
 
         let borrow_rate = self.get_borrow_rate();
 
-        return self
-            .library_module()
-            .compute_debt(amount, time_diff, borrow_rate);
+        self.library_module()
+            .compute_debt(amount, time_diff, borrow_rate)
     }
 
     #[view(getCapitalUtilisation)]
@@ -672,16 +654,15 @@ pub trait LiquidityPool {
         let reserve_amount = self.get_reserve();
         let borrowed_amount = self.get_total_borrow();
 
-        return self
-            .library_module()
-            .compute_capital_utilisation(borrowed_amount, reserve_amount);
+        self.library_module()
+            .compute_capital_utilisation(borrowed_amount, reserve_amount)
     }
 
     #[view(getReserve)]
     fn get_reserve(&self) -> BigUint {
         self.reserves()
             .get(&self.pool_asset().get())
-            .unwrap_or(BigUint::zero())
+            .unwrap_or_else(BigUint::zero)
     }
 
     #[view(poolAsset)]
@@ -719,18 +700,18 @@ pub trait LiquidityPool {
             issue_data.is_empty_ticker = self.borrow_token().is_empty();
         }
 
-        return issue_data;
+        issue_data
     }
 
     fn get_nft_hash(&self) -> H256 {
         let debt_nonce = self.debt_nonce().get();
         let hash = self.keccak256(&debt_nonce.to_be_bytes()[..]);
-        self.debt_nonce().set(&u64::from(debt_nonce + 1));
-        return hash;
+        self.debt_nonce().set(&(debt_nonce + 1));
+        hash
     }
 
     fn compute_health_factor(&self) -> u32 {
-        return 0u32;
+        0u32
     }
 
     fn _get_borrow_rate(
@@ -740,15 +721,15 @@ pub trait LiquidityPool {
     ) -> BigUint {
         let u_current = utilisation
             .into_option()
-            .unwrap_or(self.get_capital_utilisation());
+            .unwrap_or_else(|| self.get_capital_utilisation());
 
-        return self.library_module().compute_borrow_rate(
+        self.library_module().compute_borrow_rate(
             reserve_data.r_base,
             reserve_data.r_slope1,
             reserve_data.r_slope2,
             reserve_data.u_optimal,
             u_current,
-        );
+        )
     }
 
     //

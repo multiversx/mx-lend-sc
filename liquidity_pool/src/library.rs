@@ -51,7 +51,7 @@ pub trait LibraryModule {
         total_pool_reserves: BigUint,
     ) -> BigUint {
         let bp = BigUint::from(BP);
-        BigUint::from((borrowed_amount * bp) / total_pool_reserves)
+        (borrowed_amount * bp) / total_pool_reserves
     }
 
     fn compute_debt(
