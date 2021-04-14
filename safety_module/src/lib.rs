@@ -203,9 +203,6 @@ pub trait SafetyModule {
 
         let mut time_in_pool = self.get_block_timestamp() - nft_metadata.timestamp;
 
-        //test
-        time_in_pool = time_in_pool + 12960000;
-
         require!(time_in_pool > 0, "invalid timestamp");
 
         let withdraw_amount =
