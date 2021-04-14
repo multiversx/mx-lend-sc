@@ -23,3 +23,7 @@ optional = true
 
 [dev-dependencies.elrond-wasm-debug]
 version = "0.14.2"
+
+[dependencies.elrond-wasm-output]
+version = "0.14.2"
+features = ["wasm-output-mode", "panic-message"]
