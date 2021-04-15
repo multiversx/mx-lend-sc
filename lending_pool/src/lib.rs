@@ -31,15 +31,14 @@ pub trait LendingPool {
 
         require!(amount > 0, "amount must be greater than 0");
         require!(!initial_caller.is_zero(), "invalid address provided");
-        require!(self.pools_map().contains_key(&asset), "asset not supported");
-
-        let pool_address = self.pools_map().get(&asset).unwrap_or_else(Address::zero);
+        
+        let pool_address = self.get_pool_address(asset.clone());
         require!(!pool_address.is_zero(), "invalid liquidity pool address");
 
         Ok(contract_call!(self, pool_address, LiquidtyPoolProxy)
             .with_token_transfer(asset, amount)
             .deposit_asset(initial_caller)
-            .execute_on_dest_context(self.get_gas_left(), self.send()))
+            .execute_on_dest_context(self.get_gas_left() / 2, self.send()))
     }
 
     #[payable("*")]
