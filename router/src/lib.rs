@@ -1,4 +1,5 @@
 #![no_std]
+#![allow(non_snake_case)]
 
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
@@ -22,12 +23,12 @@ pub trait LiquidityPool {
         token_prefix: BoxedBytes,
     ) -> ContractCall<BigUint, ()>;
 
-    fn set_lend_token_roles(
+    fn setLendTokenRoles(
         &self,
         #[var_args] roles: VarArgs<EsdtLocalRole>,
     ) -> ContractCall<BigUint, ()>;
 
-    fn set_borrow_token_roles(
+    fn setBorrowTokenRoles(
         &self,
         #[var_args] roles: VarArgs<EsdtLocalRole>,
     ) -> ContractCall<BigUint, ()>;
@@ -158,7 +159,7 @@ pub trait Router {
         only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&asset_ticker).unwrap();
         contract_call!(self, pool_address, LiquidityPoolProxy)
-            .set_lend_token_roles(roles)
+            .setLendTokenRoles(roles)
             .execute_on_dest_context(self.get_gas_left(), self.send());
 
         Ok(())
@@ -173,7 +174,7 @@ pub trait Router {
         only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&asset_ticker).unwrap();
         contract_call!(self, pool_address, LiquidityPoolProxy)
-            .set_lend_token_roles(roles)
+            .setBorrowTokenRoles(roles)
             .execute_on_dest_context(self.get_gas_left(), self.send());
 
         Ok(())
