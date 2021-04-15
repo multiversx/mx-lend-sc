@@ -160,7 +160,7 @@ pub trait Router {
         let pool_address = self.pools_map().get(&asset_ticker).unwrap();
         contract_call!(self, pool_address, LiquidityPoolProxy)
             .setLendTokenRoles(roles)
-            .execute_on_dest_context(self.get_gas_left(), self.send());
+            .execute_on_dest_context(ISSUE_EXPECTED_GAS_COST, self.send());
 
         Ok(())
     }
@@ -175,7 +175,7 @@ pub trait Router {
         let pool_address = self.pools_map().get(&asset_ticker).unwrap();
         contract_call!(self, pool_address, LiquidityPoolProxy)
             .setBorrowTokenRoles(roles)
-            .execute_on_dest_context(self.get_gas_left(), self.send());
+            .execute_on_dest_context(ISSUE_EXPECTED_GAS_COST, self.send());
 
         Ok(())
     }
