@@ -6,14 +6,9 @@ use elrond_wasm::{only_owner, require};
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-const SECONDS_PER_YEAR: u64 = 31536000;
-const BP: u64 = 1000000000;
-const ESDT_ISSUE_COST: u64 = 5000000000000000000;
-
-#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi)]
-pub struct DepositMetadata {
-    pub timestamp: u64,
-}
+mod model;
+use model::{DepositMetadata};
+use model::{SECONDS_PER_YEAR,BP,ESDT_ISSUE_COST};
 
 #[elrond_wasm_derive::contract(SafetyModuleImpl)]
 pub trait SafetyModule {
@@ -47,11 +42,12 @@ pub trait SafetyModule {
         self,
         #[payment_token] token: TokenIdentifier,
         #[payment] payment: BigUint,
+        #[var_args] caller: OptionalArg<Address>
     ) -> SCResult<()> {
         require!(payment > 0, "amount must be greater than 0");
         require!(token == self.wegld_token().get(), "invalid token");
 
-        let caller_address = self.get_caller();
+        let caller_address = caller.into_option().unwrap_or(self.get_caller());
 
         let deposit_metadata = DepositMetadata {
             timestamp: self.get_block_timestamp(),
@@ -201,7 +197,7 @@ pub trait SafetyModule {
             }
         }
 
-        let mut time_in_pool = self.get_block_timestamp() - nft_metadata.timestamp;
+        let time_in_pool = self.get_block_timestamp() - nft_metadata.timestamp;
 
         require!(time_in_pool > 0, "invalid timestamp");
 

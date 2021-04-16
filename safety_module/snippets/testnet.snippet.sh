@@ -1,10 +1,10 @@
-ALICE="../wallets/users/alice.pem"
+ALICE="~/pems/local.pem"
 ALICE_ADDRESS=0x0139472eff6886771a982f3083da5d421f24c29181e63888228dc81ca60d69e1
 
-BOB="../wallets/users/bob.pem"
+BOB="~/pems/bob.pem"
 BOB_ADDRESS=0x8049d639e5a6980d1cd2392abcce41029cda74a1563523a202f09641cc2618f8
 
-BUSD_POOL="../wallets/users/carol.pem"
+BUSD_POOL="~/pems/carol.pem"
 BUSD_POOL_ADDRESS=0xb2a11555ce521e4944e09ab17549d85b487dcd26c84b5017a39e31a3670889ba
 
 
