@@ -30,6 +30,21 @@ pub trait LiquidtyPoolProxyImpl {
         #[payment] amount: BigUint,
     ) -> ContractCall<BigUint, LiquidateData<BigUint>>;
 
+
+    fn borrow(
+        &self,
+        initial_caller: Address,
+        lend_token: TokenIdentifier,
+        amount: BigUint,
+        timestamp: u64,
+    ) -> ContractCall<BigUint, ()>;
+
+    #[payable("*")]
+    fn burnLendTokens(
+        &self,
+        initial_caller: Address,
+    ) -> ContractCall<BigUint, ()>;
+
     #[payable("*")]
     fn reject_funds(&self) -> ContractCall<BigUint, ()>;
 

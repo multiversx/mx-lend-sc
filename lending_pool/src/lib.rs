@@ -9,6 +9,9 @@ use proxies::*;
 pub mod models;
 pub use models::*;
 
+use elrond_wasm::*;
+
+
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
@@ -137,7 +140,7 @@ pub trait LendingPool {
         let mut args_mint_lend = ArgBuffer::new();
         args_mint_lend.push_argument_bytes(results.collateral_identifier.as_esdt_identifier());
         args_mint_lend.push_argument_bytes(results.collateral_amount.to_bytes_be().as_slice());
-        args_mint_lend.push_argument_bytes(b"mintLTokens");
+        args_mint_lend.push_argument_bytes(b"mintLendTokens");
         args_mint_lend.push_argument_bytes(caller.as_bytes());
         args_mint_lend.push_argument_bytes(&results.collateral_timestamp.to_be_bytes()[..]);
 
@@ -188,7 +191,7 @@ pub trait LendingPool {
         let mut args_mint_lend = ArgBuffer::new();
         args_mint_lend.push_argument_bytes(results.collateral_token.as_esdt_identifier());
         args_mint_lend.push_argument_bytes(results.amount.to_bytes_be().as_slice());
-        args_mint_lend.push_argument_bytes(b"mintLTokens");
+        args_mint_lend.push_argument_bytes(b"mintLendTokens");
         args_mint_lend.push_argument_bytes(caller.as_bytes());
         args_mint_lend.push_argument_bytes(&self.get_block_timestamp().to_be_bytes()[..]);
 
@@ -245,31 +248,33 @@ pub trait LendingPool {
             "invalid liquidity pool address"
         );
 
-        let mut args_add_collateral = ArgBuffer::new();
-        args_add_collateral.push_argument_bytes(asset_collateral_lend_token.as_esdt_identifier());
-        args_add_collateral.push_argument_bytes(amount.to_bytes_be().as_slice());
-        args_add_collateral.push_argument_bytes(b"addCollateral");
+        let nft_nonce = self.call_value().esdt_token_nonce();
 
-        self.send().execute_on_dest_context_raw(
-            self.get_gas_left(),
-            &collateral_token_pool_address,
-            &BigUint::zero(),
-            ESDT_TRANSFER_STRING,
-            &args_add_collateral,
+        let esdt_nft_data = self.get_esdt_token_data(
+            &self.get_sc_address(),
+            asset_collateral_lend_token.as_esdt_identifier(),
+            nft_nonce,
         );
 
-        let mut args_borrow = ArgBuffer::new();
-        args_borrow.push_argument_bytes(amount.to_bytes_be().as_slice());
-        args_borrow.push_argument_bytes(b"borrow");
-        args_borrow.push_argument_bytes(initial_caller.as_bytes());
+        let metadata: InterestMetadata;
+        match InterestMetadata::top_decode(esdt_nft_data.attributes.as_slice()) {
+            Result::Ok(decoded) => {
+                metadata = decoded;
+            }
+            Result::Err(_) => {
+                return sc_error!("could not parse token metadata");
+            }
+        }
 
-        self.send().execute_on_dest_context_raw(
-            self.get_gas_left(),
-            &collateral_token_pool_address,
-            &BigUint::zero(),
-            ESDT_TRANSFER_STRING,
-            &args_borrow,
-        );
+        contract_call!(self, borrow_token_pool_address, LiquidtyPoolProxy)
+            .borrow(initial_caller.clone(), asset_collateral_lend_token.clone(), amount.clone(), metadata.timestamp)
+            .execute_on_dest_context(self.get_gas_left(), self.send());
+
+
+        contract_call!(self, collateral_token_pool_address, LiquidtyPoolProxy)
+            .with_token_transfer(asset_collateral_lend_token, amount)
+            .burnLendTokens(initial_caller)
+            .execute_on_dest_context(self.get_gas_left(), self.send());
 
         Ok(())
     }

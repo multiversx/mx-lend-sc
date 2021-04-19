@@ -6,7 +6,12 @@ pub use library::*;
 pub mod models;
 pub use models::*;
 
+use elrond_wasm::*;
 use elrond_wasm::{only_owner, require, sc_error};
+use elrond_wasm::types::{TokenIdentifier, Address, SCResult, H256, VarArgs, EsdtLocalRole, AsyncCall, BoxedBytes, AsyncCallResult, OptionalArg, ArgBuffer};
+use elrond_wasm::esdt::{ESDTSystemSmartContractProxy, SemiFungibleTokenProperties};
+use elrond_wasm::storage::mappers::{SingleValueMapper, MapMapper};
+
 
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
@@ -315,7 +320,7 @@ pub trait LiquidityPool {
     }
 
     #[payable("*")]
-    #[endpoint(mintLTokens)]
+    #[endpoint(mintLendTokens)]
     fn mint_l_tokens(
         &self,
         initial_caller: Address,
@@ -351,6 +356,37 @@ pub trait LiquidityPool {
             &amount,
             &[],
         );
+
+        Ok(())
+    }
+
+
+    #[payable("*")]
+    #[endpoint(burnLendTokens)]
+    fn burn_l_tokens(
+        &self,
+        initial_caller: Address,
+        #[payment_token]lend_token: TokenIdentifier,
+        #[payment]amount: BigUint,
+    ) -> SCResult<()> {
+        require!(
+            self.get_caller() == self.get_lending_pool(),
+            "can only by called by lending pool"
+        );
+
+        require!(
+            lend_token == self.get_lend_token(),
+            "asset is not supported by this pool"
+        );
+        require!(amount > 0, "amount must be greater then 0");
+        require!(!initial_caller.is_zero(), "invalid address");
+
+
+
+        let nft_nonce = self.get_current_esdt_nft_nonce(&self.get_sc_address(), lend_token.as_esdt_identifier());
+
+        self.burn(amount.clone(), nft_nonce, lend_token);
+
 
         Ok(())
     }
@@ -477,7 +513,6 @@ pub trait LiquidityPool {
         token_prefix: BoxedBytes,
         #[payment] issue_cost: BigUint,
     ) -> SCResult<AsyncCall<BigUint>> {
-        only_owner!(self, "only owner can issue new tokens");
         require!(
             issue_cost == BigUint::from(ESDT_ISSUE_COST),
             "payment should be exactly 5 EGLD"
