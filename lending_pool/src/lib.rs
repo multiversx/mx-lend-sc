@@ -286,10 +286,11 @@ pub trait LendingPool {
         Ok(())
     }
 
+
     /// UTILS
 
     fn get_pool_address(&self, asset: TokenIdentifier) -> Address {
-        if !self.pools_map().contains_key(&asset) {
+     /*    if !self.pools_map().contains_key(&asset) {
             let router_address = self.router().get();
             let pool_address = contract_call!(self, router_address, RouterProxy)
                 .getPoolAddress(asset.clone())
@@ -297,9 +298,19 @@ pub trait LendingPool {
 
             self.pools_map().insert(asset, pool_address.clone());
             return pool_address;
-        }
+        }*/
 
         self.pools_map().get(&asset).unwrap_or_else(Address::zero)
+    }
+
+    #[endpoint(setTickerAfterIssue)]
+    fn set_ticker_after_issue(&self, token_ticker: TokenIdentifier) -> SCResult<()> {
+        let caller = self.get_caller();
+       // let is_pool_allowed = self.pools_allowed().get(&caller).unwrap_or_default();
+       // require!(is_pool_allowed, "access restricted: unknown caller address");
+        require!(!token_ticker.is_egld(), "invalid ticker provided");
+        self.pools_map().insert(token_ticker, caller);
+        Ok(())
     }
 
     /// STORAGE
