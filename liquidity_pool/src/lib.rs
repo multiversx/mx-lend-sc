@@ -660,14 +660,25 @@ pub trait LiquidityPool {
     }
 
     fn send_callback_result(&self, token: TokenIdentifier, endpoint: &[u8]) {
-        //let owner = self.get_owner_address();
+        let owner = self.get_owner_address();
 
         let mut args = ArgBuffer::new();
         args.push_argument_bytes(token.as_esdt_identifier());
 
+        let expected_gas = self.get_gas_left()/2;
+        let lending_pool = self.get_lending_pool();
+
         self.send().execute_on_dest_context_raw(
-            self.get_gas_left(),
-            &self.get_lending_pool(),
+            expected_gas,
+            &lending_pool,
+            &BigUint::zero(),
+            endpoint,
+            &args,
+        );
+
+        self.send().execute_on_dest_context_raw(
+            expected_gas,
+            &owner,
             &BigUint::zero(),
             endpoint,
             &args,

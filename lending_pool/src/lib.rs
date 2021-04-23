@@ -313,6 +313,13 @@ pub trait LendingPool {
         Ok(())
     }
 
+    #[endpoint(setTicker)]
+    fn set_ticker(&self, token_ticker: TokenIdentifier, pool_address: Address) -> SCResult<()> {
+        require!(!token_ticker.is_egld(), "invalid ticker provided");
+        self.pools_map().insert(token_ticker, pool_address);
+        Ok(())
+    }
+
     /// STORAGE
 
     /// router address
