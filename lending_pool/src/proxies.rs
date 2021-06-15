@@ -14,13 +14,7 @@ pub trait LiquidtyPoolProxyImpl {
     fn accept_funds(&self) -> ContractCall<BigUint, ()>;
 
     #[payable("*")]
-    fn repay(
-        &self,
-        intitial_caller: Address,
-        unique_id: H256,
-        #[payment_token] asset: TokenIdentifier,
-        #[payment] amount: BigUint,
-    ) -> ContractCall<BigUint, RepayPostion<BigUint>>;
+    fn repay(&self, unique_id: H256) -> ContractCall<BigUint, RepayPostion<BigUint>>;
 
     #[payable("*")]
     fn liquidate(
@@ -29,7 +23,6 @@ pub trait LiquidtyPoolProxyImpl {
         #[payment_token] token: TokenIdentifier,
         #[payment] amount: BigUint,
     ) -> ContractCall<BigUint, LiquidateData<BigUint>>;
-
 
     fn borrow(
         &self,
@@ -40,9 +33,14 @@ pub trait LiquidtyPoolProxyImpl {
     ) -> ContractCall<BigUint, ()>;
 
     #[payable("*")]
-    fn burnLendTokens(
+    fn burnLendTokens(&self, initial_caller: Address) -> ContractCall<BigUint, ()>;
+
+    fn mintLendTokens(
         &self,
         initial_caller: Address,
+        lend_token: TokenIdentifier,
+        amount: BigUint,
+        interest_timestamp: u64,
     ) -> ContractCall<BigUint, ()>;
 
     #[payable("*")]
