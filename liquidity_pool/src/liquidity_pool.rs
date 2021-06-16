@@ -32,9 +32,9 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
         let nonce = self
             .blockchain().get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &lend_token);
 
-        self.send().direct_esdt_nft_via_transfer_exec(
+        self.send().direct_nft(
             &initial_caller,
-            &lend_token.as_esdt_identifier(),
+            &lend_token,
             nonce,
             &amount,
             &[],
@@ -91,9 +91,9 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
 
         // send debt position tokens
 
-        self.send().direct_esdt_nft_via_transfer_exec(
+        self.send().direct_nft(
             &initial_caller,
-            &borrows_token.as_esdt_identifier(),
+            &borrows_token,
             nonce,
             &amount,
             &[],
@@ -182,7 +182,7 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
         ]
         .concat();
 
-        let unique_repay_id = self.keccak256(&data);
+        let unique_repay_id = self.crypto().keccak256(&data);
         let repay_position = RepayPostion {
             identifier: borrow_token,
             amount,
@@ -193,7 +193,7 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
             collateral_timestamp: metadata.collateral_timestamp,
         };
         self.repay_position()
-            .insert(unique_repay_id.clone(), repay_position);
+            .insert(unique_repay_id.to_box_bytes(), repay_position);
 
         Ok(unique_repay_id)
     }

@@ -1,7 +1,7 @@
 #![no_std]
 
 pub mod library;
-use core::borrow::Borrow;
+
 
 pub use library::*;
 
@@ -23,9 +23,8 @@ use utils::*;
 elrond_wasm::imports!();
 
 use elrond_wasm::*;
-use elrond_wasm::types::{TokenIdentifier, Address, SCResult, H256, VarArgs, EsdtLocalRole, AsyncCall, BoxedBytes, AsyncCallResult, OptionalArg, ArgBuffer, MultiResultVec, MultiArgVec};
-use elrond_wasm::esdt::{ESDTSystemSmartContractProxy, SemiFungibleTokenProperties};
-use elrond_wasm::storage::mappers::{SingleValueMapper, MapMapper};
+use elrond_wasm::types::{TokenIdentifier, Address, SCResult, H256, VarArgs, EsdtLocalRole, AsyncCall, BoxedBytes,  OptionalArg, MultiResultVec, MultiArgVec};
+
 
 
 
@@ -45,17 +44,6 @@ pub trait LiquidityPool:
     + library::LibraryModule
     + liquidity_pool::LiquidityPoolModule
     + utils::UtilsModule {
-   /* #[module(LibraryModuleImpl)]
-    fn library_module(&self) -> LibraryModuleImpl<T, BigInt, BigUint>;
-
-    #[module(TokensModuleImpl)]
-    fn tokens_module(&self) -> TokensModuleImpl<T, BigInt, BigUint>;
-
-    #[module(StorageModuleImpl)]
-    fn storage_module(&self) -> StorageModuleImpl<T, BigInt, BigUint>;
-
-    #[module(LiquidityPoolModuleImpl)]
-    fn liquidity_pool_module(&self) -> LiquidityPoolModuleImpl<T, BigInt, BigUint>;*/
 
     #[init]
     fn init(

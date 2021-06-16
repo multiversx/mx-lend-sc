@@ -3,7 +3,7 @@ elrond_wasm::imports!();
 
 use elrond_wasm::*;
 use elrond_wasm::storage::mappers::{SingleValueMapper, MapMapper};
-use elrond_wasm::types::{TokenIdentifier, BoxedBytes, H256, Address};
+use elrond_wasm::types::{TokenIdentifier, BoxedBytes, Address};
 use crate::{DebtPosition, ReserveData, RepayPostion};
 
 #[elrond_wasm_derive::module]

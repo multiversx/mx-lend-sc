@@ -4,6 +4,7 @@ use elrond_wasm::*;
 use crate::{IssueData, LEND_TOKEN_PREFIX, BORROW_TOKEN_PREFIX, LEND_TOKEN_NAME, DEBT_TOKEN_NAME, ReserveData};
 use elrond_wasm::types::{H256, OptionalArg, BoxedBytes};
 
+
 #[elrond_wasm_derive::module]
 pub trait UtilsModule: crate::library::LibraryModule + crate::storage::StorageModule{
 
@@ -30,7 +31,7 @@ pub trait UtilsModule: crate::library::LibraryModule + crate::storage::StorageMo
 
     fn get_nft_hash(&self) -> H256 {
         let debt_nonce = self.debt_nonce().get();
-        let hash = self.keccak256(&debt_nonce.to_be_bytes()[..]);
+        let hash = self.crypto().keccak256(&debt_nonce.to_be_bytes()[..]);
         self.debt_nonce().set(&(debt_nonce + 1));
         hash
     }

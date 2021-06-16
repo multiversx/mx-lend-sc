@@ -8,7 +8,7 @@ use elrond_wasm::esdt::ESDTSystemSmartContractProxy;
 
 
 #[elrond_wasm_derive::module]
-pub trait TokensModule: crate::storage::StorageModule {
+pub trait TokensModule: crate::storage::StorageModule + crate::utils::UtilsModule{
 
     fn mint_l_tokens(
         &self,
@@ -38,9 +38,9 @@ pub trait TokensModule: crate::storage::StorageModule {
         let nonce = self
             .blockchain().get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &lend_token);
 
-        self.send().direct_esdt_nft_via_transfer_exec(
+        self.send().direct_nft(
             &initial_caller,
-            &lend_token.as_esdt_identifier(),
+            &lend_token,
             nonce,
             &amount,
             &[],
