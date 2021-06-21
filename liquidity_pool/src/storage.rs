@@ -57,11 +57,10 @@ pub trait StorageModule {
 
     //
     /// health factor threshold
-    #[endpoint(setHealthFactorThreshold)]
     #[storage_set("healthFactorThreshold")]
     fn set_health_factor_threshold(&self, health_factor_threashdol: u32);
 
-    #[view(healthFactorThreshold)]
+
     #[storage_get("healthFactorThreshold")]
     fn get_health_factor_threshold(&self) -> u32;
 
@@ -70,7 +69,6 @@ pub trait StorageModule {
     #[storage_set("lendingPool")]
     fn set_lending_pool(&self, lending_pool: Address);
 
-    #[view(getLendingPool)]
     #[storage_get("lendingPool")]
     fn get_lending_pool(&self) -> Address;
 
@@ -79,21 +77,20 @@ pub trait StorageModule {
     #[storage_set("totalBorrow")]
     fn set_total_borrow(&self, total: Self::BigUint);
 
-    #[view(totalBorrow)]
+
     #[storage_get("totalBorrow")]
     fn get_total_borrow(&self) -> Self::BigUint;
 
     #[storage_set("assetReserve")]
     fn set_asset_reserve(&self, reserve: Self::BigUint);
 
-    #[view(assetReserve)]
     #[storage_get("assetReserve")]
     fn get_asset_reserve(&self) -> Self::BigUint;
 
     #[storage_set("withdrawAmount")]
     fn set_withdraw_amount(&self, amount: Self::BigUint);
 
-    #[view(withdrawAmount)]
+
     #[storage_get("withdrawAmount")]
     fn get_withdraw_amount(&self) -> Self::BigUint;
     
@@ -101,21 +98,21 @@ pub trait StorageModule {
     #[storage_set("repayPositionAmount")]
     fn set_repay_position_amount(&self, amount: Self::BigUint);
 
-    #[view(repayPositionAmount)]
+
     #[storage_get("repayPositionAmount")]
     fn get_repay_position_amount(&self) -> Self::BigUint;
 
     #[storage_set("repayPositionIdentifier")]
     fn set_repay_position_id(&self, id:TokenIdentifier);
 
-    #[view(repayPositionIdentifier)]
+
     #[storage_get("repayPositionIdentifier")]
     fn get_repay_position_id(&self) -> TokenIdentifier;
 
     #[storage_set("repayPositionNonce")]
     fn set_repay_position_nonce(&self, nonce:u64);
 
-    #[view(repayPositionNonce)]
+
     #[storage_get("repayPositionNonce")]
     fn get_repay_position_nonce(&self) -> u64;
 

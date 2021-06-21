@@ -68,4 +68,29 @@ pub trait UtilsModule: crate::library::LibraryModule + crate::storage::StorageMo
         self.compute_capital_utilisation(borrowed_amount, reserve_amount)
     }
 
+    fn get_debt_interest(&self, amount: Self::BigUint, timestamp: u64) -> Self::BigUint {
+        let now = self.blockchain().get_block_timestamp();
+        let time_diff = Self::BigUint::from(now - timestamp);
+
+        let borrow_rate = self.get_borrow_rate();
+
+        self.compute_debt(amount, time_diff, borrow_rate)
+    }
+
+    fn get_deposit_rate(&self) -> Self::BigUint {
+        let utilisation = self.get_capital_utilisation();
+        let reserve_data = self.reserve_data().get();
+        let reserve_factor = reserve_data.reserve_factor.clone();
+        let borrow_rate =
+            self._get_borrow_rate(reserve_data, OptionalArg::Some(utilisation.clone()));
+
+        self.compute_deposit_rate(utilisation, borrow_rate, reserve_factor)
+    }
+
+    fn get_borrow_rate(&self) -> Self::BigUint {
+        let reserve_data = self.reserve_data().get();
+        self._get_borrow_rate(reserve_data, OptionalArg::None)
+    }
+
+
 }

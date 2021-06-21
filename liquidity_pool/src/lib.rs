@@ -216,30 +216,18 @@ pub trait LiquidityPool:
 
 
     #[view(getBorrowRate)]
-    fn get_borrow_rate(&self) -> Self::BigUint {
-        let reserve_data = self.reserve_data().get();
-        self._get_borrow_rate(reserve_data, OptionalArg::None)
+    fn view_borrow_rate(&self) -> Self::BigUint {
+        self.get_borrow_rate()
     }
 
     #[view(getDepositRate)]
-    fn get_deposit_rate(&self) -> Self::BigUint {
-        let utilisation = self.get_capital_utilisation();
-        let reserve_data = self.reserve_data().get();
-        let reserve_factor = reserve_data.reserve_factor.clone();
-        let borrow_rate =
-            self._get_borrow_rate(reserve_data, OptionalArg::Some(utilisation.clone()));
-
-        self.compute_deposit_rate(utilisation, borrow_rate, reserve_factor)
+    fn view_deposit_rate(&self) -> Self::BigUint {
+        self.get_deposit_rate()
     }
 
     #[view(getDebtInterest)]
-    fn get_debt_interest(&self, amount: Self::BigUint, timestamp: u64) -> Self::BigUint {
-        let now = self.blockchain().get_block_timestamp();
-        let time_diff = Self::BigUint::from(now - timestamp);
-
-        let borrow_rate = self.get_borrow_rate();
-
-        self.compute_debt(amount, time_diff, borrow_rate)
+    fn view_debt_interest(&self, amount: Self::BigUint, timestamp: u64) -> Self::BigUint {
+        self.get_debt_interest(amount, timestamp)
     }
 
     #[view(getPositionInterest)]

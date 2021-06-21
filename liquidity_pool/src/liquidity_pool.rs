@@ -4,7 +4,7 @@ use elrond_wasm::types::{Address, TokenIdentifier, SCResult, H256, BoxedBytes};
 use crate::{InterestMetadata, DebtMetadata, DebtPosition, RepayPostion, LiquidateData};
 
 #[elrond_wasm_derive::module]
-pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::TokensModule{
+pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::TokensModule + crate::utils::UtilsModule + crate::library::LibraryModule{
 
     fn deposit_asset(
         &self,
@@ -122,7 +122,7 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
             collateral_amount: amount,
             collateral_identifier: lend_token,
         };
-        self.debt_positions().insert(position_id, debt_position);
+        self.debt_positions().insert(position_id.into_boxed_bytes(), debt_position);
 
         Ok(())
     }
@@ -135,7 +135,7 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
         amount: Self::BigUint,
     ) -> SCResult<H256> {
         require!(
-            self.blockchain().get_caller() == self.lending_pool().get(),
+            self.blockchain().get_caller() == self.get_lending_pool(),
             "can only be called by lending pool"
         );
         require!(amount > 0, "amount must be greater then 0");
@@ -193,7 +193,7 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
             collateral_timestamp: metadata.collateral_timestamp,
         };
         self.repay_position()
-            .insert(unique_repay_id.to_box_bytes(), repay_position);
+            .insert(unique_repay_id.clone().into_boxed_bytes(), repay_position);
 
         Ok(unique_repay_id)
     }
@@ -281,11 +281,11 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
         amount: Self::BigUint,
     ) -> SCResult<()> {
         require!(
-            self.blockchain().get_caller() == self.lending_pool().get(),
+            self.blockchain().get_caller() == self.get_lending_pool(),
             "permission denied"
         );
         require!(
-            lend_token == self.lending_pool().get(),
+            lend_token == self.lend_token().get(),
             "lend token not supported"
         );
 

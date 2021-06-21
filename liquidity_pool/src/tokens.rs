@@ -8,7 +8,7 @@ use elrond_wasm::esdt::ESDTSystemSmartContractProxy;
 
 
 #[elrond_wasm_derive::module]
-pub trait TokensModule: crate::storage::StorageModule + crate::utils::UtilsModule{
+pub trait TokensModule: crate::storage::StorageModule + crate::utils::UtilsModule + crate::library::LibraryModule{
 
     fn mint_l_tokens(
         &self,
