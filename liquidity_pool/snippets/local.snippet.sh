@@ -1,4 +1,4 @@
-ALICE="/home/boop/elrondsdk/sandbox/testnet/wallets/users/alice.pem"
+ALICE="$HOME/pems/local.pem"
 ALICE_ADDRESS=0x0139472eff6886771a982f3083da5d421f24c29181e63888228dc81ca60d69e1
 
 ADDRESS=$(erdpy data load --key=address-testnet)
@@ -9,14 +9,17 @@ CHAIN_ID=local-testnet
 
 PROJECT="../../liquidity_pool"
 
-AMOUNT=1000000000000000000 # 1 token (18 decimals)
+NFT_TICKER=0x57555344 # WUSD
+NFT_TICKER_FULL=0x575553442d666239313333 # WUSD-fb9133
+LEND_PREFIX=0x4c # L
+BORROW_PREFIX=0x42 # B
 
-ESDT_TICKER=0x57555344 # WUSD
-ESDT_TICKER_FULL=0x # add after ESDT issue
-ESDT_NAME=0x57726170706564555344 # WrappedUSD
+ISSUE_COST=5000000000000000000
+
+GAS_LIMIT=250000000
 
 deploy() {
-    erdpy contract deploy --project=${PROJECT} --recall-nonce --pem=${ALICE} --gas-limit=75000000 --outfile="deploy.json" --proxy=${PROXY} --chain=${CHAIN_ID} --send || return
+    erdpy contract deploy --project=${PROJECT} --recall-nonce --pem=${ALICE} --gas-limit=${GAS_LIMIT} --outfile="deploy.json" --arguments ${NFT_TICKER_FULL} --proxy=${PROXY} --chain=${CHAIN_ID} --send || return
 
     TRANSACTION=$(erdpy data parse --file="deploy.json" --expression="data['emitted_tx']['hash']")
     ADDRESS=$(erdpy data parse --file="deploy.json" --expression="data['emitted_tx']['address']")
@@ -29,18 +32,29 @@ deploy() {
 }
 
 upgrade() {
-    erdpy contract upgrade ${ADDRESS} --project==${PROJECT} --recall-nonce --pem=${ALICE} --gas-limit=75000000 
-    --outfile="upgrade.json" --proxy=${PROXY} --chain=${CHAIN_ID} --send || return
+    erdpy contract upgrade ${ADDRESS} --project=${PROJECT} --recall-nonce --pem=${ALICE} --gas-limit=${GAS_LIMIT} --outfile="upgrade.json" --arguments ${NFT_TICKER_FULL} --proxy=${PROXY} --chain=${CHAIN_ID} --send || return
 }
 
 # SC calls
 
 issue_lend() {
-    erdpy contract call ${ADDRESS} --recall-nonce --pem=${ALICE} --gas-limit=80000000 --function="issue" --arguments ${ESDT_TICKER_FULL} ${ESDT_TICKER} ${LIQ_DEPOSIT_ENDPOINT} 0x4c 4294967295000000000000000000 18 --proxy=${PROXY} --chain=${CHAIN_ID} --send
+    erdpy contract call ${ADDRESS} --recall-nonce --pem=${ALICE} --gas-limit=${GAS_LIMIT} --function="issue" --arguments ${NFT_TICKER} ${NFT_TICKER_FULL} ${LEND_PREFIX} --value=${ISSUE_COST} --proxy=${PROXY} --chain=${CHAIN_ID} --send
+}
+
+issue_borrow() {
+    erdpy contract call ${ADDRESS} --recall-nonce --pem=${ALICE} --gas-limit=${GAS_LIMIT} --function="issue" --arguments ${NFT_TICKER} ${NFT_TICKER_FULL} ${BORROW_PREFIX} --value=${ISSUE_COST} --proxy=${PROXY} --chain=${CHAIN_ID} --send
 }
 
 # Queries
 
-getPoolAddress() {
-    erdpy contract query ${ADDRESS} --function="lastIssuedToken" --arguments ${ESDT_TICKER} --proxy=${PROXY}
+getPoolAsset() {
+    erdpy contract query ${ADDRESS} --function="poolAsset" --proxy=${PROXY}
+}
+
+getLendToken() {
+    erdpy contract query ${ADDRESS} --function="lendToken" --proxy=${PROXY}
+}
+
+getBorrowToken() {
+    erdpy contract query ${ADDRESS} --function="borrowToken" --proxy=${PROXY}
 }
