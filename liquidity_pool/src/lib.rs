@@ -55,8 +55,10 @@ pub trait LiquidityPool {
         #[payment_token] asset: TokenIdentifier,
         #[payment] amount: BigUint,
     ) -> SCResult<()> {
-        require!(amount > 0, "payment must be greater than 0");
-        require!(!initial_caller.is_zero(), "invalid address provided");
+        require!(
+            self.get_lending_pool() == self.get_caller(),
+            "permission denied"
+        );
 
         let pool_asset = self.pool_asset().get();
         require!(
@@ -67,7 +69,6 @@ pub trait LiquidityPool {
         let interest_metadata = InterestMetadata {
             timestamp: self.get_block_timestamp(),
         };
-
         self.mint_interest(amount.clone(), interest_metadata);
 
         let lend_token = self.lend_token().get();
@@ -87,7 +88,6 @@ pub trait LiquidityPool {
             .get(&pool_asset)
             .unwrap_or_else(BigUint::zero);
         asset_reserve += amount;
-
         self.reserves().insert(pool_asset, asset_reserve);
 
         Ok(())
@@ -365,14 +365,12 @@ pub trait LiquidityPool {
     ) -> SCResult<()> {
         require!(
             self.get_caller() == self.get_lending_pool(),
-            "liquidity pool can only be called by lending pool"
+            "permission denied"
         );
         require!(
             lend_token == self.get_lend_token(),
-            "lend token is not supported by this pool"
+            "lend token not supported"
         );
-        require!(!initial_caller.is_zero(), "invalid address");
-        require!(amount > 0, "amount must be bigger then 0");
 
         let pool_asset = self.get_pool_asset();
         let mut asset_reserve = self
@@ -380,13 +378,36 @@ pub trait LiquidityPool {
             .get(&pool_asset)
             .unwrap_or_else(BigUint::zero);
 
-        require!(asset_reserve != BigUint::zero(), "asset reserve is empty");
+        let nft_nonce = self.call_value().esdt_token_nonce();
+        let nft_info = self.get_esdt_token_data(
+            &self.get_sc_address(),
+            lend_token.as_esdt_identifier(),
+            nft_nonce,
+        );
+        let metadata: InterestMetadata;
+        match InterestMetadata::top_decode(nft_info.attributes.clone().as_slice()) {
+            Result::Ok(decoded) => {
+                metadata = decoded;
+            }
+            Result::Err(_) => {
+                return sc_error!("could not parse token metadata");
+            }
+        }
 
-        let nonce = self.call_value().esdt_token_nonce();
-        self.burn(amount.clone(), nonce, lend_token);
+        let deposit_rate = self.get_deposit_rate();
+        let time_diff = BigUint::from(self.get_block_timestamp() - metadata.timestamp);
+        let withdrawal_amount = self.library_module().compute_withdrawal_amount(
+            amount.clone(),
+            time_diff,
+            deposit_rate,
+        );
+
+        require!(asset_reserve > withdrawal_amount, "insufficient funds");
 
         self.send()
-            .direct(&initial_caller, &pool_asset, &amount, &[]);
+            .direct(&initial_caller, &pool_asset, &withdrawal_amount, &[]);
+
+        self.burn(amount.clone(), nft_nonce, lend_token);
 
         asset_reserve -= amount;
         self.reserves().insert(pool_asset, asset_reserve);

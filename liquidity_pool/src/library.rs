@@ -73,4 +73,17 @@ pub trait LibraryModule {
 
         (debt_percetange * amount) / bp
     }
+
+    fn compute_withdrawal_amount(
+        &self,
+        amount: BigUint,
+        time_diff: BigUint,
+        deposit_rate: BigUint
+    ) -> BigUint {
+        let bp = BigUint::from(BP);
+        let secs_year = BigUint::from(SECONDS_IN_YEAR);
+        let percentage = (time_diff * deposit_rate) / secs_year;
+
+        amount.clone() + ((percentage * amount) / bp)
+    }
 }

@@ -12,7 +12,9 @@ ISSUE_VALUE=5000000000000000000 # 5 EGLD
 TICKER=0x425553442d393163643331
 TICKER_PLAIN=0x42555344
 
-QUERY_TOKEN_ID=0x4c425553442d653462336362
+LEND_TICKER=0x4c425553442d386264376333
+
+QUERY_TOKEN_ID=0x42425553442d663136313461
 
 GAS_LIMIT=250000000
 
@@ -48,7 +50,7 @@ issueBorrowToken() {
 }
 
 setLendRoles() {
-  erdpy contract call "${ADDRESS}" --recall-nonce --pem="${ALICE}" --gas-limit=${GAS_LIMIT} --function="setLendRoles" --arguments 0x03 0x04 0x05 --proxy=${PROXY} --chain=${CHAIN_ID} --send
+  erdpy contract call "${ADDRESS}" --recall-nonce --pem="${ALICE}" --gas-limit=${GAS_LIMIT} --function="setLendRoles" --arguments ${LEND_TICKER} 0x03 0x04 0x05 --proxy=${PROXY} --chain=${CHAIN_ID} --send
 }
 
 setBorrowRoles() {
