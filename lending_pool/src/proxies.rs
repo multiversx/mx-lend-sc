@@ -1,59 +1,18 @@
+elrond_wasm::imports!();
 use crate::LiquidateData;
 use crate::RepayPostion;
+use elrond_wasm::types::Address;
 
-elrond_wasm::imports!();
 
-#[elrond_wasm_derive::callable(LiquidtyPoolProxy)]
-pub trait LiquidtyPoolProxyImpl {
-    fn echo_arguments(
-        &self,
-        args: &VarArgs<BoxedBytes>,
-    ) -> ContractCall<BigUint, MultiResultVec<BoxedBytes>>;
+#[elrond_wasm_derive::module]
+pub trait ProxiesModule {
 
-    #[payable("*")]
-    fn accept_funds(&self) -> ContractCall<BigUint, ()>;
+    #[proxy]
+    fn liquidity_pool_proxy(&self, sc_address: Address) -> liquidity_pool::Proxy<Self::SendApi>;
 
-    #[payable("*")]
-    fn repay(&self, unique_id: H256) -> ContractCall<BigUint, RepayPostion<BigUint>>;
+    #[proxy]
+    fn router_proxy(&self, sc_address: Address) -> router::Proxy<Self::SendApi>;
 
-    #[payable("*")]
-    fn liquidate(
-        &self,
-        position_id: H256,
-        #[payment_token] token: TokenIdentifier,
-        #[payment] amount: BigUint,
-    ) -> ContractCall<BigUint, LiquidateData<BigUint>>;
-
-    fn borrow(
-        &self,
-        initial_caller: Address,
-        lend_token: TokenIdentifier,
-        amount: BigUint,
-        timestamp: u64,
-    ) -> ContractCall<BigUint, ()>;
-
-    #[payable("*")]
-    fn burnLendTokens(&self, initial_caller: Address) -> ContractCall<BigUint, ()>;
-
-    fn mintLendTokens(
-        &self,
-        initial_caller: Address,
-        lend_token: TokenIdentifier,
-        amount: BigUint,
-        interest_timestamp: u64,
-    ) -> ContractCall<BigUint, ()>;
-
-    #[payable("*")]
-    fn reject_funds(&self) -> ContractCall<BigUint, ()>;
-
-    fn retrieve_funds(&self, token: TokenIdentifier, amount: BigUint) -> ContractCall<BigUint, ()>;
-
-    fn deposit_asset(&self, initial_caller: Address) -> ContractCall<BigUint, ()>;
-
-    fn withdraw(&self, initial_caller: Address) -> ContractCall<BigUint, ()>;
 }
 
-#[elrond_wasm_derive::callable(RouterProxy)]
-pub trait RouterProxyImpl {
-    fn getPoolAddress(&self, asset: TokenIdentifier) -> ContractCall<BigUint, Address>;
-}
+

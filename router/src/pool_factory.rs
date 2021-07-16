@@ -1,22 +1,20 @@
 elrond_wasm::imports!();
 
-#[elrond_wasm_derive::module(PoolFactoryModuleImpl)]
+#[elrond_wasm_derive::module]
 pub trait PoolFactoryModule {
-    fn init(&self) {}
-
     fn create_pool(
         &self,
         base_asset: &TokenIdentifier,
         lending_pool_address: &Address,
-        r_base: BigUint,
-        r_slope1: BigUint,
-        r_slope2: BigUint,
-        u_optimal: BigUint,
-        reserve_factor: BigUint,
+        r_base: Self::BigUint,
+        r_slope1: Self::BigUint,
+        r_slope2: Self::BigUint,
+        u_optimal: Self::BigUint,
+        reserve_factor: Self::BigUint,
         bytecode: &BoxedBytes,
     ) -> Address {
         let code_metadata = CodeMetadata::UPGRADEABLE;
-        let amount = BigUint::from(0u32);
+        let amount = Self::BigUint::from(0u32);
 
         let mut arg_buffer = ArgBuffer::new();
         arg_buffer.push_argument_bytes(base_asset.as_esdt_identifier());
@@ -28,7 +26,7 @@ pub trait PoolFactoryModule {
         arg_buffer.push_argument_bytes(reserve_factor.to_bytes_be().as_slice());
 
         self.send().deploy_contract(
-            self.get_gas_left(),
+            self.blockchain().get_gas_left(),
             &amount,
             bytecode,
             code_metadata,
