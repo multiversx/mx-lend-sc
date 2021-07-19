@@ -1,17 +1,10 @@
 #![no_std]
 #![allow(non_snake_case)]
 
-
-mod proxies;
-use proxies::*;
-
 pub mod models;
 pub use models::*;
 
-
-
 use elrond_wasm::*;
-
 
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
@@ -19,7 +12,7 @@ elrond_wasm::derive_imports!();
 const ESDT_TRANSFER_STRING: &[u8] = b"ESDTNFTTransfer";
 
 #[elrond_wasm_derive::contract]
-pub trait LendingPool: proxies::ProxiesModule{
+pub trait LendingPool{
     #[init]
     fn init(&self) {}
 
@@ -39,7 +32,7 @@ pub trait LendingPool: proxies::ProxiesModule{
         let pool_address = self.get_pool_address(asset.clone());
         require!(!pool_address.is_zero(), "invalid liquidity pool address");
 
-        Ok(self.liquidity_pool_proxy(pool_address).deposit_asset(initial_caller, asset, amount)
+        Ok(self.liquidity_pool_proxy(pool_address).deposit_asset_endpoint(initial_caller, asset, amount)
             .with_gas_limit(self.blockchain().get_gas_left()/2)
             .execute_on_dest_context())
     }
@@ -111,7 +104,7 @@ pub trait LendingPool: proxies::ProxiesModule{
     #[endpoint]
     fn repay(
         &self,
-        repay_unique_id: H256,
+        repay_unique_id: BoxedBytes,
         #[var_args] initial_caller: OptionalArg<Address>,
         #[payment_token] asset: TokenIdentifier,
         #[payment] amount: Self::BigUint,
@@ -147,14 +140,14 @@ pub trait LendingPool: proxies::ProxiesModule{
     #[endpoint]
     fn liquidate(
         &self,
-        liquidate_unique_id: H256,
+        liquidate_unique_id: BoxedBytes,
         #[var_args] initial_caller: OptionalArg<Address>,
         #[payment_token] asset: TokenIdentifier,
         #[payment] amount: Self::BigUint,
     ) -> SCResult<()> {
         let caller = initial_caller
             .into_option()
-            .unwrap_or_else(|| self.blockchian().get_caller());
+            .unwrap_or_else(|| self.blockchain().get_caller());
 
         require!(amount > 0, "amount must be greater than 0");
         require!(!caller.is_zero(), "invalid address provided");
@@ -163,7 +156,7 @@ pub trait LendingPool: proxies::ProxiesModule{
         let asset_address = self.get_pool_address(asset.clone());
 
         let results = self.liquidity_pool_proxy(asset_address)
-            .liquidate(liquidate_unique_id, asset, amount)
+            .liquidate_endpoint(liquidate_unique_id, asset, amount)
             .with_gas_limit(self.blockchain().get_gas_left()/2)
             .execute_on_dest_context();
 
@@ -179,7 +172,7 @@ pub trait LendingPool: proxies::ProxiesModule{
         );
 
         self.liquidity_pool_proxy(collateral_token_address)
-            .mint_l_tokens_endpoint(caller, results.collateral_token, results.amount, self.get_block_timestamp())
+            .mint_l_tokens_endpoint(caller, results.collateral_token, results.amount, self.blockchain().get_block_timestamp())
             .with_gas_limit(self.blockchain().get_gas_left()/2)
             .execute_on_dest_context();
         
@@ -230,9 +223,9 @@ pub trait LendingPool: proxies::ProxiesModule{
 
         let nft_nonce = self.call_value().esdt_token_nonce();
 
-        let esdt_nft_data = self.get_esdt_token_data(
+        let esdt_nft_data = self.blockchain().get_esdt_token_data(
             &self.blockchain().get_sc_address(),
-            asset_collateral_lend_token.as_esdt_identifier(),
+            &asset_collateral_lend_token,
             nft_nonce,
         );
 
@@ -247,7 +240,7 @@ pub trait LendingPool: proxies::ProxiesModule{
         }
 
        self.liquidity_pool_proxy(borrow_token_pool_address)
-            .borrow(initial_caller.clone(), asset_collateral_lend_token.clone(), amount.clone(), metadata.timestamp)
+            .borrow_endpoint(initial_caller.clone(), asset_collateral_lend_token.clone(), amount.clone(), metadata.timestamp)
             .with_gas_limit(self.blockchain().get_gas_left()/2)
             .execute_on_dest_context();
 
@@ -259,7 +252,7 @@ pub trait LendingPool: proxies::ProxiesModule{
             &asset_collateral_lend_token,
             nft_nonce,
             &amount,
-            self.blockchian().get_gas_left()/2,
+            self.blockchain().get_gas_left()/2,
             b"burnLendTokens",
             &args_burn_lend
         );
@@ -281,8 +274,9 @@ pub trait LendingPool: proxies::ProxiesModule{
         if !self.pools_map().contains_key(&asset) {
             let router_address = self.router().get();
             let pool_address = self.router_proxy(router_address)
-                .getPoolAddress(asset.clone())
-                .execute_on_dest_context(self.get_gas_left(), self.send());
+                .get_pool_address(asset.clone())
+                .with_gas_limit(self.blockchain().get_gas_left()/2)
+                .execute_on_dest_context();
 
             self.pools_map().insert(asset, pool_address.clone());
             return pool_address;
@@ -332,4 +326,10 @@ pub trait LendingPool: proxies::ProxiesModule{
     /// mapping for tokens to their liquidity pools addresses
     #[storage_mapper("pools_map")]
     fn pools_map(&self) -> MapMapper<Self::Storage, TokenIdentifier, Address>;
+
+    #[proxy]
+    fn liquidity_pool_proxy(&self, sc_address: Address) -> liquidity_pool::Proxy<Self::SendApi>;
+
+    #[proxy]
+    fn router_proxy(&self, sc_address: Address) -> router::Proxy<Self::SendApi>;
 }
