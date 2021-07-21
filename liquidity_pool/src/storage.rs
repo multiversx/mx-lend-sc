@@ -9,8 +9,6 @@ use crate::{DebtPosition, ReserveData, RepayPostion};
 #[elrond_wasm_derive::module]
 pub trait StorageModule {
 
-
-    //
     /// pool asset
     #[storage_mapper("pool_asset")]
     fn pool_asset(&self) -> SingleValueMapper<Self::Storage, TokenIdentifier>;
@@ -55,65 +53,34 @@ pub trait StorageModule {
     #[storage_mapper("reserve_data")]
     fn reserve_data(&self) -> SingleValueMapper<Self::Storage, ReserveData<Self::BigUint>>;
 
-    //
-    /// health factor threshold
-    #[storage_set("healthFactorThreshold")]
-    fn set_health_factor_threshold(&self, health_factor_threashdol: u32);
 
-
-    #[storage_get("healthFactorThreshold")]
-    fn get_health_factor_threshold(&self) -> u32;
+    #[storage_mapper("healthFactorThreshold")]
+    fn health_factor_threshold(&self) -> SingleValueMapper<Self::Storage, u32>;
 
     //
     /// lending pool address
-    #[storage_set("lendingPool")]
-    fn set_lending_pool(&self, lending_pool: Address);
-
-    #[storage_get("lendingPool")]
-    fn get_lending_pool(&self) -> Address;
+    #[storage_mapper("lendingPool")]
+    fn lending_pool(&self) -> SingleValueMapper<Self::Storage, Address>;
 
     //
     // total borrowing from pool
-    #[storage_set("totalBorrow")]
-    fn set_total_borrow(&self, total: Self::BigUint);
+    #[storage_mapper("totalBorrow")]
+    fn total_borrow(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
 
 
-    #[storage_get("totalBorrow")]
-    fn get_total_borrow(&self) -> Self::BigUint;
+    #[storage_mapper("assetReserve")]
+    fn asset_reserve(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
 
-    #[storage_set("assetReserve")]
-    fn set_asset_reserve(&self, reserve: Self::BigUint);
+    #[storage_mapper("withdrawAmount")]
+    fn withdraw_amount(&self) ->SingleValueMapper<Self::Storage, Self::BigUint>;
 
-    #[storage_get("assetReserve")]
-    fn get_asset_reserve(&self) -> Self::BigUint;
+    #[storage_mapper("repayPositionAmount")]
+    fn repay_position_amount(&self) -> SingleValueMapper< Self::Storage, Self::BigUint>;
 
-    #[storage_set("withdrawAmount")]
-    fn set_withdraw_amount(&self, amount: Self::BigUint);
+    #[storage_mapper("repayPositionIdentifier")]
+    fn repay_position_id(&self) -> SingleValueMapper<Self::Storage, TokenIdentifier>;
 
-
-    #[storage_get("withdrawAmount")]
-    fn get_withdraw_amount(&self) -> Self::BigUint;
-    
-
-    #[storage_set("repayPositionAmount")]
-    fn set_repay_position_amount(&self, amount: Self::BigUint);
-
-
-    #[storage_get("repayPositionAmount")]
-    fn get_repay_position_amount(&self) -> Self::BigUint;
-
-    #[storage_set("repayPositionIdentifier")]
-    fn set_repay_position_id(&self, id:TokenIdentifier);
-
-
-    #[storage_get("repayPositionIdentifier")]
-    fn get_repay_position_id(&self) -> TokenIdentifier;
-
-    #[storage_set("repayPositionNonce")]
-    fn set_repay_position_nonce(&self, nonce:u64);
-
-
-    #[storage_get("repayPositionNonce")]
-    fn get_repay_position_nonce(&self) -> u64;
+    #[storage_mapper("repayPositionNonce")]
+    fn repay_position_nonce(&self) -> SingleValueMapper<Self::Storage, u64>;
 
 }

@@ -56,13 +56,8 @@ pub trait LiquidityPool:
         u_optimal: Self::BigUint,
         reserve_factor: Self::BigUint,
     ) {
-        /*self.library_module().init();
-        self.tokens_module().init();
-        self.storage_module().init();
-        self.liquidity_pool_module().init();*/
-
         self.pool_asset().set(&asset);
-        self.set_lending_pool(lending_pool);
+        self.lending_pool().set(&lending_pool);
         self.debt_nonce().set(&1u64);
         self.reserve_data().set(&ReserveData {
             r_base,
@@ -264,59 +259,51 @@ pub trait LiquidityPool:
         self.borrow_token().get()
     }
 
-    
-    
+
     /// health factor threshold
     #[endpoint(setHealthFactorThreshold)]
     fn endpoint_health_factor_threshold(&self, health_factor_threashdol: u32) {
-        self.set_health_factor_threshold(health_factor_threashdol);
+        self.health_factor_threshold().set(&health_factor_threashdol);
     }
 
     #[view(healthFactorThreshold)]
     fn view_health_factor_threshold(&self) -> u32{
-        self.get_health_factor_threshold()
+        self.health_factor_threshold().get()
     }
-
 
     #[view(getLendingPool)]
     fn view_lending_pool(&self) -> Address{
-        self.get_lending_pool()
+        self.lending_pool().get()
     }
-
 
     #[view(totalBorrow)]
     fn view_total_borrow(&self) -> Self::BigUint{
-        self.get_total_borrow()
+        self.total_borrow().get()
     }
-
 
     #[view(assetReserve)]
     fn view_asset_reserve(&self) -> Self::BigUint{
-        self.get_asset_reserve()
+        self.asset_reserve().get()
     }
-
 
     #[view(withdrawAmount)]
     fn view_withdraw_amount(&self) -> Self::BigUint{
-        self.get_withdraw_amount()
+        self.withdraw_amount().get()
     }
-    
 
     #[view(repayPositionAmount)]
     fn view_repay_position_amount(&self) -> Self::BigUint{
-        self.get_repay_position_amount()
+        self.repay_position_amount().get()
     }
 
     #[view(repayPositionIdentifier)]
     fn view_repay_position_id(&self) -> TokenIdentifier{
-        self.get_repay_position_id()
+        self.repay_position_id().get()
     }
-
-  
 
     #[view(repayPositionNonce)]
     fn view_repay_position_nonce(&self) -> u64{
-        self.get_repay_position_nonce()
+        self.repay_position_nonce().get()
     }
     
 }

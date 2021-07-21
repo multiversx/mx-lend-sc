@@ -13,7 +13,7 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
         amount: Self::BigUint,
     ) -> SCResult<()> {
         require!(
-            self.get_lending_pool() == self.blockchain().get_caller(),
+            self.lending_pool().get() == self.blockchain().get_caller(),
             "permission denied"
         );
 
@@ -59,7 +59,7 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
         timestamp: u64,
     ) -> SCResult<()> {
         require!(
-            self.blockchain().get_caller() == self.get_lending_pool(),
+            self.blockchain().get_caller() == self.lending_pool().get(),
             "can only be called through lending pool"
         );
         require!(amount > 0, "lend amount must be bigger then 0");
@@ -106,9 +106,9 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
         borrows_reserve += amount.clone();
         asset_reserve -= amount.clone();
 
-        let mut total_borrow = self.get_total_borrow();
+        let mut total_borrow = self.total_borrow().get();
         total_borrow += amount.clone();
-        self.set_total_borrow(total_borrow);
+        self.total_borrow().set(&total_borrow);
 
         self.reserves().insert(borrows_token, borrows_reserve);
         self.reserves().insert(asset, asset_reserve);
@@ -135,7 +135,7 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
         amount: Self::BigUint,
     ) -> SCResult<H256> {
         require!(
-            self.blockchain().get_caller() == self.get_lending_pool(),
+            self.blockchain().get_caller() == self.lending_pool().get(),
             "can only be called by lending pool"
         );
         require!(amount > 0, "amount must be greater then 0");
@@ -206,7 +206,7 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
         amount: Self::BigUint,
     ) -> SCResult<RepayPostion<Self::BigUint>> {
         require!(
-            self.blockchain().get_caller() == self.get_lending_pool(),
+            self.blockchain().get_caller() == self.lending_pool().get(),
             "function can only be called by lending pool"
         );
         require!(amount > 0, "amount must be greater then 0");
@@ -258,9 +258,9 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
                 .insert(unique_id, repay_position.clone());
         }
 
-        self.set_repay_position_amount(amount.clone());
-        self.set_repay_position_id(repay_position.identifier.clone());
-        self.set_repay_position_nonce(repay_position.nonce.clone());
+        self.repay_position_amount().set(&amount.clone());
+        self.repay_position_id().set(&repay_position.identifier.clone());
+        self.repay_position_nonce().set(&repay_position.nonce.clone());
 
         /*self.burn(
             amount.clone(),
@@ -281,7 +281,7 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
         amount: Self::BigUint,
     ) -> SCResult<()> {
         require!(
-            self.blockchain().get_caller() == self.get_lending_pool(),
+            self.blockchain().get_caller() == self.lending_pool().get(),
             "permission denied"
         );
         require!(
@@ -319,8 +319,8 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
             deposit_rate,
         );
 
-        self.set_asset_reserve(asset_reserve.clone());
-        self.set_withdraw_amount(withdrawal_amount.clone());
+        self.asset_reserve().set(&asset_reserve.clone());
+        self.withdraw_amount().set(&withdrawal_amount.clone());
         //require!(asset_reserve > withdrawal_amount, "insufficient funds");
 
         self.send()
@@ -342,7 +342,7 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
         amount: Self::BigUint,
     ) -> SCResult<LiquidateData<Self::BigUint>> {
         require!(
-            self.blockchain().get_caller() == self.get_lending_pool(),
+            self.blockchain().get_caller() == self.lending_pool().get(),
             "function can only be called by lending pool"
         );
         require!(amount > 0, "amount must be bigger then 0");
@@ -362,7 +362,7 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
             "position is already liquidated"
         );
         require!(
-            debt_position.health_factor < self.get_health_factor_threshold(),
+            debt_position.health_factor < self.health_factor_threshold().get(),
             "the health factor is not low enough"
         );
 

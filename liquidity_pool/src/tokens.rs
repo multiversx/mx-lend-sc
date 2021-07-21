@@ -18,7 +18,7 @@ pub trait TokensModule: crate::storage::StorageModule + crate::utils::UtilsModul
         interest_timestamp: u64,
     ) -> SCResult<()> {
         require!(
-            self.blockchain().get_caller() == self.get_lending_pool(),
+            self.blockchain().get_caller() == self.lending_pool().get(),
             "can only by called by lending pool"
         );
 
@@ -57,7 +57,7 @@ pub trait TokensModule: crate::storage::StorageModule + crate::utils::UtilsModul
         amount: Self::BigUint,
     ) -> SCResult<()> {
         require!(
-            self.blockchain().get_caller() == self.get_lending_pool(),
+            self.blockchain().get_caller() == self.lending_pool().get(),
             "can only by called by lending pool"
         );
 

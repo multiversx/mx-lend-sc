@@ -63,7 +63,7 @@ pub trait UtilsModule: crate::library::LibraryModule + crate::storage::StorageMo
                             .get(&self.pool_asset().get())
                             .unwrap_or_else(Self::BigUint::zero);
         //TODO: change with view_reserve after putting all view functions in a module
-        let borrowed_amount = self.get_total_borrow();
+        let borrowed_amount = self.total_borrow().get();
 
         self.compute_capital_utilisation(borrowed_amount, reserve_amount)
     }

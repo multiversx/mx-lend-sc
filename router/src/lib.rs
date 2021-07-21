@@ -10,7 +10,7 @@ use pool_factory::*;
 const LEND_TOKEN_PREFIX: &[u8] = b"L";
 const BORROW_TOKEN_PREFIX: &[u8] = b"B";
 
-const ISSUE_EXPECTED_GAS_COST: u64 = 1000000000;//90000000 + 30000000;
+const ISSUE_EXPECTED_GAS_COST: u64 = 150000000;
 
 #[elrond_wasm_derive::contract]
 pub trait Router: pool_factory::PoolFactoryModule {
