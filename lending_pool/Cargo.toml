@@ -12,14 +12,24 @@ path = "src/lib.rs"
 wasm-output-mode = [ "elrond-wasm-node",]
 
 [dependencies.elrond-wasm]
-version = "0.14.0"
+version = "0.17.2"
 
 [dependencies.elrond-wasm-derive]
-version = "0.14.0"
+version = "0.17.2"
 
 [dependencies.elrond-wasm-node]
-version = "0.14.0"
+version = "0.17.2"
 optional = true
 
+[dependencies.liquidity-pool]
+path = "../liquidity_pool"
+
+[dependencies.router]
+path = "../router"
+
 [dev-dependencies.elrond-wasm-debug]
-version = "0.14.0"
+version = "0.17.2"
+
+[dependencies.elrond-wasm-output]
+version = "0.17.2"
+features = ["wasm-output-mode", "panic-message"]

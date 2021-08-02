@@ -21,3 +21,8 @@ fn test_deploy() {
 fn test() {
 	parse_execute_mandos("mandos/liquidity_pool-deposit.scen.json", &contract_map());
 }
+
+#[test]
+fn test_get_interest() {
+	parse_execute_mandos("mandos/liquidity_pool-get-interest.scen.json", &contract_map());
+}
