@@ -1,14 +1,11 @@
 elrond_wasm::imports!();
 
-
-use elrond_wasm::*;
-use elrond_wasm::storage::mappers::{SingleValueMapper, MapMapper};
-use elrond_wasm::types::{TokenIdentifier, BoxedBytes, Address};
-use crate::{DebtPosition, ReserveData, RepayPostion};
+use crate::{DebtPosition, RepayPostion, ReserveData};
+use elrond_wasm::storage::mappers::{MapMapper, SingleValueMapper};
+use elrond_wasm::types::{Address, BoxedBytes, TokenIdentifier};
 
 #[elrond_wasm_derive::module]
 pub trait StorageModule {
-
     /// pool asset
     #[storage_mapper("pool_asset")]
     fn pool_asset(&self) -> SingleValueMapper<Self::Storage, TokenIdentifier>;
@@ -53,7 +50,6 @@ pub trait StorageModule {
     #[storage_mapper("reserve_data")]
     fn reserve_data(&self) -> SingleValueMapper<Self::Storage, ReserveData<Self::BigUint>>;
 
-
     #[storage_mapper("healthFactorThreshold")]
     fn health_factor_threshold(&self) -> SingleValueMapper<Self::Storage, u32>;
 
@@ -67,20 +63,18 @@ pub trait StorageModule {
     #[storage_mapper("totalBorrow")]
     fn total_borrow(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
 
-
     #[storage_mapper("assetReserve")]
     fn asset_reserve(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
 
     #[storage_mapper("withdrawAmount")]
-    fn withdraw_amount(&self) ->SingleValueMapper<Self::Storage, Self::BigUint>;
+    fn withdraw_amount(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
 
     #[storage_mapper("repayPositionAmount")]
-    fn repay_position_amount(&self) -> SingleValueMapper< Self::Storage, Self::BigUint>;
+    fn repay_position_amount(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
 
     #[storage_mapper("repayPositionIdentifier")]
     fn repay_position_id(&self) -> SingleValueMapper<Self::Storage, TokenIdentifier>;
 
     #[storage_mapper("repayPositionNonce")]
     fn repay_position_nonce(&self) -> SingleValueMapper<Self::Storage, u64>;
-
 }

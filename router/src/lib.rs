@@ -5,7 +5,6 @@ elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
 mod pool_factory;
-use pool_factory::*;
 
 const LEND_TOKEN_PREFIX: &[u8] = b"L";
 const BORROW_TOKEN_PREFIX: &[u8] = b"B";
