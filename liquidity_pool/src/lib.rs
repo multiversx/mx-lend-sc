@@ -112,7 +112,7 @@ pub trait LiquidityPool:
         amount: Self::BigUint,
         interest_timestamp: u64,
     ) -> SCResult<()> {
-        self.mint_l_tokens(initial_caller, lend_token, amount, interest_timestamp);
+        self.mint_l_tokens(initial_caller, lend_token, amount, interest_timestamp)?;
         Ok(())
     }
 

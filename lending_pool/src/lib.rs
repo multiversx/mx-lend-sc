@@ -9,10 +9,8 @@ use elrond_wasm::*;
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-const ESDT_TRANSFER_STRING: &[u8] = b"ESDTNFTTransfer";
-
 #[elrond_wasm_derive::contract]
-pub trait LendingPool{
+pub trait LendingPool {
     #[init]
     fn init(&self) {}
 
@@ -24,7 +22,9 @@ pub trait LendingPool{
         #[payment_token] asset: TokenIdentifier,
         #[payment] amount: Self::BigUint,
     ) -> SCResult<()> {
-        let initial_caller = caller.into_option().unwrap_or_else(|| self.blockchain().get_caller());
+        let initial_caller = caller
+            .into_option()
+            .unwrap_or_else(|| self.blockchain().get_caller());
 
         require!(amount > 0, "amount must be greater than 0");
         require!(!initial_caller.is_zero(), "invalid address provided");
@@ -32,8 +32,10 @@ pub trait LendingPool{
         let pool_address = self.get_pool_address(asset.clone());
         require!(!pool_address.is_zero(), "invalid liquidity pool address");
 
-        Ok(self.liquidity_pool_proxy(pool_address).deposit_asset_endpoint(initial_caller, asset, amount)
-            .with_gas_limit(self.blockchain().get_gas_left()/2)
+        Ok(self
+            .liquidity_pool_proxy(pool_address)
+            .deposit_asset_endpoint(initial_caller, asset, amount)
+            .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context())
     }
 
@@ -42,13 +44,13 @@ pub trait LendingPool{
     fn withdraw(
         &self,
         #[payment] amount: Self::BigUint,
-        #[var_args] caller: OptionalArg<Address>
+        #[var_args] caller: OptionalArg<Address>,
     ) -> SCResult<()> {
-
         let lend_token = self.call_value().token();
-        let nft_nonce = self.call_value().esdt_token_nonce();
 
-        let initial_caller = caller.into_option().unwrap_or_else(|| self.blockchain().get_caller());
+        let initial_caller = caller
+            .into_option()
+            .unwrap_or_else(|| self.blockchain().get_caller());
 
         require!(amount > 0, "amount must be greater than 0");
         require!(!initial_caller.is_zero(), "invalid address provided");
@@ -56,8 +58,9 @@ pub trait LendingPool{
         let pool_address = self.get_pool_address(lend_token.clone());
         require!(!pool_address.is_zero(), "invalid liquidity pool address");
 
-        Ok(self.liquidity_pool_proxy(pool_address).withdraw_endpoint(initial_caller, lend_token, amount)
-            .with_gas_limit(self.blockchain().get_gas_left()/2)
+        Ok(self
+            .liquidity_pool_proxy(pool_address)
+            .withdraw_endpoint(initial_caller, lend_token, amount)
             .execute_on_dest_context())
     }
 
@@ -70,7 +73,9 @@ pub trait LendingPool{
         #[payment_token] borrow_token: TokenIdentifier,
         #[payment] amount: Self::BigUint,
     ) -> SCResult<()> {
-        let initial_caller = caller.into_option().unwrap_or_else(|| self.blockchain().get_caller());
+        let initial_caller = caller
+            .into_option()
+            .unwrap_or_else(|| self.blockchain().get_caller());
 
         require!(amount > 0, "amount must be greater than 0");
         require!(!initial_caller.is_zero(), "invalid address provided");
@@ -86,16 +91,16 @@ pub trait LendingPool{
 
         let mut args = ArgBuffer::new();
         args.push_argument_bytes(initial_caller.as_bytes());
-         
+
         self.send().direct_esdt_nft_execute(
             &asset_address,
             &borrow_token,
             nft_nonce,
             &amount,
-            self.blockchain().get_gas_left()/2,
+            self.blockchain().get_gas_left() / 2,
             b"lockBTokens",
-            &args
-        );
+            &args,
+        )?;
 
         Ok(())
     }
@@ -119,8 +124,10 @@ pub trait LendingPool{
 
         let asset_address = self.get_pool_address(asset.clone());
 
-        let results = self.liquidity_pool_proxy(asset_address).repay_endpoint(repay_unique_id, asset, amount)
-            .with_gas_limit(self.blockchain().get_gas_left()/2)
+        let results = self
+            .liquidity_pool_proxy(asset_address)
+            .repay_endpoint(repay_unique_id, asset, amount)
+            .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context();
 
         let collateral_token_address = self.get_pool_address(results.collateral_identifier.clone());
@@ -130,9 +137,15 @@ pub trait LendingPool{
             "asset is not supported"
         );
 
-       Ok(self.liquidity_pool_proxy(collateral_token_address)
-            .mint_l_tokens_endpoint(caller,results.collateral_identifier, results.amount, results.collateral_timestamp)
-            .with_gas_limit(self.blockchain().get_gas_left()/2)
+        Ok(self
+            .liquidity_pool_proxy(collateral_token_address)
+            .mint_l_tokens_endpoint(
+                caller,
+                results.collateral_identifier,
+                results.amount,
+                results.collateral_timestamp,
+            )
+            .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context())
     }
 
@@ -155,27 +168,32 @@ pub trait LendingPool{
 
         let asset_address = self.get_pool_address(asset.clone());
 
-        let results = self.liquidity_pool_proxy(asset_address)
+        let results = self
+            .liquidity_pool_proxy(asset_address)
             .liquidate_endpoint(liquidate_unique_id, asset, amount)
-            .with_gas_limit(self.blockchain().get_gas_left()/2)
+            .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context();
-
 
         let collateral_token_address = self.get_pool_address(results.collateral_token.clone());
 
         self.set_token_identifier_liq(results.collateral_token.clone());
         self.set_token_amount_liq(results.amount.clone());
-       
+
         require!(
             collateral_token_address != Address::zero(),
             "asset is not supported"
         );
 
         self.liquidity_pool_proxy(collateral_token_address)
-            .mint_l_tokens_endpoint(caller, results.collateral_token, results.amount, self.blockchain().get_block_timestamp())
-            .with_gas_limit(self.blockchain().get_gas_left()/2)
+            .mint_l_tokens_endpoint(
+                caller,
+                results.collateral_token,
+                results.amount,
+                self.blockchain().get_block_timestamp(),
+            )
+            .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context();
-        
+
         Ok(())
     }
 
@@ -189,7 +207,9 @@ pub trait LendingPool{
         #[payment_token] asset_collateral_lend_token: TokenIdentifier,
         #[payment] amount: Self::BigUint,
     ) -> SCResult<()> {
-        let initial_caller = caller.into_option().unwrap_or_else(|| self.blockchain().get_caller());
+        let initial_caller = caller
+            .into_option()
+            .unwrap_or_else(|| self.blockchain().get_caller());
 
         require!(amount > 0, "amount must be greater than 0");
         require!(!initial_caller.is_zero(), "invalid address provided");
@@ -239,9 +259,14 @@ pub trait LendingPool{
             }
         }
 
-       self.liquidity_pool_proxy(borrow_token_pool_address)
-            .borrow_endpoint(initial_caller.clone(), asset_collateral_lend_token.clone(), amount.clone(), metadata.timestamp)
-            .with_gas_limit(self.blockchain().get_gas_left()/2)
+        self.liquidity_pool_proxy(borrow_token_pool_address)
+            .borrow_endpoint(
+                initial_caller.clone(),
+                asset_collateral_lend_token.clone(),
+                amount.clone(),
+                metadata.timestamp,
+            )
+            .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context();
 
         let mut args_burn_lend = ArgBuffer::new();
@@ -252,10 +277,10 @@ pub trait LendingPool{
             &asset_collateral_lend_token,
             nft_nonce,
             &amount,
-            self.blockchain().get_gas_left()/2,
+            self.blockchain().get_gas_left() / 2,
             b"burnLendTokens",
-            &args_burn_lend
-        );
+            &args_burn_lend,
+        )?;
 
         Ok(())
     }
@@ -267,15 +292,15 @@ pub trait LendingPool{
         Ok(())
     }
 
-
     /// UTILS
 
     fn get_pool_address(&self, asset: TokenIdentifier) -> Address {
         if !self.pools_map().contains_key(&asset) {
             let router_address = self.router().get();
-            let pool_address = self.router_proxy(router_address)
+            let pool_address = self
+                .router_proxy(router_address)
                 .get_pool_address(asset.clone())
-                .with_gas_limit(self.blockchain().get_gas_left()/2)
+                .with_gas_limit(self.blockchain().get_gas_left() / 2)
                 .execute_on_dest_context();
 
             self.pools_map().insert(asset, pool_address.clone());
@@ -287,8 +312,8 @@ pub trait LendingPool{
     #[endpoint(setTickerAfterIssue)]
     fn set_ticker_after_issue(&self, token_ticker: TokenIdentifier) -> SCResult<()> {
         let caller = self.blockchain().get_caller();
-       // let is_pool_allowed = self.pools_allowed().get(&caller).unwrap_or_default();
-       // require!(is_pool_allowed, "access restricted: unknown caller address");
+        // let is_pool_allowed = self.pools_allowed().get(&caller).unwrap_or_default();
+        // require!(is_pool_allowed, "access restricted: unknown caller address");
         require!(!token_ticker.is_egld(), "invalid ticker provided");
         self.pools_map().insert(token_ticker, caller);
         Ok(())

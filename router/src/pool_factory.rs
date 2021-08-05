@@ -25,13 +25,15 @@ pub trait PoolFactoryModule {
         arg_buffer.push_argument_bytes(u_optimal.to_bytes_be().as_slice());
         arg_buffer.push_argument_bytes(reserve_factor.to_bytes_be().as_slice());
 
-        self.send().deploy_contract(
-            self.blockchain().get_gas_left(),
-            &amount,
-            bytecode,
-            code_metadata,
-            &arg_buffer,
-        )
+        self.send()
+            .deploy_contract(
+                self.blockchain().get_gas_left(),
+                &amount,
+                bytecode,
+                code_metadata,
+                &arg_buffer,
+            )
+            .unwrap_or(Address::zero())
     }
 
     // can be implemented when upgrade is available in elrond-wasm
