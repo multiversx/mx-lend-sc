@@ -38,7 +38,7 @@ pub trait TokensModule: crate::storage::StorageModule + crate::utils::UtilsModul
         let nonce = self
             .blockchain().get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &lend_token);
 
-        self.send().direct_nft(
+        self.send().direct(
             &initial_caller,
             &lend_token,
             nonce,
@@ -70,7 +70,7 @@ pub trait TokensModule: crate::storage::StorageModule + crate::utils::UtilsModul
 
         let nft_nonce = self.blockchain().get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &lend_token);
 
-        self.burn(amount.clone(), nft_nonce, lend_token);
+        self.burn(amount, nft_nonce, lend_token);
 
 
         Ok(())
@@ -163,7 +163,7 @@ pub trait TokensModule: crate::storage::StorageModule + crate::utils::UtilsModul
             &BoxedBytes::empty(),
             &metadata,
             &[BoxedBytes::empty()],
-        )
+        );
     }
 
     fn mint_debt(&self, amount: Self::BigUint, metadata: DebtMetadata<Self::BigUint>, position_id: H256) {
@@ -179,7 +179,7 @@ pub trait TokensModule: crate::storage::StorageModule + crate::utils::UtilsModul
     }
 
     fn burn(&self, amount: Self::BigUint, nonce: u64, ticker: TokenIdentifier) {
-        self.send().esdt_nft_burn(
+        self.send().esdt_local_burn(
             &ticker,
             nonce,
             &amount,

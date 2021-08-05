@@ -1,7 +1,7 @@
 #![no_std]
+#![allow(clippy::too_many_arguments)]
 
 pub mod library;
-
 
 pub use library::*;
 
@@ -9,28 +9,21 @@ pub mod models;
 pub use models::*;
 
 mod tokens;
-use tokens::*;
 
 mod storage;
-use storage::*;
 
 mod liquidity_pool;
 mod utils;
 
-use liquidity_pool::*;
-use utils::*;
-
 elrond_wasm::imports!();
 
+use elrond_wasm::types::{
+    Address, AsyncCall, BoxedBytes, EsdtLocalRole, MultiArgVec, MultiResultVec, SCResult,
+    TokenIdentifier, VarArgs, H256,
+};
 use elrond_wasm::*;
-use elrond_wasm::types::{TokenIdentifier, Address, SCResult, H256, VarArgs, EsdtLocalRole, AsyncCall, BoxedBytes,  OptionalArg, MultiResultVec, MultiArgVec};
-
-
-
 
 elrond_wasm::derive_imports!();
-
-const ESDT_ISSUE_COST: u64 = 5000000000000000000;
 
 const LEND_TOKEN_PREFIX: &[u8] = b"L";
 const BORROW_TOKEN_PREFIX: &[u8] = b"B";
@@ -43,8 +36,8 @@ pub trait LiquidityPool:
     + tokens::TokensModule
     + library::LibraryModule
     + liquidity_pool::LiquidityPoolModule
-    + utils::UtilsModule {
-
+    + utils::UtilsModule
+{
     #[init]
     fn init(
         &self,
@@ -76,7 +69,7 @@ pub trait LiquidityPool:
         #[payment_token] asset: TokenIdentifier,
         #[payment] amount: Self::BigUint,
     ) -> SCResult<()> {
-       self.deposit_asset(initial_caller, asset, amount)
+        self.deposit_asset(initial_caller, asset, amount)
     }
 
     #[endpoint(borrow)]
@@ -98,7 +91,7 @@ pub trait LiquidityPool:
         #[payment_token] borrow_token: TokenIdentifier,
         #[payment] amount: Self::BigUint,
     ) -> SCResult<H256> {
-       self.lock_b_tokens(initial_caller, borrow_token, amount)
+        self.lock_b_tokens(initial_caller, borrow_token, amount)
     }
 
     #[payable("*")]
@@ -120,20 +113,19 @@ pub trait LiquidityPool:
         amount: Self::BigUint,
         interest_timestamp: u64,
     ) -> SCResult<()> {
-        self.mint_l_tokens(initial_caller, lend_token,amount,interest_timestamp);
+        self.mint_l_tokens(initial_caller, lend_token, amount, interest_timestamp)?;
         Ok(())
     }
-
 
     #[payable("*")]
     #[endpoint(burnLendTokens)]
     fn burn_l_tokens_endpoint(
         &self,
         initial_caller: Address,
-        #[payment_token]lend_token: TokenIdentifier,
-        #[payment]amount: Self::BigUint,
+        #[payment_token] lend_token: TokenIdentifier,
+        #[payment] amount: Self::BigUint,
     ) -> SCResult<()> {
-        self.burn_l_tokens(initial_caller,lend_token,amount)
+        self.burn_l_tokens(initial_caller, lend_token, amount)
     }
 
     #[payable("*")]
@@ -186,29 +178,29 @@ pub trait LiquidityPool:
         self.set_borrow_token_roles(roles)
     }
 
-
     /// VIEWS
 
     #[view(repayPositionsIds)]
     fn get_repay_positions_ids(&self) -> MultiResultVec<BoxedBytes> {
         let mut result = MultiArgVec::new();
-        for (key,_) in self.repay_position().iter() {
-            result.push(key.into());
+        for (key, _) in self.repay_position().iter() {
+            result.push(key);
         }
         result
     }
 
-
     #[view(repayPosition)]
-    fn view_repay_position(&self, position_id: BoxedBytes) -> SCResult<RepayPostion<Self::BigUint>> {
-        return Ok(self.repay_position().get(&position_id).unwrap())
+    fn view_repay_position(
+        &self,
+        position_id: BoxedBytes,
+    ) -> SCResult<RepayPostion<Self::BigUint>> {
+        Ok(self.repay_position().get(&position_id).unwrap())
     }
 
     #[view(debtPosition)]
     fn view_debt_position(&self, position_id: BoxedBytes) -> SCResult<DebtPosition<Self::BigUint>> {
-        return Ok(self.debt_positions().get(&position_id).unwrap())
+        Ok(self.debt_positions().get(&position_id).unwrap())
     }
-
 
     #[view(getBorrowRate)]
     fn view_borrow_rate(&self) -> Self::BigUint {
@@ -227,9 +219,8 @@ pub trait LiquidityPool:
 
     #[view(getPositionInterest)]
     fn get_debt_position_interest(&self, position_id: BoxedBytes) -> Self::BigUint {
-        let mut debt_position = self.debt_positions().get(&position_id).unwrap_or_default();
-        let interest = self.get_debt_interest(debt_position.size.clone(), debt_position.timestamp);
-        return interest;
+        let debt_position = self.debt_positions().get(&position_id).unwrap_or_default();
+        self.get_debt_interest(debt_position.size.clone(), debt_position.timestamp)
     }
 
     #[view(getCapitalUtilisation)]
@@ -259,51 +250,50 @@ pub trait LiquidityPool:
         self.borrow_token().get()
     }
 
-
     /// health factor threshold
     #[endpoint(setHealthFactorThreshold)]
     fn endpoint_health_factor_threshold(&self, health_factor_threashdol: u32) {
-        self.health_factor_threshold().set(&health_factor_threashdol);
+        self.health_factor_threshold()
+            .set(&health_factor_threashdol);
     }
 
     #[view(healthFactorThreshold)]
-    fn view_health_factor_threshold(&self) -> u32{
+    fn view_health_factor_threshold(&self) -> u32 {
         self.health_factor_threshold().get()
     }
 
     #[view(getLendingPool)]
-    fn view_lending_pool(&self) -> Address{
+    fn view_lending_pool(&self) -> Address {
         self.lending_pool().get()
     }
 
     #[view(totalBorrow)]
-    fn view_total_borrow(&self) -> Self::BigUint{
+    fn view_total_borrow(&self) -> Self::BigUint {
         self.total_borrow().get()
     }
 
     #[view(assetReserve)]
-    fn view_asset_reserve(&self) -> Self::BigUint{
+    fn view_asset_reserve(&self) -> Self::BigUint {
         self.asset_reserve().get()
     }
 
     #[view(withdrawAmount)]
-    fn view_withdraw_amount(&self) -> Self::BigUint{
+    fn view_withdraw_amount(&self) -> Self::BigUint {
         self.withdraw_amount().get()
     }
 
     #[view(repayPositionAmount)]
-    fn view_repay_position_amount(&self) -> Self::BigUint{
+    fn view_repay_position_amount(&self) -> Self::BigUint {
         self.repay_position_amount().get()
     }
 
     #[view(repayPositionIdentifier)]
-    fn view_repay_position_id(&self) -> TokenIdentifier{
+    fn view_repay_position_id(&self) -> TokenIdentifier {
         self.repay_position_id().get()
     }
 
     #[view(repayPositionNonce)]
-    fn view_repay_position_nonce(&self) -> u64{
+    fn view_repay_position_nonce(&self) -> u64 {
         self.repay_position_nonce().get()
     }
-    
 }

@@ -1,19 +1,17 @@
 #![no_std]
 #![allow(unused_attributes)]
 
-use elrond_wasm::{only_owner, require};
-
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
 mod model;
-use model::{DepositMetadata};
-use model::{SECONDS_PER_YEAR,BP,ESDT_ISSUE_COST};
+use model::DepositMetadata;
+use model::{BP, ESDT_ISSUE_COST, SECONDS_PER_YEAR};
 
-#[elrond_wasm_derive::contract(SafetyModuleImpl)]
+#[elrond_wasm::contract]
 pub trait SafetyModule {
     #[init]
-    fn init(&self, wegld_token: TokenIdentifier, depositors_apy: BigUint) {
+    fn init(&self, wegld_token: TokenIdentifier, depositors_apy: Self::BigUint) {
         self.wegld_token().set(&wegld_token);
         self.deposit_apy().set(&depositors_apy);
     }
@@ -41,32 +39,30 @@ pub trait SafetyModule {
     fn fund(
         self,
         #[payment_token] token: TokenIdentifier,
-        #[payment] payment: BigUint,
-        #[var_args] caller: OptionalArg<Address>
+        #[payment] payment: Self::BigUint,
+        #[var_args] caller: OptionalArg<Address>,
     ) -> SCResult<()> {
         require!(payment > 0, "amount must be greater than 0");
         require!(token == self.wegld_token().get(), "invalid token");
 
-        let caller_address = caller.into_option().unwrap_or(self.get_caller());
+        let caller_address = caller
+            .into_option()
+            .unwrap_or_else(|| self.blockchain().get_caller());
 
         let deposit_metadata = DepositMetadata {
-            timestamp: self.get_block_timestamp(),
+            timestamp: self.blockchain().get_block_timestamp(),
         };
 
         self.mint_deposit_nft(&deposit_metadata, payment.clone());
 
         let nft_token = self.nft_token().get();
 
-        let nonce =
-            self.get_current_esdt_nft_nonce(&self.get_sc_address(), nft_token.as_esdt_identifier());
+        let nonce = self
+            .blockchain()
+            .get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &nft_token);
 
-        self.send().direct_esdt_nft_via_transfer_exec(
-            &caller_address,
-            &nft_token.as_esdt_identifier(),
-            nonce,
-            &payment,
-            &[],
-        );
+        self.send()
+            .direct(&caller_address, &nft_token, nonce, &payment, &[]);
 
         Ok(())
     }
@@ -75,19 +71,16 @@ pub trait SafetyModule {
     #[endpoint(nftIssue)]
     fn nft_issue(
         &self,
-        #[payment] issue_cost: BigUint,
+        #[payment] issue_cost: Self::BigUint,
         token_display_name: BoxedBytes,
         token_ticker: BoxedBytes,
-    ) -> SCResult<AsyncCall<BigUint>> {
-        let caller = self.get_caller();
+    ) -> SCResult<AsyncCall<Self::SendApi>> {
+        let caller = self.blockchain().get_caller();
 
         only_owner!(self, "only owner can issue new tokens");
-        require!(
-            issue_cost == BigUint::from(ESDT_ISSUE_COST),
-            "wrong ESDT asset identifier"
-        );
+        require!(issue_cost == ESDT_ISSUE_COST, "wrong ESDT asset identifier");
 
-        Ok(ESDTSystemSmartContractProxy::new()
+        Ok(ESDTSystemSmartContractProxy::new_proxy_obj(self.send())
             .issue_semi_fungible(
                 issue_cost,
                 &token_display_name,
@@ -133,7 +126,7 @@ pub trait SafetyModule {
     fn fund_from_pool(
         &self,
         #[payment_token] token: TokenIdentifier,
-        #[payment] payment: BigUint,
+        #[payment] payment: Self::BigUint,
     ) -> SCResult<()> {
         require!(payment > 0, "amount must be greater than 0");
 
@@ -143,10 +136,10 @@ pub trait SafetyModule {
     }
 
     #[endpoint(takeFunds)]
-    fn take_funds(&self, pool_token: TokenIdentifier, amount: BigUint) -> SCResult<()> {
+    fn take_funds(&self, pool_token: TokenIdentifier, amount: Self::BigUint) -> SCResult<()> {
         require!(amount > 0, "amount must be greater than 0");
 
-        let caller_address = self.get_caller();
+        let caller_address = self.blockchain().get_caller();
 
         require!(
             !self.pools(pool_token.clone()).is_empty(),
@@ -159,34 +152,36 @@ pub trait SafetyModule {
 
         self.convert_wegld(pool_token.clone(), amount.clone());
 
-        self.send().direct(
+        self.send().direct_esdt_execute(
             &caller_address,
             &pool_token,
             &amount,
-            b"successful transfer",
-        );
+            self.blockchain().get_gas_left(),
+            &[],
+            &ArgBuffer::new(),
+        )?;
 
         Ok(())
     }
 
     #[payable("*")]
     #[endpoint(withdraw)]
-    fn withdraw(&self, #[payment] amount: BigUint) -> SCResult<BigUint> {
-        let caller_address = self.get_caller();
-        let nft_type = self.call_value().token();
+    fn withdraw(&self, #[payment] amount: Self::BigUint) -> SCResult<Self::BigUint> {
+        let caller_address = self.blockchain().get_caller();
+        let token_id = self.call_value().token();
         let nft_nonce = self.call_value().esdt_token_nonce();
 
         require!(amount > 0, "amount must be greater than 0");
-        require!(nft_type == self.nft_token().get(), "invalid token");
+        require!(token_id == self.nft_token().get(), "invalid token");
 
-        let nft_info = self.get_esdt_token_data(
-            &self.get_sc_address(),
-            nft_type.as_esdt_identifier(),
+        let nft_info = self.blockchain().get_esdt_token_data(
+            &self.blockchain().get_sc_address(),
+            &token_id,
             nft_nonce,
         );
 
         let nft_metadata: DepositMetadata;
-        match DepositMetadata::top_decode(nft_info.attributes.clone().as_slice()) {
+        match DepositMetadata::top_decode(nft_info.attributes.as_slice()) {
             Result::Ok(decoded) => {
                 nft_metadata = decoded;
             }
@@ -197,16 +192,16 @@ pub trait SafetyModule {
             }
         }
 
-        let time_in_pool = self.get_block_timestamp() - nft_metadata.timestamp;
+        let time_in_pool = self.blockchain().get_block_timestamp() - nft_metadata.timestamp;
 
         require!(time_in_pool > 0, "invalid timestamp");
 
         let withdraw_amount =
-            self.calculate_amount_for_withdrawal(amount.clone(), BigUint::from(time_in_pool));
+            self.calculate_amount_for_withdrawal(amount.clone(), Self::BigUint::from(time_in_pool));
 
-        let contract_balance = self.get_esdt_balance(
-            &self.get_sc_address(),
-            self.wegld_token().get().as_esdt_identifier(),
+        let contract_balance = self.blockchain().get_esdt_balance(
+            &self.blockchain().get_sc_address(),
+            &self.wegld_token().get(),
             0,
         );
 
@@ -215,14 +210,17 @@ pub trait SafetyModule {
             "the amount withdrawn is too high"
         );
 
-        self.nft_burn(nft_type, nft_nonce, amount.clone());
+        self.nft_burn(token_id, nft_nonce, amount);
 
-        self.send().direct(
+        self.send().direct_esdt_execute(
             &caller_address,
             &self.wegld_token().get(),
             &withdraw_amount,
-            b"successful withdrawal",
-        );
+            self.blockchain().get_gas_left(),
+            &[],
+            &ArgBuffer::new(),
+        )?;
+
         Ok(withdraw_amount)
     }
 
@@ -230,7 +228,7 @@ pub trait SafetyModule {
     fn set_local_roles_nft_token(
         &self,
         #[var_args] roles: VarArgs<EsdtLocalRole>,
-    ) -> SCResult<AsyncCall<BigUint>> {
+    ) -> SCResult<AsyncCall<Self::SendApi>> {
         only_owner!(self, "Permission denied");
         if self.nft_token().is_empty() {
             return sc_error!("No nft token issued");
@@ -256,51 +254,49 @@ pub trait SafetyModule {
         &self,
         token: TokenIdentifier,
         #[var_args] roles: VarArgs<EsdtLocalRole>,
-    ) -> AsyncCall<BigUint> {
-        ESDTSystemSmartContractProxy::new()
+    ) -> AsyncCall<Self::SendApi> {
+        ESDTSystemSmartContractProxy::new_proxy_obj(self.send())
             .set_special_roles(
-                &self.get_sc_address(),
-                token.as_esdt_identifier(),
+                &self.blockchain().get_sc_address(),
+                &token,
                 roles.as_slice(),
             )
             .async_call()
             .with_callback(self.callbacks().change_roles_callback())
     }
 
-    fn calculate_amount_for_withdrawal(self, deposit_amount: BigUint, time: BigUint) -> BigUint {
-        let percent = (time * self.deposit_apy().get()) / BigUint::from(SECONDS_PER_YEAR);
+    fn calculate_amount_for_withdrawal(
+        self,
+        deposit_amount: Self::BigUint,
+        time: Self::BigUint,
+    ) -> Self::BigUint {
+        let percent = (time * self.deposit_apy().get()) / Self::BigUint::from(SECONDS_PER_YEAR);
 
-        return deposit_amount.clone()
-            + ((percent.clone() * deposit_amount.clone()) / BigUint::from(BP));
+        deposit_amount.clone() + ((percent * deposit_amount) / Self::BigUint::from(BP))
     }
 
-    fn nft_burn(&self, token_identifier: TokenIdentifier, nonce: u64, amount: BigUint) {
-        self.send().esdt_nft_burn(
-            self.get_gas_left(),
-            token_identifier.as_esdt_identifier(),
-            nonce,
+    fn nft_burn(&self, token_identifier: TokenIdentifier, nonce: u64, amount: Self::BigUint) {
+        self.send()
+            .esdt_local_burn(&token_identifier, nonce, &amount);
+    }
+
+    fn mint_deposit_nft(self, deposit_metadata: &DepositMetadata, amount: Self::BigUint) {
+        self.send().esdt_nft_create::<DepositMetadata>(
+            &self.nft_token().get(),
             &amount,
+            &BoxedBytes::empty(),
+            &Self::BigUint::zero(),
+            &BoxedBytes::empty(),
+            deposit_metadata,
+            &[BoxedBytes::empty()],
         );
     }
 
-    fn mint_deposit_nft(self, deposit_metadata: &DepositMetadata, amount: BigUint) {
-        self.send().esdt_nft_create::<DepositMetadata>(
-            self.get_gas_left(),
-            self.nft_token().get().as_esdt_identifier(),
-            &amount,
-            &BoxedBytes::empty(),
-            &BigUint::zero(),
-            &H256::zero(),
-            deposit_metadata,
-            &[BoxedBytes::empty()],
-        )
-    }
-
-    fn convert_wegld(&self, _pool_token: TokenIdentifier, _amount: BigUint) {
+    fn convert_wegld(&self, _pool_token: TokenIdentifier, _amount: Self::BigUint) {
         //TODO:  integration with dex
     }
 
-    fn convert_to_wegld(&self, _pool_token: TokenIdentifier, _amount: BigUint) {
+    fn convert_to_wegld(&self, _pool_token: TokenIdentifier, _amount: Self::BigUint) {
         //TODO:  integration with dex
     }
 
@@ -315,7 +311,7 @@ pub trait SafetyModule {
 
     #[view]
     #[storage_mapper("deposit_apy")]
-    fn deposit_apy(&self) -> SingleValueMapper<Self::Storage, BigUint>;
+    fn deposit_apy(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
 
     #[view(nftToken)]
     #[storage_mapper("nftToken")]

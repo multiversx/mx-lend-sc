@@ -1,11 +1,15 @@
 elrond_wasm::imports!();
+use crate::{DebtMetadata, DebtPosition, InterestMetadata, LiquidateData, RepayPostion};
+use elrond_wasm::types::{Address, BoxedBytes, SCResult, TokenIdentifier, H256};
 use elrond_wasm::*;
-use elrond_wasm::types::{Address, TokenIdentifier, SCResult, H256, BoxedBytes};
-use crate::{InterestMetadata, DebtMetadata, DebtPosition, RepayPostion, LiquidateData};
 
 #[elrond_wasm_derive::module]
-pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::TokensModule + crate::utils::UtilsModule + crate::library::LibraryModule{
-
+pub trait LiquidityPoolModule:
+    crate::storage::StorageModule
+    + crate::tokens::TokensModule
+    + crate::utils::UtilsModule
+    + crate::library::LibraryModule
+{
     fn deposit_asset(
         &self,
         initial_caller: Address,
@@ -30,15 +34,11 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
 
         let lend_token = self.lend_token().get();
         let nonce = self
-            .blockchain().get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &lend_token);
+            .blockchain()
+            .get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &lend_token);
 
-        self.send().direct_nft(
-            &initial_caller,
-            &lend_token,
-            nonce,
-            &amount,
-            &[],
-        );
+        self.send()
+            .direct(&initial_caller, &lend_token, nonce, &amount, &[]);
 
         let mut asset_reserve = self
             .reserves()
@@ -50,7 +50,6 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
         Ok(())
     }
 
-   
     fn borrow(
         &self,
         initial_caller: Address,
@@ -72,9 +71,15 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
             .reserves()
             .get(&borrows_token)
             .unwrap_or_else(Self::BigUint::zero);
-        let mut asset_reserve = self.reserves().get(&asset).unwrap_or_else(Self::BigUint::zero);
+        let mut asset_reserve = self
+            .reserves()
+            .get(&asset)
+            .unwrap_or_else(Self::BigUint::zero);
 
-        require!(asset_reserve != Self::BigUint::zero(), "asset reserve is empty");
+        require!(
+            asset_reserve != Self::BigUint::zero(),
+            "asset reserve is empty"
+        );
 
         let position_id = self.get_nft_hash();
         let debt_metadata = DebtMetadata {
@@ -87,21 +92,17 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
         self.mint_debt(amount.clone(), debt_metadata.clone(), position_id.clone());
 
         let nonce = self
-            .blockchain().get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &borrows_token);
+            .blockchain()
+            .get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &borrows_token);
 
         // send debt position tokens
 
-        self.send().direct_nft(
-            &initial_caller,
-            &borrows_token,
-            nonce,
-            &amount,
-            &[],
-        );
+        self.send()
+            .direct(&initial_caller, &borrows_token, nonce, &amount, &[]);
 
         // send collateral requested to the user
 
-        self.send().direct(&initial_caller, &asset, &amount, &[]);
+        // self.send().direct(&initial_caller, &asset, &amount, &[]);
 
         borrows_reserve += amount.clone();
         asset_reserve -= amount.clone();
@@ -122,12 +123,12 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
             collateral_amount: amount,
             collateral_identifier: lend_token,
         };
-        self.debt_positions().insert(position_id.into_boxed_bytes(), debt_position);
+        self.debt_positions()
+            .insert(position_id.into_boxed_bytes(), debt_position);
 
         Ok(())
     }
 
-   
     fn lock_b_tokens(
         &self,
         initial_caller: Address,
@@ -198,7 +199,6 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
         Ok(unique_repay_id)
     }
 
-  
     fn repay(
         &self,
         unique_id: BoxedBytes,
@@ -219,7 +219,8 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
             self.repay_position().contains_key(&unique_id),
             "there are no locked borrowed token for this id, lock b tokens first"
         );
-        let mut repay_position:RepayPostion<Self::BigUint> = self.repay_position().get(&unique_id).unwrap_or_default();
+        let mut repay_position: RepayPostion<Self::BigUint> =
+            self.repay_position().get(&unique_id).unwrap_or_default();
 
         require!(
             repay_position.amount >= amount,
@@ -258,9 +259,11 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
                 .insert(unique_id, repay_position.clone());
         }
 
-        self.repay_position_amount().set(&amount.clone());
-        self.repay_position_id().set(&repay_position.identifier.clone());
-        self.repay_position_nonce().set(&repay_position.nonce.clone());
+        self.repay_position_amount().set(&amount);
+        self.repay_position_id()
+            .set(&repay_position.identifier);
+        self.repay_position_nonce()
+            .set(&repay_position.nonce);
 
         /*self.burn(
             amount.clone(),
@@ -272,7 +275,6 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
 
         Ok(repay_position)
     }
-
 
     fn withdraw(
         &self,
@@ -302,7 +304,7 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
             nft_nonce,
         );
         let metadata: InterestMetadata;
-        match InterestMetadata::top_decode(nft_info.attributes.clone().as_slice()) {
+        match InterestMetadata::top_decode(nft_info.attributes.as_slice()) {
             Result::Ok(decoded) => {
                 metadata = decoded;
             }
@@ -312,19 +314,23 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
         }
 
         let deposit_rate = self.get_deposit_rate();
-        let time_diff = Self::BigUint::from(self.blockchain().get_block_timestamp() - metadata.timestamp);
-        let withdrawal_amount = self.compute_withdrawal_amount(
-            amount.clone(),
-            time_diff,
-            deposit_rate,
-        );
+        let time_diff =
+            Self::BigUint::from(self.blockchain().get_block_timestamp() - metadata.timestamp);
+        let withdrawal_amount =
+            self.compute_withdrawal_amount(amount.clone(), time_diff, deposit_rate);
 
-        self.asset_reserve().set(&asset_reserve.clone());
-        self.withdraw_amount().set(&withdrawal_amount.clone());
+        self.asset_reserve().set(&asset_reserve);
+        self.withdraw_amount().set(&withdrawal_amount);
         //require!(asset_reserve > withdrawal_amount, "insufficient funds");
 
-        self.send()
-            .direct(&initial_caller, &pool_asset, &withdrawal_amount, &[]);
+        self.send().direct_esdt_execute(
+            &initial_caller,
+            &pool_asset,
+            &amount,
+            self.blockchain().get_gas_left(),
+            &[],
+            &ArgBuffer::new(),
+        )?;
 
         self.burn(amount.clone(), nft_nonce, lend_token);
 
@@ -333,8 +339,7 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
 
         Ok(())
     }
-
-
+    
     fn liquidate(
         &self,
         position_id: BoxedBytes,
@@ -380,10 +385,9 @@ pub trait LiquidityPoolModule: crate::storage::StorageModule + crate::tokens::To
 
         let liquidate_data = LiquidateData {
             collateral_token: debt_position.collateral_identifier,
-            amount : debt_position.size
+            amount: debt_position.size,
         };
 
         Ok(liquidate_data)
     }
-
 }
