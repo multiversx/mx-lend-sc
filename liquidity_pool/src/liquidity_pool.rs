@@ -259,11 +259,11 @@ pub trait LiquidityPoolModule:
                 .insert(unique_id, repay_position.clone());
         }
 
-        self.repay_position_amount().set(&amount.clone());
+        self.repay_position_amount().set(&amount);
         self.repay_position_id()
-            .set(&repay_position.identifier.clone());
+            .set(&repay_position.identifier);
         self.repay_position_nonce()
-            .set(&repay_position.nonce.clone());
+            .set(&repay_position.nonce);
 
         /*self.burn(
             amount.clone(),
@@ -304,7 +304,7 @@ pub trait LiquidityPoolModule:
             nft_nonce,
         );
         let metadata: InterestMetadata;
-        match InterestMetadata::top_decode(nft_info.attributes.clone().as_slice()) {
+        match InterestMetadata::top_decode(nft_info.attributes.as_slice()) {
             Result::Ok(decoded) => {
                 metadata = decoded;
             }
@@ -319,8 +319,8 @@ pub trait LiquidityPoolModule:
         let withdrawal_amount =
             self.compute_withdrawal_amount(amount.clone(), time_diff, deposit_rate);
 
-        self.asset_reserve().set(&asset_reserve.clone());
-        self.withdraw_amount().set(&withdrawal_amount.clone());
+        self.asset_reserve().set(&asset_reserve);
+        self.withdraw_amount().set(&withdrawal_amount);
         //require!(asset_reserve > withdrawal_amount, "insufficient funds");
 
         self.send().direct_esdt_execute(

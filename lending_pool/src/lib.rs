@@ -32,11 +32,11 @@ pub trait LendingPool {
         let pool_address = self.get_pool_address(asset.clone());
         require!(!pool_address.is_zero(), "invalid liquidity pool address");
 
-        Ok(self
-            .liquidity_pool_proxy(pool_address)
+        self.liquidity_pool_proxy(pool_address)
             .deposit_asset_endpoint(initial_caller, asset, amount)
-            .with_gas_limit(self.blockchain().get_gas_left() / 2)
-            .execute_on_dest_context())
+            .execute_on_dest_context();
+
+        Ok(())
     }
 
     #[payable("*")]
@@ -58,10 +58,11 @@ pub trait LendingPool {
         let pool_address = self.get_pool_address(lend_token.clone());
         require!(!pool_address.is_zero(), "invalid liquidity pool address");
 
-        Ok(self
-            .liquidity_pool_proxy(pool_address)
+        self.liquidity_pool_proxy(pool_address)
             .withdraw_endpoint(initial_caller, lend_token, amount)
-            .execute_on_dest_context())
+            .execute_on_dest_context();
+
+        Ok(())
     }
 
     #[payable("*")]
@@ -137,16 +138,16 @@ pub trait LendingPool {
             "asset is not supported"
         );
 
-        Ok(self
-            .liquidity_pool_proxy(collateral_token_address)
+        self.liquidity_pool_proxy(collateral_token_address)
             .mint_l_tokens_endpoint(
                 caller,
                 results.collateral_identifier,
                 results.amount,
                 results.collateral_timestamp,
             )
-            .with_gas_limit(self.blockchain().get_gas_left() / 2)
-            .execute_on_dest_context())
+            .execute_on_dest_context();
+
+        Ok(())
     }
 
     #[payable("*")]
@@ -306,7 +307,8 @@ pub trait LendingPool {
             self.pools_map().insert(asset, pool_address.clone());
             return pool_address;
         }
-        return self.pools_map().get(&asset).unwrap_or_else(Address::zero);
+
+        self.pools_map().get(&asset).unwrap_or_else(Address::zero)
     }
 
     #[endpoint(setTickerAfterIssue)]

@@ -1,5 +1,6 @@
 #![no_std]
 #![allow(non_snake_case)]
+#![allow(clippy::too_many_arguments)]
 
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
@@ -9,11 +10,8 @@ mod pool_factory;
 const LEND_TOKEN_PREFIX: &[u8] = b"L";
 const BORROW_TOKEN_PREFIX: &[u8] = b"B";
 
-const ISSUE_EXPECTED_GAS_COST: u64 = 150000000;
-
 #[elrond_wasm_derive::contract]
 pub trait Router: pool_factory::PoolFactoryModule {
-
     #[init]
     fn init(&self) {}
 
@@ -91,10 +89,16 @@ pub trait Router: pool_factory::PoolFactoryModule {
     ) -> SCResult<()> {
         only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&token_ticker).unwrap();
-        Ok(self.liquidity_pool_proxy(pool_address)
-            .issue_endpoint(plain_ticker, token_ticker, BoxedBytes::from(LEND_TOKEN_PREFIX), amount)
-            .with_gas_limit(ISSUE_EXPECTED_GAS_COST)
-            .execute_on_dest_context())
+        self.liquidity_pool_proxy(pool_address)
+            .issue_endpoint(
+                plain_ticker,
+                token_ticker,
+                BoxedBytes::from(LEND_TOKEN_PREFIX),
+                amount,
+            )
+            .execute_on_dest_context();
+
+        Ok(())
     }
 
     #[payable("EGLD")]
@@ -107,10 +111,16 @@ pub trait Router: pool_factory::PoolFactoryModule {
     ) -> SCResult<()> {
         only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&token_ticker).unwrap();
-        Ok(self.liquidity_pool_proxy(pool_address)
-            .issue_endpoint(plain_ticker, token_ticker, BoxedBytes::from(BORROW_TOKEN_PREFIX), amount)
-            .with_gas_limit(ISSUE_EXPECTED_GAS_COST)
-            .execute_on_dest_context())
+        self.liquidity_pool_proxy(pool_address)
+            .issue_endpoint(
+                plain_ticker,
+                token_ticker,
+                BoxedBytes::from(BORROW_TOKEN_PREFIX),
+                amount,
+            )
+            .execute_on_dest_context();
+
+        Ok(())
     }
 
     #[endpoint(setLendRoles)]
@@ -121,10 +131,11 @@ pub trait Router: pool_factory::PoolFactoryModule {
     ) -> SCResult<()> {
         only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&asset_ticker).unwrap();
-        Ok(self.liquidity_pool_proxy(pool_address)
+        self.liquidity_pool_proxy(pool_address)
             .set_lend_token_roles_endpoint(roles)
-            .with_gas_limit(ISSUE_EXPECTED_GAS_COST)
-            .execute_on_dest_context())
+            .execute_on_dest_context();
+
+        Ok(())
     }
 
     #[endpoint(setBorrowRoles)]
@@ -135,9 +146,11 @@ pub trait Router: pool_factory::PoolFactoryModule {
     ) -> SCResult<()> {
         only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&asset_ticker).unwrap();
-        Ok(self.liquidity_pool_proxy(pool_address).set_borrow_token_roles_endpoint(roles)
-            .with_gas_limit(ISSUE_EXPECTED_GAS_COST)
-            .execute_on_dest_context())
+        self.liquidity_pool_proxy(pool_address)
+            .set_borrow_token_roles_endpoint(roles)
+            .execute_on_dest_context();
+
+        Ok(())
     }
 
     #[endpoint(setTickerAfterIssue)]

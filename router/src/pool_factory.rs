@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 elrond_wasm::imports!();
 
 #[elrond_wasm_derive::module]
@@ -33,7 +35,7 @@ pub trait PoolFactoryModule {
                 code_metadata,
                 &arg_buffer,
             )
-            .unwrap_or(Address::zero())
+            .unwrap_or_else(Address::zero)
     }
 
     // can be implemented when upgrade is available in elrond-wasm

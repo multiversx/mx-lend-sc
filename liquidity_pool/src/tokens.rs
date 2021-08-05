@@ -70,7 +70,7 @@ pub trait TokensModule: crate::storage::StorageModule + crate::utils::UtilsModul
 
         let nft_nonce = self.blockchain().get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &lend_token);
 
-        self.burn(amount.clone(), nft_nonce, lend_token);
+        self.burn(amount, nft_nonce, lend_token);
 
 
         Ok(())

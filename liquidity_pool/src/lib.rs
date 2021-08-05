@@ -1,4 +1,5 @@
 #![no_std]
+#![allow(clippy::too_many_arguments)]
 
 pub mod library;
 
@@ -183,7 +184,7 @@ pub trait LiquidityPool:
     fn get_repay_positions_ids(&self) -> MultiResultVec<BoxedBytes> {
         let mut result = MultiArgVec::new();
         for (key, _) in self.repay_position().iter() {
-            result.push(key.into());
+            result.push(key);
         }
         result
     }
@@ -193,12 +194,12 @@ pub trait LiquidityPool:
         &self,
         position_id: BoxedBytes,
     ) -> SCResult<RepayPostion<Self::BigUint>> {
-        return Ok(self.repay_position().get(&position_id).unwrap());
+        Ok(self.repay_position().get(&position_id).unwrap())
     }
 
     #[view(debtPosition)]
     fn view_debt_position(&self, position_id: BoxedBytes) -> SCResult<DebtPosition<Self::BigUint>> {
-        return Ok(self.debt_positions().get(&position_id).unwrap());
+        Ok(self.debt_positions().get(&position_id).unwrap())
     }
 
     #[view(getBorrowRate)]
@@ -218,9 +219,8 @@ pub trait LiquidityPool:
 
     #[view(getPositionInterest)]
     fn get_debt_position_interest(&self, position_id: BoxedBytes) -> Self::BigUint {
-        let  debt_position = self.debt_positions().get(&position_id).unwrap_or_default();
-        let interest = self.get_debt_interest(debt_position.size.clone(), debt_position.timestamp);
-        return interest;
+        let debt_position = self.debt_positions().get(&position_id).unwrap_or_default();
+        self.get_debt_interest(debt_position.size.clone(), debt_position.timestamp)
     }
 
     #[view(getCapitalUtilisation)]

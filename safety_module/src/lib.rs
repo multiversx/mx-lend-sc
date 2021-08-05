@@ -47,7 +47,7 @@ pub trait SafetyModule {
 
         let caller_address = caller
             .into_option()
-            .unwrap_or(self.blockchain().get_caller());
+            .unwrap_or_else(|| self.blockchain().get_caller());
 
         let deposit_metadata = DepositMetadata {
             timestamp: self.blockchain().get_block_timestamp(),
@@ -78,10 +78,7 @@ pub trait SafetyModule {
         let caller = self.blockchain().get_caller();
 
         only_owner!(self, "only owner can issue new tokens");
-        require!(
-            issue_cost == Self::BigUint::from(ESDT_ISSUE_COST),
-            "wrong ESDT asset identifier"
-        );
+        require!(issue_cost == ESDT_ISSUE_COST, "wrong ESDT asset identifier");
 
         Ok(ESDTSystemSmartContractProxy::new_proxy_obj(self.send())
             .issue_semi_fungible(
@@ -184,7 +181,7 @@ pub trait SafetyModule {
         );
 
         let nft_metadata: DepositMetadata;
-        match DepositMetadata::top_decode(nft_info.attributes.clone().as_slice()) {
+        match DepositMetadata::top_decode(nft_info.attributes.as_slice()) {
             Result::Ok(decoded) => {
                 nft_metadata = decoded;
             }
@@ -213,7 +210,7 @@ pub trait SafetyModule {
             "the amount withdrawn is too high"
         );
 
-        self.nft_burn(token_id, nft_nonce, amount.clone());
+        self.nft_burn(token_id, nft_nonce, amount);
 
         self.send().direct_esdt_execute(
             &caller_address,
@@ -275,8 +272,7 @@ pub trait SafetyModule {
     ) -> Self::BigUint {
         let percent = (time * self.deposit_apy().get()) / Self::BigUint::from(SECONDS_PER_YEAR);
 
-        return deposit_amount.clone()
-            + ((percent.clone() * deposit_amount.clone()) / Self::BigUint::from(BP));
+        deposit_amount.clone() + ((percent * deposit_amount) / Self::BigUint::from(BP))
     }
 
     fn nft_burn(&self, token_identifier: TokenIdentifier, nonce: u64, amount: Self::BigUint) {
