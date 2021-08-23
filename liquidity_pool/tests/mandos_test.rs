@@ -1,14 +1,14 @@
 #[test]
-fn test_deploy() {
-    elrond_wasm_debug::mandos_go("mandos/liquidity_pool-init.scen.json");
+fn test_complete_setup() {
+    elrond_wasm_debug::mandos_go("mandos/complete_setup.scen.json");
 }
 
 #[test]
-fn test() {
-    elrond_wasm_debug::mandos_go("mandos/liquidity_pool-deposit.scen.json");
+fn test_deposit_withdraw() {
+    elrond_wasm_debug::mandos_go("mandos/deposit_withdraw.scen.json");
 }
 
 #[test]
-fn test_get_interest() {
-    elrond_wasm_debug::mandos_go("mandos/liquidity_pool-get-interest.scen.json");
+fn test_deposit() {
+    elrond_wasm_debug::mandos_go("mandos/deposit.scen.json");
 }

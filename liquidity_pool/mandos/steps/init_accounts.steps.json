@@ -1,0 +1,63 @@
+{
+	"name": "init accounts",
+	"steps": [
+		{
+			"step": "setState",
+			"accounts": {
+				"address:owner": {
+					"nonce": "0",
+					"balance": "1,000,000,000,000",
+					"esdt": {
+						"str:WBT-abcdef": "1,000,000,000,000"
+					},
+					"storage": {}
+				},
+				"address:user1": {
+					"nonce": "0",
+					"balance": "1,000,000,000,000",
+					"esdt": {
+						"str:WBT-abcdef": "1,000,000,000,000"
+					},
+					"storage": {}
+				},
+				"address:user2": {
+					"nonce": "0",
+					"balance": "1,000,000,000,000",
+					"esdt": {
+						"str:WBT-abcdef": "1,000,000,000,000"
+					},
+					"storage": {}
+				}
+			}
+		},
+		{
+			"step": "checkState",
+			"accounts": {
+				"address:owner": {
+					"nonce": "0",
+					"balance": "1,000,000,000,000",
+					"esdt": {
+						"str:WBT-abcdef": "1,000,000,000,000"
+					},
+					"storage": {}
+				},
+				"address:user1": {
+					"nonce": "0",
+					"balance": "1,000,000,000,000",
+					"esdt": {
+						"str:WBT-abcdef": "1,000,000,000,000"
+					},
+					"storage": {}
+				},
+				"address:user2": {
+					"nonce": "0",
+					"balance": "1,000,000,000,000",
+					"esdt": {
+						"str:WBT-abcdef": "1,000,000,000,000"
+					},
+					"storage": {}
+				}
+			}
+		}
+	]
+}
