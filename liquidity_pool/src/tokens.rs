@@ -12,8 +12,8 @@ pub trait TokensModule:
     fn mint_l_tokens(
         &self,
         initial_caller: Address,
-        lend_token: TokenIdentifier,
-        amount: Self::BigUint,
+        #[payment_token] lend_token: TokenIdentifier,
+        #[payment_amount] amount: Self::BigUint,
         interest_timestamp: u64,
     ) -> SCResult<()> {
         require!(
@@ -48,9 +48,9 @@ pub trait TokensModule:
     #[endpoint(burnLTokens)]
     fn burn_l_tokens(
         &self,
-        lend_token: TokenIdentifier,
-        token_nonce: u64,
-        amount: Self::BigUint,
+        #[payment_token] lend_token: TokenIdentifier,
+        #[payment_nonce] token_nonce: u64,
+        #[payment_amount] amount: Self::BigUint,
         initial_caller: Address,
     ) -> SCResult<()> {
         require!(
@@ -196,7 +196,8 @@ pub trait TokensModule:
                 let caller = self.blockchain().get_owner_address();
                 let (returned_tokens, token_id) = self.call_value().payment_token_pair();
                 if token_id.is_egld() && returned_tokens > 0 {
-                    self.send().direct_egld(&caller, &returned_tokens, &[]);
+                    self.send()
+                        .direct(&caller, &token_id, 0, &returned_tokens, &[]);
                 }
                 self.last_error().set(&message.err_msg);
             }

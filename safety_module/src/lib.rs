@@ -113,7 +113,8 @@ pub trait SafetyModule {
                 // return issue cost to the caller
                 let (returned_tokens, token_identifier) = self.call_value().payment_token_pair();
                 if token_identifier.is_egld() && returned_tokens > 0 {
-                    self.send().direct_egld(caller, &returned_tokens, &[]);
+                    self.send()
+                        .direct(&caller, &token_identifier, 0, &returned_tokens, &[]);
                 }
 
                 self.last_error_message().set(&message.err_msg);

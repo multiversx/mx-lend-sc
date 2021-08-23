@@ -128,6 +128,7 @@ pub trait LiquidityModule:
         &self,
         initial_caller: Address,
         #[payment_token] borrow_token: TokenIdentifier,
+        #[payment_nonce] token_nonce: u64,
         #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<H256> {
         require!(
@@ -142,12 +143,10 @@ pub trait LiquidityModule:
             "borrow token not supported by this pool"
         );
 
-        let nft_nonce = self.call_value().esdt_token_nonce();
-
         let esdt_nft_data = self.blockchain().get_esdt_token_data(
             &self.blockchain().get_sc_address(),
             &borrow_token,
-            nft_nonce,
+            token_nonce,
         );
 
         let debt_position_id = esdt_nft_data.hash.clone();
@@ -166,7 +165,7 @@ pub trait LiquidityModule:
         let data = [
             borrow_token.as_esdt_identifier(),
             amount.to_bytes_be().as_slice(),
-            &nft_nonce.to_be_bytes()[..],
+            &token_nonce.to_be_bytes()[..],
         ]
         .concat();
 
@@ -174,7 +173,7 @@ pub trait LiquidityModule:
         let repay_position = RepayPostion {
             identifier: borrow_token,
             amount,
-            nonce: nft_nonce,
+            nonce: token_nonce,
             borrow_timestamp: metadata.timestamp,
             collateral_identifier: metadata.collateral_identifier,
             collateral_amount: metadata.collateral_amount,

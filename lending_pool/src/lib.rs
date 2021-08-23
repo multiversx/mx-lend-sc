@@ -16,8 +16,8 @@ pub trait LendingPool {
     fn init(&self) {}
 
     #[payable("*")]
-    #[endpoint]
-    fn deposit(
+    #[endpoint(deposit)]
+    fn deposit_endpoint(
         &self,
         #[var_args] caller: OptionalArg<Address>,
         #[payment_token] asset: TokenIdentifier,
@@ -41,8 +41,8 @@ pub trait LendingPool {
     }
 
     #[payable("*")]
-    #[endpoint]
-    fn withdraw(
+    #[endpoint(withdraw)]
+    fn withdraw_endpoint(
         &self,
         #[payment_amount] amount: Self::BigUint,
         #[var_args] caller: OptionalArg<Address>,
@@ -68,11 +68,12 @@ pub trait LendingPool {
 
     #[payable("*")]
     #[endpoint(lockBTokens)]
-    fn lock_b_tokens(
+    fn lock_b_tokens_endpoint(
         &self,
         asset_to_repay: TokenIdentifier,
         #[var_args] caller: OptionalArg<Address>,
         #[payment_token] borrow_token: TokenIdentifier,
+        #[payment_nonce] token_nonce: u64,
         #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
         let initial_caller = caller
@@ -89,27 +90,16 @@ pub trait LendingPool {
             "asset not supported"
         );
 
-        let nft_nonce = self.call_value().esdt_token_nonce();
-
-        let mut args = ArgBuffer::new();
-        args.push_argument_bytes(initial_caller.as_bytes());
-
-        self.send().direct_esdt_nft_execute(
-            &asset_address,
-            &borrow_token,
-            nft_nonce,
-            &amount,
-            self.blockchain().get_gas_left() / 2,
-            b"lockBTokens",
-            &args,
-        )?;
+        self.liquidity_pool_proxy(asset_address)
+            .lock_b_tokens(initial_caller, borrow_token, token_nonce, amount)
+            .execute_on_dest_context_ignore_result();
 
         Ok(())
     }
 
     #[payable("*")]
-    #[endpoint]
-    fn repay(
+    #[endpoint(repay)]
+    fn repay_endpoint(
         &self,
         repay_unique_id: BoxedBytes,
         #[var_args] initial_caller: OptionalArg<Address>,
@@ -129,7 +119,6 @@ pub trait LendingPool {
         let results = self
             .liquidity_pool_proxy(asset_address)
             .repay(repay_unique_id, asset, amount)
-            .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context();
 
         let collateral_token_address = self.get_pool_address(results.collateral_identifier.clone());
@@ -146,14 +135,14 @@ pub trait LendingPool {
                 results.amount,
                 results.collateral_timestamp,
             )
-            .execute_on_dest_context();
+            .execute_on_dest_context_ignore_result();
 
         Ok(())
     }
 
     #[payable("*")]
-    #[endpoint]
-    fn liquidate(
+    #[endpoint(liquidate)]
+    fn liquidate_endpoint(
         &self,
         liquidate_unique_id: BoxedBytes,
         #[var_args] initial_caller: OptionalArg<Address>,
@@ -173,7 +162,6 @@ pub trait LendingPool {
         let results = self
             .liquidity_pool_proxy(asset_address)
             .liquidate(liquidate_unique_id, asset, amount)
-            .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context();
 
         let collateral_token_address = self.get_pool_address(results.collateral_token.clone());
@@ -193,15 +181,14 @@ pub trait LendingPool {
                 results.amount,
                 self.blockchain().get_block_timestamp(),
             )
-            .with_gas_limit(self.blockchain().get_gas_left() / 2)
-            .execute_on_dest_context();
+            .execute_on_dest_context_ignore_result();
 
         Ok(())
     }
 
     #[payable("*")]
-    #[endpoint]
-    fn borrow(
+    #[endpoint(borrow)]
+    fn borrow_endpoint(
         &self,
         asset_to_put_as_collateral: TokenIdentifier,
         asset_to_borrow: TokenIdentifier,
@@ -259,21 +246,16 @@ pub trait LendingPool {
                 amount.clone(),
                 metadata.timestamp,
             )
-            .with_gas_limit(self.blockchain().get_gas_left() / 2)
-            .execute_on_dest_context();
+            .execute_on_dest_context_ignore_result();
 
-        let mut args_burn_lend = ArgBuffer::new();
-        args_burn_lend.push_argument_bytes(initial_caller.as_bytes());
-
-        self.send().direct_esdt_nft_execute(
-            &collateral_token_pool_address,
-            &asset_collateral_lend_token,
-            nft_nonce,
-            &amount,
-            self.blockchain().get_gas_left() / 2,
-            b"burnLendTokens",
-            &args_burn_lend,
-        )?;
+        self.liquidity_pool_proxy(collateral_token_pool_address)
+            .burn_l_tokens(
+                asset_collateral_lend_token,
+                nft_nonce,
+                amount,
+                initial_caller,
+            )
+            .execute_on_dest_context_ignore_result();
 
         Ok(())
     }
