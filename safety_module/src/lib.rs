@@ -89,13 +89,16 @@ pub trait SafetyModule {
                 },
             )
             .async_call()
-            .with_callback(self.callbacks().nft_issue_callback(&caller)))
+            .with_callback(
+                self.callbacks()
+                    .nft_issue_callback(self.blockchain().get_caller()),
+            ))
     }
 
     #[callback]
     fn nft_issue_callback(
         &self,
-        caller: &Address,
+        caller: Address,
         #[call_result] result: AsyncCallResult<TokenIdentifier>,
     ) {
         match result {
