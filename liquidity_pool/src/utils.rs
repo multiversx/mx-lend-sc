@@ -4,7 +4,9 @@ elrond_wasm::derive_imports!();
 use super::library;
 use super::storage;
 
-use common_structs::{IssueData, BORROW_TOKEN_PREFIX, LEND_TOKEN_PREFIX};
+use common_structs::{
+    DebtPosition, IssueData, RepayPostion, BORROW_TOKEN_PREFIX, LEND_TOKEN_PREFIX,
+};
 
 const LEND_TOKEN_NAME: &[u8] = b"IntBearing";
 const DEBT_TOKEN_NAME: &[u8] = b"DebtBearing";
@@ -43,14 +45,15 @@ pub trait UtilsModule: library::LibraryModule + storage::StorageModule {
         1u32
     }
 
+    #[view(getCapitalUtilisation)]
     fn get_capital_utilisation(&self) -> Self::BigUint {
         let reserve_amount = self.reserves(&self.pool_asset().get()).get();
-        //TODO: change with view_reserve after putting all view functions in a module
         let borrowed_amount = self.total_borrow().get();
 
         self.compute_capital_utilisation(&borrowed_amount, &reserve_amount)
     }
 
+    #[view(getDebtInterest)]
     fn get_debt_interest(&self, amount: Self::BigUint, timestamp: u64) -> SCResult<Self::BigUint> {
         let time_diff = self.get_timestamp_diff(timestamp)?;
         let borrow_rate = self.get_borrow_rate();
@@ -58,6 +61,7 @@ pub trait UtilsModule: library::LibraryModule + storage::StorageModule {
         Ok(self.compute_debt(&amount, &time_diff, &borrow_rate))
     }
 
+    #[view(getDepositRate)]
     fn get_deposit_rate(&self) -> Self::BigUint {
         let pool_params = self.pool_params().get();
         let capital_utilisation = self.get_capital_utilisation();
@@ -70,6 +74,7 @@ pub trait UtilsModule: library::LibraryModule + storage::StorageModule {
         )
     }
 
+    #[view(getBorrowRate)]
     fn get_borrow_rate(&self) -> Self::BigUint {
         let pool_params = self.pool_params().get();
         let capital_utilisation = self.get_capital_utilisation();
@@ -81,6 +86,27 @@ pub trait UtilsModule: library::LibraryModule + storage::StorageModule {
             &pool_params.u_optimal,
             &capital_utilisation,
         )
+    }
+
+    #[view(repayPositionsIds)]
+    fn get_repay_positions_ids(&self) -> MultiResultVec<BoxedBytes> {
+        self.repay_position().keys().collect()
+    }
+
+    #[view(repayPosition)]
+    fn view_repay_position(&self, position_id: BoxedBytes) -> Option<RepayPostion<Self::BigUint>> {
+        self.repay_position().get(&position_id)
+    }
+
+    #[view(debtPosition)]
+    fn view_debt_position(&self, position_id: BoxedBytes) -> Option<DebtPosition<Self::BigUint>> {
+        self.debt_positions().get(&position_id)
+    }
+
+    #[view(getPositionInterest)]
+    fn get_debt_position_interest(&self, position_id: BoxedBytes) -> SCResult<Self::BigUint> {
+        let debt_position = self.debt_positions().get(&position_id).unwrap_or_default();
+        self.get_debt_interest(debt_position.size.clone(), debt_position.timestamp)
     }
 
     fn get_timestamp_diff(&self, timestamp: u64) -> SCResult<Self::BigUint> {

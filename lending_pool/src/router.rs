@@ -156,8 +156,8 @@ pub trait RouterModule: proxy_common::ProxyCommonModule + factory::FactoryModule
     }
 
     #[view(getPoolAddress)]
-    fn get_pool_address(&self, asset: TokenIdentifier) -> Address {
-        self.pools_map().get(&asset).unwrap_or_else(Address::zero)
+    fn get_pool_address(&self, asset: &TokenIdentifier) -> Address {
+        self.pools_map().get(asset).unwrap_or_else(Address::zero)
     }
 
     #[storage_mapper("pools_map")]

@@ -34,7 +34,7 @@ pub trait LendingPool:
         require!(amount > 0, "amount must be greater than 0");
         require!(!initial_caller.is_zero(), "invalid address provided");
 
-        let pool_address = self.get_pool_address(asset.clone());
+        let pool_address = self.get_pool_address(&asset);
         require!(!pool_address.is_zero(), "invalid liquidity pool address");
 
         self.liquidity_pool_proxy(pool_address)
@@ -48,11 +48,11 @@ pub trait LendingPool:
     #[endpoint(withdraw)]
     fn withdraw_endpoint(
         &self,
+        #[payment_token] lend_token: TokenIdentifier,
+        #[payment_nonce] token_nonce: u64,
         #[payment_amount] amount: Self::BigUint,
         #[var_args] caller: OptionalArg<Address>,
     ) -> SCResult<()> {
-        let lend_token = self.call_value().token();
-
         let initial_caller = caller
             .into_option()
             .unwrap_or_else(|| self.blockchain().get_caller());
@@ -60,11 +60,11 @@ pub trait LendingPool:
         require!(amount > 0, "amount must be greater than 0");
         require!(!initial_caller.is_zero(), "invalid address provided");
 
-        let pool_address = self.get_pool_address(lend_token.clone());
+        let pool_address = self.get_pool_address(&lend_token);
         require!(!pool_address.is_zero(), "invalid liquidity pool address");
 
         self.liquidity_pool_proxy(pool_address)
-            .withdraw(initial_caller, lend_token, amount)
+            .withdraw(initial_caller, lend_token, token_nonce, amount)
             .execute_on_dest_context();
 
         Ok(())
@@ -87,7 +87,7 @@ pub trait LendingPool:
         require!(amount > 0, "amount must be greater than 0");
         require!(!initial_caller.is_zero(), "invalid address provided");
 
-        let asset_address = self.get_pool_address(asset_to_repay.clone());
+        let asset_address = self.get_pool_address(&asset_to_repay);
 
         require!(
             self.pools_map().contains_key(&asset_to_repay),
@@ -118,14 +118,14 @@ pub trait LendingPool:
         require!(!caller.is_zero(), "invalid address provided");
         require!(self.pools_map().contains_key(&asset), "asset not supported");
 
-        let asset_address = self.get_pool_address(asset.clone());
+        let asset_address = self.get_pool_address(&asset);
 
         let results = self
             .liquidity_pool_proxy(asset_address)
             .repay(repay_unique_id, asset, amount)
             .execute_on_dest_context();
 
-        let collateral_token_address = self.get_pool_address(results.collateral_identifier.clone());
+        let collateral_token_address = self.get_pool_address(&results.collateral_identifier);
 
         require!(
             collateral_token_address != Address::zero(),
@@ -161,14 +161,14 @@ pub trait LendingPool:
         require!(!caller.is_zero(), "invalid address provided");
         require!(self.pools_map().contains_key(&asset), "asset not supported");
 
-        let asset_address = self.get_pool_address(asset.clone());
+        let asset_address = self.get_pool_address(&asset);
 
         let results = self
             .liquidity_pool_proxy(asset_address)
             .liquidate(liquidate_unique_id, asset, amount)
             .execute_on_dest_context();
 
-        let collateral_token_address = self.get_pool_address(results.collateral_token.clone());
+        let collateral_token_address = self.get_pool_address(&results.collateral_token);
 
         require!(
             collateral_token_address != Address::zero(),
