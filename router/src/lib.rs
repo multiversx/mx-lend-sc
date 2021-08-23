@@ -15,8 +15,6 @@ pub trait Router: pool_factory::PoolFactoryModule {
     #[init]
     fn init(&self) {}
 
-    /// ENDPOINTS
-
     #[endpoint(createLiquidityPool)]
     fn create_liquidity_pool(
         &self,
@@ -163,23 +161,16 @@ pub trait Router: pool_factory::PoolFactoryModule {
         Ok(())
     }
 
-    /// VIEWS
-
     #[view(getPoolAddress)]
     fn get_pool_address(&self, asset: TokenIdentifier) -> Address {
         self.pools_map().get(&asset).unwrap_or_else(Address::zero)
     }
-
-    //
-    /// STORAGE
 
     #[storage_mapper("pools_map")]
     fn pools_map(&self) -> SafeMapMapper<Self::Storage, TokenIdentifier, Address>;
 
     #[storage_mapper("pool_allowed")]
     fn pools_allowed(&self) -> SafeMapMapper<Self::Storage, Address, bool>;
-
-    // PROXY
 
     #[proxy]
     fn liquidity_pool_proxy(&self, sc_address: Address) -> liquidity_pool::Proxy<Self::SendApi>;

@@ -284,8 +284,6 @@ pub trait LendingPool {
         Ok(())
     }
 
-    /// UTILS
-
     fn get_pool_address(&self, asset: TokenIdentifier) -> Address {
         if !self.pools_map().contains_key(&asset) {
             let router_address = self.router().get();
@@ -319,9 +317,6 @@ pub trait LendingPool {
         Ok(())
     }
 
-    /// STORAGE
-
-    //delete after liquidations debugging
     #[storage_set("tokenIdentifierLiq")]
     fn set_token_identifier_liq(&self, token: TokenIdentifier);
 
@@ -336,12 +331,9 @@ pub trait LendingPool {
     #[storage_get("tokenAmountLiq")]
     fn get_token_amount_liq(&self) -> Self::BigUint;
 
-    /// router address
     #[storage_mapper("router")]
     fn router(&self) -> SingleValueMapper<Self::Storage, Address>;
 
-    //
-    /// mapping for tokens to their liquidity pools addresses
     #[storage_mapper("pools_map")]
     fn pools_map(&self) -> SafeMapMapper<Self::Storage, TokenIdentifier, Address>;
 

@@ -184,8 +184,6 @@ pub trait LiquidityPool:
         self.set_borrow_token_roles(roles)
     }
 
-    /// VIEWS
-
     #[view(repayPositionsIds)]
     fn get_repay_positions_ids(&self) -> MultiResultVec<BoxedBytes> {
         let mut result = MultiArgVec::new();
@@ -254,7 +252,6 @@ pub trait LiquidityPool:
         self.borrow_token().get()
     }
 
-    /// health factor threshold
     #[endpoint(setHealthFactorThreshold)]
     fn endpoint_health_factor_threshold(&self, health_factor_threashdol: u32) {
         self.health_factor_threshold()

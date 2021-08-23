@@ -278,7 +278,6 @@ pub trait SafetyModule {
         //TODO:  integration with dex
     }
 
-    //Storage
     #[view]
     #[storage_mapper("pools")]
     fn pools(&self, token: TokenIdentifier) -> SingleValueMapper<Self::Storage, Address>;

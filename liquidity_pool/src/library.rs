@@ -1,9 +1,7 @@
 elrond_wasm::imports!();
 
-// base precision
 const BP: u32 = 1000000000;
 
-// number of seconds in one year
 const SECONDS_IN_YEAR: u32 = 31556926;
 
 #[elrond_wasm::module]
