@@ -21,7 +21,7 @@ version = "0.18"
 version = "0.18"
 optional = true
 
-[dependencies.liquidity-pool]
+[dependencies.liquidity_pool]
 path = "../liquidity_pool"
 
 [dev-dependencies.elrond-wasm-debug]

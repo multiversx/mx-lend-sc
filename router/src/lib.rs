@@ -10,7 +10,7 @@ mod pool_factory;
 const LEND_TOKEN_PREFIX: &[u8] = b"L";
 const BORROW_TOKEN_PREFIX: &[u8] = b"B";
 
-#[elrond_wasm_derive::contract]
+#[elrond_wasm::contract]
 pub trait Router: pool_factory::PoolFactoryModule {
     #[init]
     fn init(&self) {}
@@ -85,7 +85,7 @@ pub trait Router: pool_factory::PoolFactoryModule {
         &self,
         plain_ticker: BoxedBytes,
         token_ticker: TokenIdentifier,
-        #[payment] amount: Self::BigUint,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
         only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&token_ticker).unwrap();
@@ -107,7 +107,7 @@ pub trait Router: pool_factory::PoolFactoryModule {
         &self,
         plain_ticker: BoxedBytes,
         token_ticker: TokenIdentifier,
-        #[payment] amount: Self::BigUint,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
         only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&token_ticker).unwrap();
@@ -174,10 +174,10 @@ pub trait Router: pool_factory::PoolFactoryModule {
     /// STORAGE
 
     #[storage_mapper("pools_map")]
-    fn pools_map(&self) -> MapMapper<Self::Storage, TokenIdentifier, Address>;
+    fn pools_map(&self) -> SafeMapMapper<Self::Storage, TokenIdentifier, Address>;
 
     #[storage_mapper("pool_allowed")]
-    fn pools_allowed(&self) -> MapMapper<Self::Storage, Address, bool>;
+    fn pools_allowed(&self) -> SafeMapMapper<Self::Storage, Address, bool>;
 
     // PROXY
 

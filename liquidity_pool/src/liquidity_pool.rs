@@ -3,7 +3,7 @@ use crate::{DebtMetadata, DebtPosition, InterestMetadata, LiquidateData, RepayPo
 use elrond_wasm::types::{Address, BoxedBytes, SCResult, TokenIdentifier, H256};
 use elrond_wasm::*;
 
-#[elrond_wasm_derive::module]
+#[elrond_wasm::module]
 pub trait LiquidityPoolModule:
     crate::storage::StorageModule
     + crate::tokens::TokensModule
@@ -37,15 +37,10 @@ pub trait LiquidityPoolModule:
             .blockchain()
             .get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &lend_token);
 
+        self.reserves(&pool_asset).update(|x| *x += &amount);
+
         self.send()
             .direct(&initial_caller, &lend_token, nonce, &amount, &[]);
-
-        let mut asset_reserve = self
-            .reserves()
-            .get(&pool_asset)
-            .unwrap_or_else(Self::BigUint::zero);
-        asset_reserve += amount;
-        self.reserves().insert(pool_asset, asset_reserve);
 
         Ok(())
     }
@@ -67,14 +62,8 @@ pub trait LiquidityPoolModule:
         let borrows_token = self.borrow_token().get();
         let asset = self.pool_asset().get();
 
-        let mut borrows_reserve = self
-            .reserves()
-            .get(&borrows_token)
-            .unwrap_or_else(Self::BigUint::zero);
-        let mut asset_reserve = self
-            .reserves()
-            .get(&asset)
-            .unwrap_or_else(Self::BigUint::zero);
+        let mut borrows_reserve = self.reserves(&borrows_token).get();
+        let mut asset_reserve = self.reserves(&asset).get();
 
         require!(
             asset_reserve != Self::BigUint::zero(),
@@ -111,8 +100,8 @@ pub trait LiquidityPoolModule:
         total_borrow += amount.clone();
         self.total_borrow().set(&total_borrow);
 
-        self.reserves().insert(borrows_token, borrows_reserve);
-        self.reserves().insert(asset, asset_reserve);
+        self.reserves(&borrows_token).set(&borrows_reserve);
+        self.reserves(&asset).set(&asset_reserve);
 
         let current_health = self.compute_health_factor();
         let debt_position = DebtPosition::<Self::BigUint> {
@@ -155,7 +144,7 @@ pub trait LiquidityPoolModule:
             nft_nonce,
         );
 
-        let debt_position_id = esdt_nft_data.hash;
+        let debt_position_id = esdt_nft_data.hash.clone();
         let debt_position: DebtPosition<Self::BigUint> = self
             .debt_positions()
             .get(&debt_position_id)
@@ -167,15 +156,7 @@ pub trait LiquidityPoolModule:
         );
         require!(!debt_position.is_liquidated, "position is liquidated");
 
-        let metadata: DebtMetadata<Self::BigUint>;
-        match DebtMetadata::<Self::BigUint>::top_decode(esdt_nft_data.attributes.as_slice()) {
-            Result::Ok(decoded) => {
-                metadata = decoded;
-            }
-            Result::Err(_) => {
-                return sc_error!("could not parse token metadata");
-            }
-        }
+        let metadata = esdt_nft_data.decode_attributes::<DebtMetadata<Self::BigUint>>()?;
         let data = [
             borrow_token.as_esdt_identifier(),
             amount.to_bytes_be().as_slice(),
@@ -260,12 +241,10 @@ pub trait LiquidityPoolModule:
         }
 
         self.repay_position_amount().set(&amount);
-        self.repay_position_id()
-            .set(&repay_position.identifier);
-        self.repay_position_nonce()
-            .set(&repay_position.nonce);
+        self.repay_position_id().set(&repay_position.identifier);
+        self.repay_position_nonce().set(&repay_position.nonce);
 
-        /*self.burn(
+        /*self.send().esdt_local_burn(
             amount.clone(),
             repay_position.nonce,
             repay_position.identifier.clone(),
@@ -292,10 +271,7 @@ pub trait LiquidityPoolModule:
         );
 
         let pool_asset = self.pool_asset().get();
-        let mut asset_reserve = self
-            .reserves()
-            .get(&pool_asset)
-            .unwrap_or_else(Self::BigUint::zero);
+        let mut asset_reserve = self.reserves(&pool_asset).get();
 
         let nft_nonce = self.call_value().esdt_token_nonce();
         let nft_info = self.blockchain().get_esdt_token_data(
@@ -303,43 +279,26 @@ pub trait LiquidityPoolModule:
             &lend_token,
             nft_nonce,
         );
-        let metadata: InterestMetadata;
-        match InterestMetadata::top_decode(nft_info.attributes.as_slice()) {
-            Result::Ok(decoded) => {
-                metadata = decoded;
-            }
-            Result::Err(_) => {
-                return sc_error!("could not parse token metadata");
-            }
-        }
+        let metadata: InterestMetadata = nft_info.decode_attributes::<InterestMetadata>()?;
 
         let deposit_rate = self.get_deposit_rate();
         let time_diff =
             Self::BigUint::from(self.blockchain().get_block_timestamp() - metadata.timestamp);
         let withdrawal_amount =
             self.compute_withdrawal_amount(amount.clone(), time_diff, deposit_rate);
+        require!(asset_reserve >= withdrawal_amount, "insufficient funds");
 
-        self.asset_reserve().set(&asset_reserve);
-        self.withdraw_amount().set(&withdrawal_amount);
-        //require!(asset_reserve > withdrawal_amount, "insufficient funds");
+        asset_reserve -= &withdrawal_amount;
+        self.reserves(&pool_asset).set(&asset_reserve);
 
-        self.send().direct_esdt_execute(
-            &initial_caller,
-            &pool_asset,
-            &amount,
-            self.blockchain().get_gas_left(),
-            &[],
-            &ArgBuffer::new(),
-        )?;
+        self.send()
+            .direct(&initial_caller, &pool_asset, 0, &withdrawal_amount, &[]);
 
-        self.burn(amount.clone(), nft_nonce, lend_token);
-
-        asset_reserve -= amount;
-        self.reserves().insert(pool_asset, asset_reserve);
+        self.send().esdt_local_burn(&lend_token, nft_nonce, &amount);
 
         Ok(())
     }
-    
+
     fn liquidate(
         &self,
         position_id: BoxedBytes,

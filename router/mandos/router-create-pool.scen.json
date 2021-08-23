@@ -51,7 +51,7 @@
                 "from": "address:my_address",
                 "to": "address:router_contract",
                 "value": "0",
-                "function": "createLiquidityPool", 
+                "function": "createLiquidityPool",
                 "arguments": [
                     "str:WBTC-abcdef",
                     "file:../output/router.wasm"
@@ -76,7 +76,7 @@
                     "nonce": "0",
                     "balance": "0",
                     "storage": {
-                        "str:pools_map|str:WBTC-abcdef": "address:pool_address"
+                        "str:pools_map|nested:str:WBTC-abcdef": "address:pool_address"
                     },
                     "code": "file:../output/router.wasm"
                 }

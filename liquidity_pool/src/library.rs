@@ -6,7 +6,7 @@ const BP: u32 = 1000000000;
 // number of seconds in one year
 const SECONDS_IN_YEAR: u32 = 31556926;
 
-#[elrond_wasm_derive::module]
+#[elrond_wasm::module]
 pub trait LibraryModule {
     fn compute_borrow_rate(
         &self,
@@ -53,10 +53,10 @@ pub trait LibraryModule {
     }
 
     fn compute_debt(
-        &self, 
+        &self,
         amount: Self::BigUint,
         time_diff: Self::BigUint,
-        borrow_rate: Self::BigUint
+        borrow_rate: Self::BigUint,
     ) -> Self::BigUint {
         let bp = Self::BigUint::from(BP);
         let secs_year = Self::BigUint::from(SECONDS_IN_YEAR);
@@ -76,7 +76,7 @@ pub trait LibraryModule {
         &self,
         amount: Self::BigUint,
         time_diff: Self::BigUint,
-        deposit_rate: Self::BigUint
+        deposit_rate: Self::BigUint,
     ) -> Self::BigUint {
         let bp = Self::BigUint::from(BP);
         let secs_year = Self::BigUint::from(SECONDS_IN_YEAR);

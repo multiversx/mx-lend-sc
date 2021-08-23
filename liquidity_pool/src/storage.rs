@@ -1,10 +1,10 @@
 elrond_wasm::imports!();
 
 use crate::{DebtPosition, RepayPostion, ReserveData};
-use elrond_wasm::storage::mappers::{MapMapper, SingleValueMapper};
+use elrond_wasm::storage::mappers::{SafeMapMapper, SingleValueMapper};
 use elrond_wasm::types::{Address, BoxedBytes, TokenIdentifier};
 
-#[elrond_wasm_derive::module]
+#[elrond_wasm::module]
 pub trait StorageModule {
     /// pool asset
     #[storage_mapper("pool_asset")]
@@ -23,7 +23,10 @@ pub trait StorageModule {
     //
     /// pool reserves
     #[storage_mapper("reserves")]
-    fn reserves(&self) -> MapMapper<Self::Storage, TokenIdentifier, Self::BigUint>;
+    fn reserves(
+        &self,
+        token_id: &TokenIdentifier,
+    ) -> SingleValueMapper<Self::Storage, Self::BigUint>;
 
     //
     /// last error
@@ -33,7 +36,9 @@ pub trait StorageModule {
     //
     /// debt positions
     #[storage_mapper("debt_positions")]
-    fn debt_positions(&self) -> MapMapper<Self::Storage, BoxedBytes, DebtPosition<Self::BigUint>>;
+    fn debt_positions(
+        &self,
+    ) -> SafeMapMapper<Self::Storage, BoxedBytes, DebtPosition<Self::BigUint>>;
 
     //
     /// debt nonce
@@ -43,7 +48,9 @@ pub trait StorageModule {
     //
     /// repay position
     #[storage_mapper("repay_position")]
-    fn repay_position(&self) -> MapMapper<Self::Storage, BoxedBytes, RepayPostion<Self::BigUint>>;
+    fn repay_position(
+        &self,
+    ) -> SafeMapMapper<Self::Storage, BoxedBytes, RepayPostion<Self::BigUint>>;
 
     //
     /// reserve data
@@ -62,12 +69,6 @@ pub trait StorageModule {
     // total borrowing from pool
     #[storage_mapper("totalBorrow")]
     fn total_borrow(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
-
-    #[storage_mapper("assetReserve")]
-    fn asset_reserve(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
-
-    #[storage_mapper("withdrawAmount")]
-    fn withdraw_amount(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
 
     #[storage_mapper("repayPositionAmount")]
     fn repay_position_amount(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;

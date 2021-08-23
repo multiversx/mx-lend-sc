@@ -1,15 +1,17 @@
 elrond_wasm::imports!();
-use elrond_wasm::*;
-use elrond_wasm::types::{Address, TokenIdentifier, SCResult, BoxedBytes, AsyncCall, VarArgs, EsdtLocalRole, H256, AsyncCallResult, ArgBuffer};
-use crate::{InterestMetadata, DebtMetadata, LEND_TOKEN_PREFIX};
-use elrond_wasm::esdt::SemiFungibleTokenProperties;
+use crate::{DebtMetadata, InterestMetadata, LEND_TOKEN_PREFIX};
 use elrond_wasm::esdt::ESDTSystemSmartContractProxy;
+use elrond_wasm::esdt::SemiFungibleTokenProperties;
+use elrond_wasm::types::{
+    Address, ArgBuffer, AsyncCall, AsyncCallResult, BoxedBytes, EsdtLocalRole, SCResult,
+    TokenIdentifier, VarArgs, H256,
+};
+use elrond_wasm::*;
 
-
-
-#[elrond_wasm_derive::module]
-pub trait TokensModule: crate::storage::StorageModule + crate::utils::UtilsModule + crate::library::LibraryModule{
-
+#[elrond_wasm::module]
+pub trait TokensModule:
+    crate::storage::StorageModule + crate::utils::UtilsModule + crate::library::LibraryModule
+{
     fn mint_l_tokens(
         &self,
         initial_caller: Address,
@@ -36,25 +38,21 @@ pub trait TokensModule: crate::storage::StorageModule + crate::utils::UtilsModul
         self.mint_interest(amount.clone(), interest_metadata);
 
         let nonce = self
-            .blockchain().get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &lend_token);
+            .blockchain()
+            .get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &lend_token);
 
-        self.send().direct(
-            &initial_caller,
-            &lend_token,
-            nonce,
-            &amount,
-            &[],
-        );
+        self.send()
+            .direct(&initial_caller, &lend_token, nonce, &amount, &[]);
 
         Ok(())
     }
 
-
     fn burn_l_tokens(
         &self,
-        initial_caller: Address,
         lend_token: TokenIdentifier,
+        token_nonce: u64,
         amount: Self::BigUint,
+        initial_caller: Address,
     ) -> SCResult<()> {
         require!(
             self.blockchain().get_caller() == self.lending_pool().get(),
@@ -68,14 +66,11 @@ pub trait TokensModule: crate::storage::StorageModule + crate::utils::UtilsModul
         require!(amount > 0, "amount must be greater then 0");
         require!(!initial_caller.is_zero(), "invalid address");
 
-        let nft_nonce = self.blockchain().get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &lend_token);
-
-        self.burn(amount, nft_nonce, lend_token);
-
+        self.send()
+            .esdt_local_burn(&lend_token, token_nonce, &amount);
 
         Ok(())
     }
-
 
     fn issue(
         &self,
@@ -117,8 +112,6 @@ pub trait TokensModule: crate::storage::StorageModule + crate::utils::UtilsModul
             .with_callback(self.callbacks().issue_callback(&token_prefix)))
     }
 
-
-
     fn set_lend_token_roles(
         &self,
         roles: VarArgs<EsdtLocalRole>,
@@ -128,7 +121,6 @@ pub trait TokensModule: crate::storage::StorageModule + crate::utils::UtilsModul
         Ok(self.set_roles(self.lend_token().get(), roles))
     }
 
-    
     fn set_borrow_token_roles(
         &self,
         roles: VarArgs<EsdtLocalRole>,
@@ -137,7 +129,6 @@ pub trait TokensModule: crate::storage::StorageModule + crate::utils::UtilsModul
         require!(!self.borrow_token().is_empty(), "token not issued yet");
         Ok(self.set_roles(self.borrow_token().get(), roles))
     }
-
 
     fn set_roles(
         &self,
@@ -166,7 +157,12 @@ pub trait TokensModule: crate::storage::StorageModule + crate::utils::UtilsModul
         );
     }
 
-    fn mint_debt(&self, amount: Self::BigUint, metadata: DebtMetadata<Self::BigUint>, position_id: H256) {
+    fn mint_debt(
+        &self,
+        amount: Self::BigUint,
+        metadata: DebtMetadata<Self::BigUint>,
+        position_id: H256,
+    ) {
         self.send().esdt_nft_create::<DebtMetadata<Self::BigUint>>(
             &self.borrow_token().get(),
             &amount,
@@ -175,14 +171,6 @@ pub trait TokensModule: crate::storage::StorageModule + crate::utils::UtilsModul
             &position_id.into_boxed_bytes(),
             &metadata,
             &[BoxedBytes::empty()],
-        );
-    }
-
-    fn burn(&self, amount: Self::BigUint, nonce: u64, ticker: TokenIdentifier) {
-        self.send().esdt_local_burn(
-            &ticker,
-            nonce,
-            &amount,
         );
     }
 
@@ -225,14 +213,13 @@ pub trait TokensModule: crate::storage::StorageModule + crate::utils::UtilsModul
         }
     }
 
-
     fn send_callback_result(&self, token: TokenIdentifier, endpoint: &[u8]) {
         let owner = self.blockchain().get_owner_address();
 
         let mut args = ArgBuffer::new();
         args.push_argument_bytes(token.as_esdt_identifier());
 
-        let expected_gas = self.blockchain().get_gas_left()/2;
+        let expected_gas = self.blockchain().get_gas_left() / 2;
 
         self.send().execute_on_dest_context_raw(
             expected_gas,
@@ -242,8 +229,4 @@ pub trait TokensModule: crate::storage::StorageModule + crate::utils::UtilsModul
             &args,
         );
     }
-
-
-
-
 }

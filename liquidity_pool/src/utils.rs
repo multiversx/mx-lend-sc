@@ -1,13 +1,14 @@
 elrond_wasm::imports!();
 
+use crate::{
+    IssueData, ReserveData, BORROW_TOKEN_PREFIX, DEBT_TOKEN_NAME, LEND_TOKEN_NAME,
+    LEND_TOKEN_PREFIX,
+};
+use elrond_wasm::types::{BoxedBytes, OptionalArg, H256};
 use elrond_wasm::*;
-use crate::{IssueData, LEND_TOKEN_PREFIX, BORROW_TOKEN_PREFIX, LEND_TOKEN_NAME, DEBT_TOKEN_NAME, ReserveData};
-use elrond_wasm::types::{H256, OptionalArg, BoxedBytes};
 
-
-#[elrond_wasm_derive::module]
-pub trait UtilsModule: crate::library::LibraryModule + crate::storage::StorageModule{
-
+#[elrond_wasm::module]
+pub trait UtilsModule: crate::library::LibraryModule + crate::storage::StorageModule {
     fn prepare_issue_data(&self, prefix: BoxedBytes, ticker: BoxedBytes) -> IssueData {
         let prefixed_ticker = [prefix.as_slice(), ticker.as_slice()].concat();
         let mut issue_data = IssueData {
@@ -59,9 +60,7 @@ pub trait UtilsModule: crate::library::LibraryModule + crate::storage::StorageMo
     }
 
     fn get_capital_utilisation(&self) -> Self::BigUint {
-        let reserve_amount = self.reserves()
-                            .get(&self.pool_asset().get())
-                            .unwrap_or_else(Self::BigUint::zero);
+        let reserve_amount = self.reserves(&self.pool_asset().get()).get();
         //TODO: change with view_reserve after putting all view functions in a module
         let borrowed_amount = self.total_borrow().get();
 
@@ -91,6 +90,4 @@ pub trait UtilsModule: crate::library::LibraryModule + crate::storage::StorageMo
         let reserve_data = self.reserve_data().get();
         self._get_borrow_rate(reserve_data, OptionalArg::None)
     }
-
-
 }

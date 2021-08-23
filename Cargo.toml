@@ -1,7 +1,11 @@
 [workspace]
 members = [
     "liquidity_pool",
+    "liquidity_pool/abi",
     "lending_pool",
+    "lending_pool/abi",
     "router",
-    "safety_module"
+    "router/abi",
+    "safety_module",
+    "safety_module/abi",
 ]

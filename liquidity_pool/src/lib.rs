@@ -30,7 +30,7 @@ const BORROW_TOKEN_PREFIX: &[u8] = b"B";
 const LEND_TOKEN_NAME: &[u8] = b"IntBearing";
 const DEBT_TOKEN_NAME: &[u8] = b"DebtBearing";
 
-#[elrond_wasm_derive::contract]
+#[elrond_wasm::contract]
 pub trait LiquidityPool:
     storage::StorageModule
     + tokens::TokensModule
@@ -67,7 +67,7 @@ pub trait LiquidityPool:
         &self,
         initial_caller: Address,
         #[payment_token] asset: TokenIdentifier,
-        #[payment] amount: Self::BigUint,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
         self.deposit_asset(initial_caller, asset, amount)
     }
@@ -89,7 +89,7 @@ pub trait LiquidityPool:
         &self,
         initial_caller: Address,
         #[payment_token] borrow_token: TokenIdentifier,
-        #[payment] amount: Self::BigUint,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<H256> {
         self.lock_b_tokens(initial_caller, borrow_token, amount)
     }
@@ -100,7 +100,7 @@ pub trait LiquidityPool:
         &self,
         unique_id: BoxedBytes,
         #[payment_token] asset: TokenIdentifier,
-        #[payment] amount: Self::BigUint,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<RepayPostion<Self::BigUint>> {
         self.repay(unique_id, asset, amount)
     }
@@ -122,10 +122,16 @@ pub trait LiquidityPool:
     fn burn_l_tokens_endpoint(
         &self,
         initial_caller: Address,
-        #[payment_token] lend_token: TokenIdentifier,
-        #[payment] amount: Self::BigUint,
+        #[payment_token] payment_token_id: TokenIdentifier,
+        #[payment_nonce] payment_token_nonce: u64,
+        #[payment_amount] payment_amount: Self::BigUint,
     ) -> SCResult<()> {
-        self.burn_l_tokens(initial_caller, lend_token, amount)
+        self.burn_l_tokens(
+            payment_token_id,
+            payment_token_nonce,
+            payment_amount,
+            initial_caller,
+        )
     }
 
     #[payable("*")]
@@ -134,7 +140,7 @@ pub trait LiquidityPool:
         &self,
         initial_caller: Address,
         #[payment_token] lend_token: TokenIdentifier,
-        #[payment] amount: Self::BigUint,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
         self.withdraw(initial_caller, lend_token, amount)
     }
@@ -145,7 +151,7 @@ pub trait LiquidityPool:
         &self,
         position_id: BoxedBytes,
         #[payment_token] token: TokenIdentifier,
-        #[payment] amount: Self::BigUint,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<LiquidateData<Self::BigUint>> {
         self.liquidate(position_id, token, amount)
     }
@@ -157,7 +163,7 @@ pub trait LiquidityPool:
         plain_ticker: BoxedBytes,
         token_ticker: TokenIdentifier,
         token_prefix: BoxedBytes,
-        #[payment] issue_cost: Self::BigUint,
+        #[payment_amount] issue_cost: Self::BigUint,
     ) -> SCResult<AsyncCall<Self::SendApi>> {
         self.issue(plain_ticker, token_ticker, token_prefix, issue_cost)
     }
@@ -230,9 +236,7 @@ pub trait LiquidityPool:
 
     #[view(getReserve)]
     fn view_reserve(&self) -> Self::BigUint {
-        self.reserves()
-            .get(&self.pool_asset().get())
-            .unwrap_or_else(Self::BigUint::zero)
+        self.reserves(&self.pool_asset().get()).get()
     }
 
     #[view(poolAsset)]
@@ -270,16 +274,6 @@ pub trait LiquidityPool:
     #[view(totalBorrow)]
     fn view_total_borrow(&self) -> Self::BigUint {
         self.total_borrow().get()
-    }
-
-    #[view(assetReserve)]
-    fn view_asset_reserve(&self) -> Self::BigUint {
-        self.asset_reserve().get()
-    }
-
-    #[view(withdrawAmount)]
-    fn view_withdraw_amount(&self) -> Self::BigUint {
-        self.withdraw_amount().get()
     }
 
     #[view(repayPositionAmount)]

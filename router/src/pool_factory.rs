@@ -2,7 +2,7 @@
 
 elrond_wasm::imports!();
 
-#[elrond_wasm_derive::module]
+#[elrond_wasm::module]
 pub trait PoolFactoryModule {
     fn create_pool(
         &self,

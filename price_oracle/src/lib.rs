@@ -7,9 +7,8 @@ pub use proxy::*;
 
 const TICKER_SEPARATOR: u8 = b'-';
 
-#[elrond_wasm_derive::module]
+#[elrond_wasm::module]
 pub trait PriceOracleModule {
-    #[only_owner]
     #[endpoint(setAggregatorAddress)]
     fn set_aggregator_address(&self, address: Address) -> SCResult<()> {
         self.fee_estimator_contract_address().set(&address);

@@ -3,7 +3,7 @@ elrond_wasm::imports!();
 pub type AggregatorResultAsMultiResult<BigUint> =
     MultiResult5<u32, BoxedBytes, BoxedBytes, BigUint, u8>;
 
-#[elrond_wasm_derive::proxy]
+#[elrond_wasm::proxy]
 pub trait PriceAggregator {
     #[view(latestPriceFeedOptional)]
     fn latest_price_feed_optional(
