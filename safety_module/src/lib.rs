@@ -197,7 +197,7 @@ pub trait SafetyModule {
         self.nft_burn(token_id, nft_nonce, amount);
 
         self.send()
-            .direct(&caller_address, &wegld_token_id, 0, &withdraw_amount, &[]);
+            .direct(&caller_address, wegld_token_id, 0, &withdraw_amount, &[]);
 
         Ok(withdraw_amount)
     }
