@@ -11,7 +11,7 @@ pub struct InterestMetadata {
 }
 
 #[derive(TopEncode, TopDecode, TypeAbi)]
-pub struct ReserveData<BigUint: BigUintApi> {
+pub struct PoolParams<BigUint: BigUintApi> {
     pub r_base: BigUint,
     pub r_slope1: BigUint,
     pub r_slope2: BigUint,

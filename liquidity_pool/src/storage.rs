@@ -1,6 +1,6 @@
 elrond_wasm::imports!();
 
-use crate::{DebtPosition, RepayPostion, ReserveData};
+use crate::{DebtPosition, PoolParams, RepayPostion};
 use elrond_wasm::storage::mappers::{SafeMapMapper, SingleValueMapper};
 use elrond_wasm::types::{Address, BoxedBytes, TokenIdentifier};
 
@@ -37,8 +37,8 @@ pub trait StorageModule {
         &self,
     ) -> SafeMapMapper<Self::Storage, BoxedBytes, RepayPostion<Self::BigUint>>;
 
-    #[storage_mapper("reserve_data")]
-    fn reserve_data(&self) -> SingleValueMapper<Self::Storage, ReserveData<Self::BigUint>>;
+    #[storage_mapper("pool_params")]
+    fn pool_params(&self) -> SingleValueMapper<Self::Storage, PoolParams<Self::BigUint>>;
 
     #[storage_mapper("healthFactorThreshold")]
     fn health_factor_threshold(&self) -> SingleValueMapper<Self::Storage, u32>;

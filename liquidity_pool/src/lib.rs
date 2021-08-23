@@ -51,8 +51,8 @@ pub trait LiquidityPool:
     ) {
         self.pool_asset().set(&asset);
         self.lending_pool().set(&lending_pool);
-        self.debt_nonce().set(&1u64);
-        self.reserve_data().set(&ReserveData {
+        self.debt_nonce().set_if_empty(&1u64);
+        self.pool_params().set(&PoolParams {
             r_base,
             r_slope1,
             r_slope2,
