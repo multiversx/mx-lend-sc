@@ -11,12 +11,12 @@ pub struct InterestMetadata {
 }
 
 #[derive(TopEncode, TopDecode, TypeAbi)]
-pub struct ReserveData<BigUint: BigUintApi> {
-    pub r_base: BigUint,         // base ratio
-    pub r_slope1: BigUint,       // slope before optimal utilisation
-    pub r_slope2: BigUint,       // slope after optimal utilisation
-    pub u_optimal: BigUint,      // optimal capital utilisation
-    pub reserve_factor: BigUint, // safety module percentage fee
+pub struct PoolParams<BigUint: BigUintApi> {
+    pub r_base: BigUint,
+    pub r_slope1: BigUint,
+    pub r_slope2: BigUint,
+    pub u_optimal: BigUint,
+    pub reserve_factor: BigUint,
 }
 
 #[derive(TopEncode, TopDecode, TypeAbi)]

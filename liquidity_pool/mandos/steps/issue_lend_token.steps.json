@@ -1,0 +1,31 @@
+{
+	"name": "deploy contract",
+	"steps": [
+		{
+			"step": "setState",
+			"accounts": {
+				"sc:liqpool": {
+					"nonce": "0",
+					"balance": "0",
+					"esdt": {
+						"str:LEND-abcdef": {
+							"roles": [
+								"ESDTRoleNFTCreate",
+								"ESDTRoleNFTAddQuantity",
+								"ESDTRoleNFTBurn"
+							]
+						}
+					},
+					"storage": {
+						"str:pool_asset": "str:WBT-abcdef",
+						"str:lendingPool": "address:owner",
+						"str:debt_nonce": "1",
+						"str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000",
+						"str:lend_token": "str:LEND-abcdef"
+					},
+					"code": "file:../../output/liquidity_pool.wasm"
+				}
+			}
+		}
+	]
+}

@@ -1,5 +1,5 @@
 [package]
-name = "liquidity-pool"
+name = "liquidity_pool"
 version = "0.0.1"
 authors = [ "you",]
 edition = "2018"
@@ -13,9 +13,7 @@ wasm-output-mode = [ "elrond-wasm-node",]
 
 [dependencies.elrond-wasm]
 version = "0.18"
-
-[dependencies.elrond-wasm-derive]
-version = "0.18"
+features = ["derive"]
 
 [dependencies.elrond-wasm-node]
 version = "0.18"

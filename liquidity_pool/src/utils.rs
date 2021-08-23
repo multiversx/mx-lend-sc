@@ -1,13 +1,13 @@
 elrond_wasm::imports!();
 
+use crate::{
+    IssueData, PoolParams, BORROW_TOKEN_PREFIX, DEBT_TOKEN_NAME, LEND_TOKEN_NAME, LEND_TOKEN_PREFIX,
+};
+use elrond_wasm::types::{BoxedBytes, OptionalArg, H256};
 use elrond_wasm::*;
-use crate::{IssueData, LEND_TOKEN_PREFIX, BORROW_TOKEN_PREFIX, LEND_TOKEN_NAME, DEBT_TOKEN_NAME, ReserveData};
-use elrond_wasm::types::{H256, OptionalArg, BoxedBytes};
 
-
-#[elrond_wasm_derive::module]
-pub trait UtilsModule: crate::library::LibraryModule + crate::storage::StorageModule{
-
+#[elrond_wasm::module]
+pub trait UtilsModule: crate::library::LibraryModule + crate::storage::StorageModule {
     fn prepare_issue_data(&self, prefix: BoxedBytes, ticker: BoxedBytes) -> IssueData {
         let prefixed_ticker = [prefix.as_slice(), ticker.as_slice()].concat();
         let mut issue_data = IssueData {
@@ -42,7 +42,7 @@ pub trait UtilsModule: crate::library::LibraryModule + crate::storage::StorageMo
 
     fn _get_borrow_rate(
         &self,
-        reserve_data: ReserveData<Self::BigUint>,
+        pool_params: PoolParams<Self::BigUint>,
         #[var_args] utilisation: OptionalArg<Self::BigUint>,
     ) -> Self::BigUint {
         let u_current = utilisation
@@ -50,18 +50,16 @@ pub trait UtilsModule: crate::library::LibraryModule + crate::storage::StorageMo
             .unwrap_or_else(|| self.get_capital_utilisation());
 
         self.compute_borrow_rate(
-            reserve_data.r_base,
-            reserve_data.r_slope1,
-            reserve_data.r_slope2,
-            reserve_data.u_optimal,
+            pool_params.r_base,
+            pool_params.r_slope1,
+            pool_params.r_slope2,
+            pool_params.u_optimal,
             u_current,
         )
     }
 
     fn get_capital_utilisation(&self) -> Self::BigUint {
-        let reserve_amount = self.reserves()
-                            .get(&self.pool_asset().get())
-                            .unwrap_or_else(Self::BigUint::zero);
+        let reserve_amount = self.reserves(&self.pool_asset().get()).get();
         //TODO: change with view_reserve after putting all view functions in a module
         let borrowed_amount = self.total_borrow().get();
 
@@ -79,18 +77,16 @@ pub trait UtilsModule: crate::library::LibraryModule + crate::storage::StorageMo
 
     fn get_deposit_rate(&self) -> Self::BigUint {
         let utilisation = self.get_capital_utilisation();
-        let reserve_data = self.reserve_data().get();
-        let reserve_factor = reserve_data.reserve_factor.clone();
+        let pool_params = self.pool_params().get();
+        let reserve_factor = pool_params.reserve_factor.clone();
         let borrow_rate =
-            self._get_borrow_rate(reserve_data, OptionalArg::Some(utilisation.clone()));
+            self._get_borrow_rate(pool_params, OptionalArg::Some(utilisation.clone()));
 
         self.compute_deposit_rate(utilisation, borrow_rate, reserve_factor)
     }
 
     fn get_borrow_rate(&self) -> Self::BigUint {
-        let reserve_data = self.reserve_data().get();
-        self._get_borrow_rate(reserve_data, OptionalArg::None)
+        let pool_params = self.pool_params().get();
+        self._get_borrow_rate(pool_params, OptionalArg::None)
     }
-
-
 }

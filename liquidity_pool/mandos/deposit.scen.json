@@ -1,0 +1,168 @@
+{
+	"name": "deposit",
+	"steps": [
+		{
+			"step": "externalSteps",
+			"path": "complete_setup.scen.json"
+		},
+		{
+			"step": "scCall",
+			"txId": "deposit",
+			"tx": {
+				"from": "address:owner",
+				"to": "sc:liqpool",
+				"value": "0",
+				"esdt": {
+					"tokenIdentifier": "str:WBT-abcdef",
+					"value": "100,000"
+				},
+				"function": "deposit_asset",
+				"arguments": [
+					"address:owner"
+				],
+				"gasLimit": "100,000,000",
+				"gasPrice": "0"
+			},
+			"expect": {
+				"out": [
+					"0x01"
+				],
+				"status": "",
+				"gas": "*",
+				"refund": "*"
+			}
+		},
+		{
+			"step": "checkState",
+			"accounts": {
+				"address:owner": {
+					"nonce": "2",
+					"balance": "1,000,000,000,000",
+					"esdt": {
+						"str:WBT-abcdef": "999,999,900,000",
+						"str:LEND-abcdef": {
+							"instances": [
+								{
+									"nonce": "0x01",
+									"balance": "100,000",
+									"creator": "sc:liqpool",
+									"hash": "*",
+									"attributes": "*"
+								}
+							]
+						}
+					},
+					"storage": {}
+				},
+				"sc:liqpool": {
+					"nonce": "0",
+					"balance": "0",
+					"esdt": {
+						"str:LEND-abcdef": {
+							"lastNonce": "1",
+							"roles": [
+								"ESDTRoleNFTCreate",
+								"ESDTRoleNFTAddQuantity",
+								"ESDTRoleNFTBurn"
+							]
+						},
+						"str:WBT-abcdef": "100,000"
+					},
+					"storage": {
+						"str:pool_asset": "str:WBT-abcdef",
+						"str:lendingPool": "address:owner",
+						"str:debt_nonce": "1",
+						"str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000",
+						"str:lend_token": "str:LEND-abcdef",
+						"str:reserves|nested:str:WBT-abcdef": "100,000"
+					},
+					"code": "file:../output/liquidity_pool.wasm"
+				},
+				"+": ""
+			}
+		},
+		{
+			"step": "scCall",
+			"txId": "deposit",
+			"tx": {
+				"from": "address:owner",
+				"to": "sc:liqpool",
+				"value": "0",
+				"esdt": {
+					"tokenIdentifier": "str:WBT-abcdef",
+					"value": "100,000"
+				},
+				"function": "deposit_asset",
+				"arguments": [
+					"address:owner"
+				],
+				"gasLimit": "100,000,000",
+				"gasPrice": "0"
+			},
+			"expect": {
+				"out": [
+					"0x02"
+				],
+				"status": "",
+				"gas": "*",
+				"refund": "*"
+			}
+		},
+		{
+			"step": "checkState",
+			"accounts": {
+				"address:owner": {
+					"nonce": "3",
+					"balance": "1,000,000,000,000",
+					"esdt": {
+						"str:WBT-abcdef": "999,999,800,000",
+						"str:LEND-abcdef": {
+							"instances": [
+								{
+									"nonce": "0x01",
+									"balance": "100,000",
+									"creator": "sc:liqpool",
+									"hash": "*",
+									"attributes": "*"
+								},
+								{
+									"nonce": "0x02",
+									"balance": "100,000",
+									"creator": "sc:liqpool",
+									"hash": "*",
+									"attributes": "*"
+								}
+							]
+						}
+					},
+					"storage": {}
+				},
+				"sc:liqpool": {
+					"nonce": "0",
+					"balance": "0",
+					"esdt": {
+						"str:LEND-abcdef": {
+							"lastNonce": "2",
+							"roles": [
+								"ESDTRoleNFTCreate",
+								"ESDTRoleNFTAddQuantity",
+								"ESDTRoleNFTBurn"
+							]
+						},
+						"str:WBT-abcdef": "200,000"
+					},
+					"storage": {
+						"str:pool_asset": "str:WBT-abcdef",
+						"str:lendingPool": "address:owner",
+						"str:debt_nonce": "1",
+						"str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000",
+						"str:lend_token": "str:LEND-abcdef",
+						"str:reserves|nested:str:WBT-abcdef": "200,000"
+					},
+					"code": "file:../output/liquidity_pool.wasm"
+				},
+				"+": ""
+			}
+		}
+	]
+}

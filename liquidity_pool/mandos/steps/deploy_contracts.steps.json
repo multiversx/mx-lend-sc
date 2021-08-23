@@ -1,0 +1,58 @@
+{
+	"name": "deploy contract",
+	"steps": [
+		{
+			"step": "setState",
+			"newAddresses": [
+				{
+					"creatorAddress": "address:owner",
+					"creatorNonce": "0",
+					"newAddress": "sc:liqpool"
+				}
+			]
+		},
+		{
+			"step": "scDeploy",
+			"txId": "deploy",
+			"tx": {
+				"from": "address:owner",
+				"value": "0",
+				"contractCode": "file:../../output/liquidity_pool.wasm",
+				"arguments": [
+					"str:WBT-abcdef",
+					"address:owner",
+					"0",
+					"40000000",
+					"1000000000",
+					"800000000",
+					"100000000"
+				],
+				"gasLimit": "100,000,000",
+				"gasPrice": "0"
+			},
+			"expect": {
+				"status": "0",
+				"logs": [],
+				"gas": "*",
+				"refund": "*"
+			}
+		},
+		{
+			"step": "checkState",
+			"accounts": {
+				"sc:liqpool": {
+					"nonce": "0",
+					"balance": "0",
+					"storage": {
+						"str:pool_asset": "str:WBT-abcdef",
+						"str:lendingPool": "address:owner",
+						"str:debt_nonce": "1",
+						"str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000"
+					},
+					"code": "file:../../output/liquidity_pool.wasm"
+				},
+				"+": ""
+			}
+		}
+	]
+}

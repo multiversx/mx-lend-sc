@@ -39,7 +39,7 @@ pub trait SafetyModule {
     fn fund(
         self,
         #[payment_token] token: TokenIdentifier,
-        #[payment] payment: Self::BigUint,
+        #[payment_amount] payment: Self::BigUint,
         #[var_args] caller: OptionalArg<Address>,
     ) -> SCResult<()> {
         require!(payment > 0, "amount must be greater than 0");
@@ -71,7 +71,7 @@ pub trait SafetyModule {
     #[endpoint(nftIssue)]
     fn nft_issue(
         &self,
-        #[payment] issue_cost: Self::BigUint,
+        #[payment_amount] issue_cost: Self::BigUint,
         token_display_name: BoxedBytes,
         token_ticker: BoxedBytes,
     ) -> SCResult<AsyncCall<Self::SendApi>> {
@@ -126,7 +126,7 @@ pub trait SafetyModule {
     fn fund_from_pool(
         &self,
         #[payment_token] token: TokenIdentifier,
-        #[payment] payment: Self::BigUint,
+        #[payment_amount] payment: Self::BigUint,
     ) -> SCResult<()> {
         require!(payment > 0, "amount must be greater than 0");
 
@@ -152,21 +152,15 @@ pub trait SafetyModule {
 
         self.convert_wegld(pool_token.clone(), amount.clone());
 
-        self.send().direct_esdt_execute(
-            &caller_address,
-            &pool_token,
-            &amount,
-            self.blockchain().get_gas_left(),
-            &[],
-            &ArgBuffer::new(),
-        )?;
+        self.send()
+            .direct(&caller_address, &pool_token, 0, &amount, &[]);
 
         Ok(())
     }
 
     #[payable("*")]
     #[endpoint(withdraw)]
-    fn withdraw(&self, #[payment] amount: Self::BigUint) -> SCResult<Self::BigUint> {
+    fn withdraw(&self, #[payment_amount] amount: Self::BigUint) -> SCResult<Self::BigUint> {
         let caller_address = self.blockchain().get_caller();
         let token_id = self.call_value().token();
         let nft_nonce = self.call_value().esdt_token_nonce();
@@ -180,18 +174,7 @@ pub trait SafetyModule {
             nft_nonce,
         );
 
-        let nft_metadata: DepositMetadata;
-        match DepositMetadata::top_decode(nft_info.attributes.as_slice()) {
-            Result::Ok(decoded) => {
-                nft_metadata = decoded;
-            }
-            Result::Err(message) => {
-                self.last_error_message()
-                    .set(&BoxedBytes::from(message.message_bytes()));
-                return sc_error!("could not parse token metadata");
-            }
-        }
-
+        let nft_metadata = nft_info.decode_attributes::<DepositMetadata>()?;
         let time_in_pool = self.blockchain().get_block_timestamp() - nft_metadata.timestamp;
 
         require!(time_in_pool > 0, "invalid timestamp");
@@ -199,9 +182,10 @@ pub trait SafetyModule {
         let withdraw_amount =
             self.calculate_amount_for_withdrawal(amount.clone(), Self::BigUint::from(time_in_pool));
 
+        let wegld_token_id = &self.wegld_token().get();
         let contract_balance = self.blockchain().get_esdt_balance(
             &self.blockchain().get_sc_address(),
-            &self.wegld_token().get(),
+            wegld_token_id,
             0,
         );
 
@@ -212,14 +196,8 @@ pub trait SafetyModule {
 
         self.nft_burn(token_id, nft_nonce, amount);
 
-        self.send().direct_esdt_execute(
-            &caller_address,
-            &self.wegld_token().get(),
-            &withdraw_amount,
-            self.blockchain().get_gas_left(),
-            &[],
-            &ArgBuffer::new(),
-        )?;
+        self.send()
+            .direct(&caller_address, wegld_token_id, 0, &withdraw_amount, &[]);
 
         Ok(withdraw_amount)
     }
@@ -300,7 +278,6 @@ pub trait SafetyModule {
         //TODO:  integration with dex
     }
 
-    //Storage
     #[view]
     #[storage_mapper("pools")]
     fn pools(&self, token: TokenIdentifier) -> SingleValueMapper<Self::Storage, Address>;

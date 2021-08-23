@@ -9,7 +9,7 @@ use elrond_wasm::*;
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-#[elrond_wasm_derive::contract]
+#[elrond_wasm::contract]
 pub trait LendingPool {
     #[init]
     fn init(&self) {}
@@ -20,7 +20,7 @@ pub trait LendingPool {
         &self,
         #[var_args] caller: OptionalArg<Address>,
         #[payment_token] asset: TokenIdentifier,
-        #[payment] amount: Self::BigUint,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
         let initial_caller = caller
             .into_option()
@@ -43,7 +43,7 @@ pub trait LendingPool {
     #[endpoint]
     fn withdraw(
         &self,
-        #[payment] amount: Self::BigUint,
+        #[payment_amount] amount: Self::BigUint,
         #[var_args] caller: OptionalArg<Address>,
     ) -> SCResult<()> {
         let lend_token = self.call_value().token();
@@ -72,7 +72,7 @@ pub trait LendingPool {
         asset_to_repay: TokenIdentifier,
         #[var_args] caller: OptionalArg<Address>,
         #[payment_token] borrow_token: TokenIdentifier,
-        #[payment] amount: Self::BigUint,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
         let initial_caller = caller
             .into_option()
@@ -113,7 +113,7 @@ pub trait LendingPool {
         repay_unique_id: BoxedBytes,
         #[var_args] initial_caller: OptionalArg<Address>,
         #[payment_token] asset: TokenIdentifier,
-        #[payment] amount: Self::BigUint,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
         let caller = initial_caller
             .into_option()
@@ -157,7 +157,7 @@ pub trait LendingPool {
         liquidate_unique_id: BoxedBytes,
         #[var_args] initial_caller: OptionalArg<Address>,
         #[payment_token] asset: TokenIdentifier,
-        #[payment] amount: Self::BigUint,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
         let caller = initial_caller
             .into_option()
@@ -206,7 +206,7 @@ pub trait LendingPool {
         asset_to_borrow: TokenIdentifier,
         #[var_args] caller: OptionalArg<Address>,
         #[payment_token] asset_collateral_lend_token: TokenIdentifier,
-        #[payment] amount: Self::BigUint,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
         let initial_caller = caller
             .into_option()
@@ -250,16 +250,7 @@ pub trait LendingPool {
             nft_nonce,
         );
 
-        let metadata: InterestMetadata;
-        match InterestMetadata::top_decode(esdt_nft_data.attributes.as_slice()) {
-            Result::Ok(decoded) => {
-                metadata = decoded;
-            }
-            Result::Err(_) => {
-                return sc_error!("could not parse token metadata");
-            }
-        }
-
+        let metadata = esdt_nft_data.decode_attributes::<InterestMetadata>()?;
         self.liquidity_pool_proxy(borrow_token_pool_address)
             .borrow_endpoint(
                 initial_caller.clone(),
@@ -292,8 +283,6 @@ pub trait LendingPool {
         self.router().set(&address);
         Ok(())
     }
-
-    /// UTILS
 
     fn get_pool_address(&self, asset: TokenIdentifier) -> Address {
         if !self.pools_map().contains_key(&asset) {
@@ -328,9 +317,6 @@ pub trait LendingPool {
         Ok(())
     }
 
-    /// STORAGE
-
-    //delete after liquidations debugging
     #[storage_set("tokenIdentifierLiq")]
     fn set_token_identifier_liq(&self, token: TokenIdentifier);
 
@@ -345,14 +331,11 @@ pub trait LendingPool {
     #[storage_get("tokenAmountLiq")]
     fn get_token_amount_liq(&self) -> Self::BigUint;
 
-    /// router address
     #[storage_mapper("router")]
     fn router(&self) -> SingleValueMapper<Self::Storage, Address>;
 
-    //
-    /// mapping for tokens to their liquidity pools addresses
     #[storage_mapper("pools_map")]
-    fn pools_map(&self) -> MapMapper<Self::Storage, TokenIdentifier, Address>;
+    fn pools_map(&self) -> SafeMapMapper<Self::Storage, TokenIdentifier, Address>;
 
     #[proxy]
     fn liquidity_pool_proxy(&self, sc_address: Address) -> liquidity_pool::Proxy<Self::SendApi>;

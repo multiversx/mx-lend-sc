@@ -1,0 +1,25 @@
+{
+	"name": "accept esdt payment",
+	"steps": [
+		{
+			"step": "setState",
+			"currentBlockInfo": {
+				"blockEpoch": "10",
+				"blockNonce": "10,000",
+				"blockTimestamp": "10,000,000"
+			}
+		},
+		{
+			"step": "externalSteps",
+			"path": "steps/init_accounts.steps.json"
+		},
+		{
+			"step": "externalSteps",
+			"path": "steps/deploy_contracts.steps.json"
+		},
+		{
+			"step": "externalSteps",
+			"path": "steps/issue_lend_token.steps.json"
+		}
+	]
+}
