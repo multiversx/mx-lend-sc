@@ -14,19 +14,17 @@ pub trait SafetyModule {
         self.deposit_apy().set(&depositors_apy);
     }
 
+    #[only_owner]
     #[endpoint(addPool)]
     fn add_pool(&self, token: TokenIdentifier, address: &Address) -> SCResult<()> {
-        only_owner!(self, "Only owner may call this function!");
-
         self.pools(token).set(address);
 
         Ok(())
     }
 
+    #[only_owner]
     #[endpoint(removePool)]
     fn remove_pool(&self, token: TokenIdentifier) -> SCResult<()> {
-        only_owner!(self, "Only owner may call this function!");
-
         self.pools(token).clear();
 
         Ok(())
@@ -65,6 +63,7 @@ pub trait SafetyModule {
         Ok(())
     }
 
+    #[only_owner]
     #[payable("EGLD")]
     #[endpoint(nftIssue)]
     fn nft_issue(
@@ -73,9 +72,6 @@ pub trait SafetyModule {
         token_display_name: BoxedBytes,
         token_ticker: BoxedBytes,
     ) -> SCResult<AsyncCall<Self::SendApi>> {
-        let caller = self.blockchain().get_caller();
-
-        only_owner!(self, "only owner can issue new tokens");
         require!(issue_cost == ESDT_ISSUE_COST, "wrong ESDT asset identifier");
 
         Ok(ESDTSystemSmartContractProxy::new_proxy_obj(self.send())
@@ -201,15 +197,13 @@ pub trait SafetyModule {
         Ok(withdraw_amount)
     }
 
+    #[only_owner]
     #[endpoint(setLocalRolesNftToken)]
     fn set_local_roles_nft_token(
         &self,
         #[var_args] roles: VarArgs<EsdtLocalRole>,
     ) -> SCResult<AsyncCall<Self::SendApi>> {
-        only_owner!(self, "Permission denied");
-        if self.nft_token().is_empty() {
-            return sc_error!("No nft token issued");
-        }
+        require!(!self.nft_token().is_empty(), "No nft token issued");
 
         let token = self.nft_token().get();
         Ok(self.set_local_roles(token, roles))

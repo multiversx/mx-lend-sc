@@ -25,7 +25,6 @@ pub trait LiquidityPool:
     fn init(
         &self,
         asset: TokenIdentifier,
-        lending_pool: Address,
         r_base: Self::BigUint,
         r_slope1: Self::BigUint,
         r_slope2: Self::BigUint,
@@ -33,7 +32,6 @@ pub trait LiquidityPool:
         reserve_factor: Self::BigUint,
     ) {
         self.pool_asset().set(&asset);
-        self.lending_pool().set(&lending_pool);
         self.debt_nonce().set_if_empty(&1u64);
         self.pool_params().set(&PoolParams {
             r_base,

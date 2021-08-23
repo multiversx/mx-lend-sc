@@ -12,6 +12,7 @@ use super::utils;
 pub trait LiquidityModule:
     storage::StorageModule + tokens::TokensModule + utils::UtilsModule + library::LibraryModule
 {
+    #[only_owner]
     #[payable("*")]
     #[endpoint(depositAsset)]
     fn deposit_asset(
@@ -20,11 +21,6 @@ pub trait LiquidityModule:
         #[payment_token] asset: TokenIdentifier,
         #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
-        require!(
-            self.lending_pool().get() == self.blockchain().get_caller(),
-            "permission denied"
-        );
-
         let pool_asset = self.pool_asset().get();
         require!(
             asset == pool_asset,
@@ -49,6 +45,7 @@ pub trait LiquidityModule:
         Ok(())
     }
 
+    #[only_owner]
     #[payable("*")]
     #[endpoint(borrow)]
     fn borrow(
@@ -58,10 +55,6 @@ pub trait LiquidityModule:
         #[payment_amount] amount: Self::BigUint,
         timestamp: u64,
     ) -> SCResult<()> {
-        require!(
-            self.blockchain().get_caller() == self.lending_pool().get(),
-            "can only be called through lending pool"
-        );
         require!(amount > 0, "lend amount must be bigger then 0");
         require!(!initial_caller.is_zero(), "invalid address provided");
 
@@ -124,6 +117,7 @@ pub trait LiquidityModule:
         Ok(())
     }
 
+    #[only_owner]
     #[payable("*")]
     #[endpoint(lockBTokens)]
     fn lock_b_tokens(
@@ -133,10 +127,6 @@ pub trait LiquidityModule:
         #[payment_nonce] token_nonce: u64,
         #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<H256> {
-        require!(
-            self.blockchain().get_caller() == self.lending_pool().get(),
-            "can only be called by lending pool"
-        );
         require!(amount > 0, "amount must be greater then 0");
         require!(!initial_caller.is_zero(), "invalid address");
 
@@ -187,6 +177,7 @@ pub trait LiquidityModule:
         Ok(unique_repay_id)
     }
 
+    #[only_owner]
     #[payable("*")]
     #[endpoint]
     fn repay(
@@ -195,10 +186,6 @@ pub trait LiquidityModule:
         #[payment_token] asset: TokenIdentifier,
         #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<RepayPostion<Self::BigUint>> {
-        require!(
-            self.blockchain().get_caller() == self.lending_pool().get(),
-            "function can only be called by lending pool"
-        );
         require!(amount > 0, "amount must be greater then 0");
         require!(
             asset == self.pool_asset().get(),
@@ -260,6 +247,7 @@ pub trait LiquidityModule:
         Ok(repay_position)
     }
 
+    #[only_owner]
     #[payable("*")]
     #[endpoint]
     fn withdraw(
@@ -268,10 +256,6 @@ pub trait LiquidityModule:
         #[payment_token] lend_token: TokenIdentifier,
         #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
-        require!(
-            self.blockchain().get_caller() == self.lending_pool().get(),
-            "permission denied"
-        );
         require!(
             lend_token == self.lend_token().get(),
             "lend token not supported"
@@ -306,6 +290,7 @@ pub trait LiquidityModule:
         Ok(())
     }
 
+    #[only_owner]
     #[payable("*")]
     #[endpoint]
     fn liquidate(
@@ -314,10 +299,6 @@ pub trait LiquidityModule:
         #[payment_token] token: TokenIdentifier,
         #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<LiquidateData<Self::BigUint>> {
-        require!(
-            self.blockchain().get_caller() == self.lending_pool().get(),
-            "function can only be called by lending pool"
-        );
         require!(amount > 0, "amount must be bigger then 0");
         require!(
             token == self.pool_asset().get(),

@@ -11,6 +11,7 @@ use liquidity_pool::tokens::ProxyTrait as _;
 
 #[elrond_wasm::module]
 pub trait RouterModule: proxy_common::ProxyCommonModule + factory::FactoryModule {
+    #[only_owner]
     #[endpoint(createLiquidityPool)]
     fn create_liquidity_pool(
         &self,
@@ -23,7 +24,6 @@ pub trait RouterModule: proxy_common::ProxyCommonModule + factory::FactoryModule
         reserve_factor: Self::BigUint,
         pool_bytecode: BoxedBytes,
     ) -> SCResult<Address> {
-        only_owner!(self, "only owner can create new pools");
         require!(
             !self.pools_map().contains_key(&base_asset),
             "asset already supported"
@@ -49,30 +49,26 @@ pub trait RouterModule: proxy_common::ProxyCommonModule + factory::FactoryModule
         Ok(address)
     }
 
+    #[only_owner]
     #[endpoint(upgradeLiquidityPool)]
     fn upgrade_liquidity_pool(
         &self,
         base_asset: TokenIdentifier,
         new_bytecode: BoxedBytes,
     ) -> SCResult<()> {
-        only_owner!(self, "only owner can upgrade existing pools");
-
         require!(
             self.pools_map().contains_key(&base_asset),
             "no pool found for this asset"
         );
 
         let pool_address = self.pools_map().get(&base_asset).unwrap();
-
         let success = self.upgrade_pool(&pool_address, &new_bytecode);
-
-        if !success {
-            return sc_error!("pair upgrade failed");
-        }
+        require!(success, "pair upgrade failed");
 
         Ok(())
     }
 
+    #[only_owner]
     #[payable("EGLD")]
     #[endpoint(issueLendToken)]
     fn issue_lend_token(
@@ -81,7 +77,6 @@ pub trait RouterModule: proxy_common::ProxyCommonModule + factory::FactoryModule
         token_ticker: TokenIdentifier,
         #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
-        only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&token_ticker).unwrap();
         self.liquidity_pool_proxy(pool_address)
             .issue(
@@ -95,6 +90,7 @@ pub trait RouterModule: proxy_common::ProxyCommonModule + factory::FactoryModule
         Ok(())
     }
 
+    #[only_owner]
     #[payable("EGLD")]
     #[endpoint(issueBorrowToken)]
     fn issue_borrow_token(
@@ -103,7 +99,6 @@ pub trait RouterModule: proxy_common::ProxyCommonModule + factory::FactoryModule
         token_ticker: TokenIdentifier,
         #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
-        only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&token_ticker).unwrap();
         self.liquidity_pool_proxy(pool_address)
             .issue(

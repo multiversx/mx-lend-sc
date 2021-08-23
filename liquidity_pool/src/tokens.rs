@@ -11,6 +11,7 @@ use super::utils;
 pub trait TokensModule:
     storage::StorageModule + utils::UtilsModule + library::LibraryModule
 {
+    #[only_owner]
     #[payable("*")]
     #[endpoint(mintLTokens)]
     fn mint_l_tokens(
@@ -20,11 +21,6 @@ pub trait TokensModule:
         #[payment_amount] amount: Self::BigUint,
         interest_timestamp: u64,
     ) -> SCResult<()> {
-        require!(
-            self.blockchain().get_caller() == self.lending_pool().get(),
-            "can only by called by lending pool"
-        );
-
         require!(
             lend_token == self.lend_token().get(),
             "asset is not supported by this pool"
@@ -48,6 +44,7 @@ pub trait TokensModule:
         Ok(())
     }
 
+    #[only_owner]
     #[payable("*")]
     #[endpoint(burnLTokens)]
     fn burn_l_tokens(
@@ -57,11 +54,6 @@ pub trait TokensModule:
         #[payment_amount] amount: Self::BigUint,
         initial_caller: Address,
     ) -> SCResult<()> {
-        require!(
-            self.blockchain().get_caller() == self.lending_pool().get(),
-            "can only by called by lending pool"
-        );
-
         require!(
             lend_token == self.lend_token().get(),
             "asset is not supported by this pool"
@@ -75,6 +67,7 @@ pub trait TokensModule:
         Ok(())
     }
 
+    #[only_owner]
     #[endpoint]
     fn issue(
         &self,
