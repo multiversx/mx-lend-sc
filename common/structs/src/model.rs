@@ -96,3 +96,15 @@ impl<BigUint: BigUintApi> Default for RepayPostion<BigUint> {
         }
     }
 }
+
+impl InterestMetadata {
+    pub fn new(timestamp: u64) -> Self {
+        InterestMetadata { timestamp }
+    }
+}
+
+impl Default for InterestMetadata {
+    fn default() -> Self {
+        InterestMetadata { timestamp: 0 }
+    }
+}

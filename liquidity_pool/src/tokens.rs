@@ -28,18 +28,10 @@ pub trait TokensModule:
         require!(amount > 0, "amount must be greater then 0");
         require!(!initial_caller.is_zero(), "invalid address");
 
-        let interest_metadata = InterestMetadata {
-            timestamp: interest_timestamp,
-        };
-
-        self.mint_interest(amount.clone(), interest_metadata);
-
-        let nonce = self
-            .blockchain()
-            .get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &lend_token);
-
+        let interest_metadata = InterestMetadata::new(interest_timestamp);
+        let new_nonce = self.mint_interest(amount.clone(), interest_metadata);
         self.send()
-            .direct(&initial_caller, &lend_token, nonce, &amount, &[]);
+            .direct(&initial_caller, &lend_token, new_nonce, &amount, &[]);
 
         Ok(())
     }
@@ -144,7 +136,7 @@ pub trait TokensModule:
             .with_callback(self.callbacks().set_roles_callback())
     }
 
-    fn mint_interest(&self, amount: Self::BigUint, metadata: InterestMetadata) {
+    fn mint_interest(&self, amount: Self::BigUint, metadata: InterestMetadata) -> u64 {
         self.send().esdt_nft_create::<InterestMetadata>(
             &self.lend_token().get(),
             &amount,
@@ -153,7 +145,7 @@ pub trait TokensModule:
             &BoxedBytes::empty(),
             &metadata,
             &[BoxedBytes::empty()],
-        );
+        )
     }
 
     fn mint_debt(
@@ -171,6 +163,19 @@ pub trait TokensModule:
             &metadata,
             &[BoxedBytes::empty()],
         );
+    }
+
+    fn get_lend_token_attributes(
+        &self,
+        lend_token: &TokenIdentifier,
+        token_nonce: u64,
+    ) -> SCResult<InterestMetadata> {
+        let nft_info = self.blockchain().get_esdt_token_data(
+            &self.blockchain().get_sc_address(),
+            lend_token,
+            token_nonce,
+        );
+        SCResult::from(nft_info.decode_attributes::<InterestMetadata>())
     }
 
     #[callback]

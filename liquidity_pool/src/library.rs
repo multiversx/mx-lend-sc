@@ -72,14 +72,14 @@ pub trait LibraryModule {
 
     fn compute_withdrawal_amount(
         &self,
-        amount: Self::BigUint,
-        time_diff: Self::BigUint,
-        deposit_rate: Self::BigUint,
+        amount: &Self::BigUint,
+        time_diff: &Self::BigUint,
+        deposit_rate: &Self::BigUint,
     ) -> Self::BigUint {
         let bp = Self::BigUint::from(BP);
         let secs_year = Self::BigUint::from(SECONDS_IN_YEAR);
-        let percentage = (time_diff * deposit_rate) / secs_year;
+        let percentage = &(time_diff * deposit_rate) / &secs_year;
 
-        amount.clone() + ((percentage * amount) / bp)
+        amount + &(&(&percentage * amount) / &bp)
     }
 }

@@ -93,4 +93,10 @@ pub trait UtilsModule: library::LibraryModule + storage::StorageModule {
         let pool_params = self.pool_params().get();
         self._get_borrow_rate(pool_params, OptionalArg::None)
     }
+
+    fn get_timestamp_diff(&self, timestamp: u64) -> SCResult<Self::BigUint> {
+        let current_time = self.blockchain().get_block_timestamp();
+        require!(current_time >= timestamp, "Invalid timestamp");
+        Ok(Self::BigUint::from(current_time - timestamp))
+    }
 }

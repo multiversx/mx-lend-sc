@@ -27,20 +27,17 @@ pub trait LiquidityModule:
             "asset not supported for this liquidity pool"
         );
 
-        let interest_metadata = InterestMetadata {
-            timestamp: self.blockchain().get_block_timestamp(),
-        };
-        self.mint_interest(amount.clone(), interest_metadata);
-
-        let lend_token = self.lend_token().get();
-        let nonce = self
-            .blockchain()
-            .get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &lend_token);
+        let interest_metadata = InterestMetadata::new(self.blockchain().get_block_timestamp());
+        let new_nonce = self.mint_interest(amount.clone(), interest_metadata);
 
         self.reserves(&pool_asset).update(|x| *x += &amount);
-
-        self.send()
-            .direct(&initial_caller, &lend_token, nonce, &amount, &[]);
+        self.send().direct(
+            &initial_caller,
+            &self.lend_token().get(),
+            new_nonce,
+            &amount,
+            &[],
+        );
 
         Ok(())
     }
@@ -254,6 +251,7 @@ pub trait LiquidityModule:
         &self,
         initial_caller: Address,
         #[payment_token] lend_token: TokenIdentifier,
+        #[payment_nonce] token_nonce: u64,
         #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
         require!(
@@ -262,30 +260,22 @@ pub trait LiquidityModule:
         );
 
         let pool_asset = self.pool_asset().get();
-        let mut asset_reserve = self.reserves(&pool_asset).get();
-
-        let nft_nonce = self.call_value().esdt_token_nonce();
-        let nft_info = self.blockchain().get_esdt_token_data(
-            &self.blockchain().get_sc_address(),
-            &lend_token,
-            nft_nonce,
-        );
-        let metadata: InterestMetadata = nft_info.decode_attributes::<InterestMetadata>()?;
+        let asset_reserve = &self.reserves(&pool_asset).get();
+        let metadata = self.get_lend_token_attributes(&lend_token, token_nonce)?;
 
         let deposit_rate = self.get_deposit_rate();
-        let time_diff =
-            Self::BigUint::from(self.blockchain().get_block_timestamp() - metadata.timestamp);
-        let withdrawal_amount =
-            self.compute_withdrawal_amount(amount.clone(), time_diff, deposit_rate);
-        require!(asset_reserve >= withdrawal_amount, "insufficient funds");
+        let time_diff = self.get_timestamp_diff(metadata.timestamp)?;
+        let withdrawal_amount = &self.compute_withdrawal_amount(&amount, &time_diff, &deposit_rate);
 
-        asset_reserve -= &withdrawal_amount;
-        self.reserves(&pool_asset).set(&asset_reserve);
+        require!(asset_reserve >= withdrawal_amount, "insufficient funds");
+        self.reserves(&pool_asset)
+            .set(&(asset_reserve - withdrawal_amount));
 
         self.send()
-            .direct(&initial_caller, &pool_asset, 0, &withdrawal_amount, &[]);
+            .esdt_local_burn(&lend_token, token_nonce, &amount);
 
-        self.send().esdt_local_burn(&lend_token, nft_nonce, &amount);
+        self.send()
+            .direct(&initial_caller, &pool_asset, 0, withdrawal_amount, &[]);
 
         Ok(())
     }
