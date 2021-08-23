@@ -1,20 +1,16 @@
-#![no_std]
-#![allow(non_snake_case)]
 #![allow(clippy::too_many_arguments)]
 
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-mod pool_factory;
+use super::factory;
+use super::proxy_common;
 
 use common_structs::{BORROW_TOKEN_PREFIX, LEND_TOKEN_PREFIX};
 use liquidity_pool::tokens::ProxyTrait as _;
 
-#[elrond_wasm::contract]
-pub trait Router: pool_factory::PoolFactoryModule {
-    #[init]
-    fn init(&self) {}
-
+#[elrond_wasm::module]
+pub trait RouterModule: proxy_common::ProxyCommonModule + factory::FactoryModule {
     #[endpoint(createLiquidityPool)]
     fn create_liquidity_pool(
         &self,
@@ -47,7 +43,7 @@ pub trait Router: pool_factory::PoolFactoryModule {
 
         if !address.is_zero() {
             self.pools_map().insert(base_asset, address.clone());
-            self.pools_allowed().insert(address.clone(), true);
+            self.pools_allowed().insert(address.clone());
         }
 
         Ok(address)
@@ -154,9 +150,12 @@ pub trait Router: pool_factory::PoolFactoryModule {
     #[endpoint(setTickerAfterIssue)]
     fn set_ticker_after_issue(&self, token_ticker: TokenIdentifier) -> SCResult<()> {
         let caller = self.blockchain().get_caller();
-        let is_pool_allowed = self.pools_allowed().get(&caller).unwrap_or_default();
+        let is_pool_allowed = self.pools_allowed().contains(&caller);
         require!(is_pool_allowed, "access restricted: unknown caller address");
-        require!(!token_ticker.is_egld(), "invalid ticker provided");
+        require!(
+            token_ticker.is_valid_esdt_identifier(),
+            "invalid ticker provided"
+        );
         self.pools_map().insert(token_ticker, caller);
         Ok(())
     }
@@ -169,9 +168,7 @@ pub trait Router: pool_factory::PoolFactoryModule {
     #[storage_mapper("pools_map")]
     fn pools_map(&self) -> SafeMapMapper<Self::Storage, TokenIdentifier, Address>;
 
+    #[view(getPoolAllowed)]
     #[storage_mapper("pool_allowed")]
-    fn pools_allowed(&self) -> SafeMapMapper<Self::Storage, Address, bool>;
-
-    #[proxy]
-    fn liquidity_pool_proxy(&self, sc_address: Address) -> liquidity_pool::Proxy<Self::SendApi>;
+    fn pools_allowed(&self) -> SafeSetMapper<Self::Storage, Address>;
 }

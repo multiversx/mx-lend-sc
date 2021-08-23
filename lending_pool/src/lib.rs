@@ -1,8 +1,11 @@
 #![no_std]
-#![allow(non_snake_case)]
 
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
+
+mod factory;
+mod proxy_common;
+mod router;
 
 pub use common_structs::*;
 
@@ -10,7 +13,9 @@ use liquidity_pool::liquidity::ProxyTrait as _;
 use liquidity_pool::tokens::ProxyTrait as _;
 
 #[elrond_wasm::contract]
-pub trait LendingPool {
+pub trait LendingPool:
+    factory::FactoryModule + router::RouterModule + proxy_common::ProxyCommonModule
+{
     #[init]
     fn init(&self) {}
 
@@ -165,9 +170,6 @@ pub trait LendingPool {
 
         let collateral_token_address = self.get_pool_address(results.collateral_token.clone());
 
-        self.set_token_identifier_liq(results.collateral_token.clone());
-        self.set_token_amount_liq(results.amount.clone());
-
         require!(
             collateral_token_address != Address::zero(),
             "asset is not supported"
@@ -258,70 +260,4 @@ pub trait LendingPool {
 
         Ok(())
     }
-
-    #[endpoint(setRouterAddress)]
-    fn set_router_address(&self, address: Address) -> SCResult<()> {
-        only_owner!(self, "permission denied");
-        self.router().set(&address);
-        Ok(())
-    }
-
-    fn get_pool_address(&self, asset: TokenIdentifier) -> Address {
-        if !self.pools_map().contains_key(&asset) {
-            let router_address = self.router().get();
-            let pool_address = self
-                .router_proxy(router_address)
-                .get_pool_address(asset.clone())
-                .with_gas_limit(self.blockchain().get_gas_left() / 2)
-                .execute_on_dest_context();
-
-            self.pools_map().insert(asset, pool_address.clone());
-            return pool_address;
-        }
-
-        self.pools_map().get(&asset).unwrap_or_else(Address::zero)
-    }
-
-    #[endpoint(setTickerAfterIssue)]
-    fn set_ticker_after_issue(&self, token_ticker: TokenIdentifier) -> SCResult<()> {
-        let caller = self.blockchain().get_caller();
-        // let is_pool_allowed = self.pools_allowed().get(&caller).unwrap_or_default();
-        // require!(is_pool_allowed, "access restricted: unknown caller address");
-        require!(!token_ticker.is_egld(), "invalid ticker provided");
-        self.pools_map().insert(token_ticker, caller);
-        Ok(())
-    }
-
-    #[endpoint(setTicker)]
-    fn set_ticker(&self, token_ticker: TokenIdentifier, pool_address: Address) -> SCResult<()> {
-        require!(!token_ticker.is_egld(), "invalid ticker provided");
-        self.pools_map().insert(token_ticker, pool_address);
-        Ok(())
-    }
-
-    #[storage_set("tokenIdentifierLiq")]
-    fn set_token_identifier_liq(&self, token: TokenIdentifier);
-
-    #[view(tokenIdentifierLiq)]
-    #[storage_get("tokenIdentifierLiq")]
-    fn get_token_identifier_liq(&self) -> TokenIdentifier;
-
-    #[storage_set("tokenAmountLiq")]
-    fn set_token_amount_liq(&self, amount: Self::BigUint);
-
-    #[view(tokenAmountLiq)]
-    #[storage_get("tokenAmountLiq")]
-    fn get_token_amount_liq(&self) -> Self::BigUint;
-
-    #[storage_mapper("router")]
-    fn router(&self) -> SingleValueMapper<Self::Storage, Address>;
-
-    #[storage_mapper("pools_map")]
-    fn pools_map(&self) -> SafeMapMapper<Self::Storage, TokenIdentifier, Address>;
-
-    #[proxy]
-    fn liquidity_pool_proxy(&self, sc_address: Address) -> liquidity_pool::Proxy<Self::SendApi>;
-
-    #[proxy]
-    fn router_proxy(&self, sc_address: Address) -> router::Proxy<Self::SendApi>;
 }

@@ -22,9 +22,6 @@ optional = true
 [dependencies.liquidity_pool]
 path = "../liquidity_pool"
 
-[dependencies.router]
-path = "../router"
-
 [dev-dependencies.elrond-wasm-debug]
 version = "0.18"
 
