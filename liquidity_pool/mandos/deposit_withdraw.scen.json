@@ -75,7 +75,7 @@
                         "str:lend_token": "str:LEND-abcdef",
                         "str:reserves|nested:str:WBT-abcdef": "100,000"
                     },
-                    "code": "file:../output/liquidity-pool.wasm"
+                    "code": "file:../output/liquidity_pool.wasm"
                 },
                 "+": ""
             }
@@ -145,7 +145,7 @@
                         "str:reserve_data": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000",
                         "str:lend_token": "str:LEND-abcdef"
                     },
-                    "code": "file:../output/liquidity-pool.wasm"
+                    "code": "file:../output/liquidity_pool.wasm"
                 },
                 "+": ""
             }

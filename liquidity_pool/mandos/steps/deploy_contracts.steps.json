@@ -17,7 +17,7 @@
 			"tx": {
 				"from": "address:owner",
 				"value": "0",
-				"contractCode": "file:../../output/liquidity-pool.wasm",
+				"contractCode": "file:../../output/liquidity_pool.wasm",
 				"arguments": [
 					"str:WBT-abcdef",
 					"address:owner",
@@ -49,7 +49,7 @@
 						"str:debt_nonce": "1",
 						"str:reserve_data": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000"
 					},
-					"code": "file:../../output/liquidity-pool.wasm"
+					"code": "file:../../output/liquidity_pool.wasm"
 				},
 				"+": ""
 			}
