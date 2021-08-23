@@ -8,4 +8,5 @@ members = [
     "router/abi",
     "safety_module",
     "safety_module/abi",
+    "common/structs",
 ]

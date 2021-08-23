@@ -31,3 +31,7 @@ version = "0.18"
 [dependencies.elrond-wasm-output]
 version = "0.18"
 features = ["wasm-output-mode", "panic-message"]
+
+[dependencies.common_structs]
+path = "../common/structs"
+

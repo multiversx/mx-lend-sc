@@ -1,0 +1,14 @@
+[package]
+name = "common_structs"
+version = "0.0.0"
+authors = [ "catalin-neagu <catalin.neagu@elrond.com>",]
+edition = "2018"
+
+[lib]
+path = "src/model.rs"
+
+[dependencies.elrond-wasm]
+version = "0.18"
+
+[dependencies.elrond-wasm-derive]
+version = "0.18"

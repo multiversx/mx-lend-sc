@@ -7,17 +7,11 @@ elrond_wasm::derive_imports!();
 pub mod library;
 pub use library::*;
 pub mod liquidity;
-pub mod models;
 pub mod tokens;
-pub use models::*;
+pub use common_structs::*;
 
 mod storage;
 mod utils;
-
-const LEND_TOKEN_PREFIX: &[u8] = b"L";
-const BORROW_TOKEN_PREFIX: &[u8] = b"B";
-const LEND_TOKEN_NAME: &[u8] = b"IntBearing";
-const DEBT_TOKEN_NAME: &[u8] = b"DebtBearing";
 
 #[elrond_wasm::contract]
 pub trait LiquidityPool:

@@ -1,14 +1,16 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use crate::{DebtMetadata, DebtPosition, InterestMetadata, LiquidateData, RepayPostion};
+use common_structs::{DebtMetadata, DebtPosition, InterestMetadata, LiquidateData, RepayPostion};
+
+use super::library;
+use super::storage;
+use super::tokens;
+use super::utils;
 
 #[elrond_wasm::module]
 pub trait LiquidityModule:
-    crate::storage::StorageModule
-    + crate::tokens::TokensModule
-    + crate::utils::UtilsModule
-    + crate::library::LibraryModule
+    storage::StorageModule + tokens::TokensModule + utils::UtilsModule + library::LibraryModule
 {
     #[payable("*")]
     #[endpoint(depositAsset)]

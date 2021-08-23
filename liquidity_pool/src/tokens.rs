@@ -1,11 +1,15 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use crate::{DebtMetadata, InterestMetadata, LEND_TOKEN_PREFIX};
+use common_structs::{DebtMetadata, InterestMetadata, LEND_TOKEN_PREFIX};
+
+use super::library;
+use super::storage;
+use super::utils;
 
 #[elrond_wasm::module]
 pub trait TokensModule:
-    crate::storage::StorageModule + crate::utils::UtilsModule + crate::library::LibraryModule
+    storage::StorageModule + utils::UtilsModule + library::LibraryModule
 {
     #[payable("*")]
     #[endpoint(mintLTokens)]

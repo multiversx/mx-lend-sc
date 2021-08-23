@@ -7,9 +7,7 @@ elrond_wasm::derive_imports!();
 
 mod pool_factory;
 
-const LEND_TOKEN_PREFIX: &[u8] = b"L";
-const BORROW_TOKEN_PREFIX: &[u8] = b"B";
-
+use common_structs::{BORROW_TOKEN_PREFIX, LEND_TOKEN_PREFIX};
 use liquidity_pool::tokens::ProxyTrait as _;
 
 #[elrond_wasm::contract]

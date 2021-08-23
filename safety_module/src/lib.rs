@@ -4,9 +4,7 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-mod model;
-use model::DepositMetadata;
-use model::{BP, ESDT_ISSUE_COST, SECONDS_PER_YEAR};
+use common_structs::{DepositMetadata, BP, ESDT_ISSUE_COST, SECONDS_PER_YEAR};
 
 #[elrond_wasm::contract]
 pub trait SafetyModule {

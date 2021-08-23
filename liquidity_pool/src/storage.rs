@@ -1,8 +1,7 @@
 elrond_wasm::imports!();
+elrond_wasm::derive_imports!();
 
-use crate::{DebtPosition, PoolParams, RepayPostion};
-use elrond_wasm::storage::mappers::{SafeMapMapper, SingleValueMapper};
-use elrond_wasm::types::{Address, BoxedBytes, TokenIdentifier};
+use common_structs::{DebtPosition, PoolParams, RepayPostion};
 
 #[elrond_wasm::module]
 pub trait StorageModule {

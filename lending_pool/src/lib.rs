@@ -4,8 +4,7 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-pub mod models;
-pub use models::*;
+pub use common_structs::*;
 
 use liquidity_pool::liquidity::ProxyTrait as _;
 use liquidity_pool::tokens::ProxyTrait as _;
