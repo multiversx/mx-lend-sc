@@ -4,7 +4,7 @@ elrond_wasm::derive_imports!();
 use super::library;
 use super::storage;
 
-use common_structs::{IssueData, PoolParams, BORROW_TOKEN_PREFIX, LEND_TOKEN_PREFIX};
+use common_structs::{IssueData, BORROW_TOKEN_PREFIX, LEND_TOKEN_PREFIX};
 
 const LEND_TOKEN_NAME: &[u8] = b"IntBearing";
 const DEBT_TOKEN_NAME: &[u8] = b"DebtBearing";
@@ -43,55 +43,44 @@ pub trait UtilsModule: library::LibraryModule + storage::StorageModule {
         1u32
     }
 
-    fn _get_borrow_rate(
-        &self,
-        pool_params: PoolParams<Self::BigUint>,
-        #[var_args] utilisation: OptionalArg<Self::BigUint>,
-    ) -> Self::BigUint {
-        let u_current = utilisation
-            .into_option()
-            .unwrap_or_else(|| self.get_capital_utilisation());
-
-        self.compute_borrow_rate(
-            pool_params.r_base,
-            pool_params.r_slope1,
-            pool_params.r_slope2,
-            pool_params.u_optimal,
-            u_current,
-        )
-    }
-
     fn get_capital_utilisation(&self) -> Self::BigUint {
         let reserve_amount = self.reserves(&self.pool_asset().get()).get();
         //TODO: change with view_reserve after putting all view functions in a module
         let borrowed_amount = self.total_borrow().get();
 
-        self.compute_capital_utilisation(borrowed_amount, reserve_amount)
+        self.compute_capital_utilisation(&borrowed_amount, &reserve_amount)
     }
 
     fn get_debt_interest(&self, amount: Self::BigUint, timestamp: u64) -> SCResult<Self::BigUint> {
-        let now = self.blockchain().get_block_timestamp();
-        require!(now >= timestamp, "Now is bigger than timestamp");
-
-        let time_diff = Self::BigUint::from(now - timestamp);
+        let time_diff = self.get_timestamp_diff(timestamp)?;
         let borrow_rate = self.get_borrow_rate();
 
-        Ok(self.compute_debt(amount, time_diff, borrow_rate))
+        Ok(self.compute_debt(&amount, &time_diff, &borrow_rate))
     }
 
     fn get_deposit_rate(&self) -> Self::BigUint {
-        let utilisation = self.get_capital_utilisation();
         let pool_params = self.pool_params().get();
-        let reserve_factor = pool_params.reserve_factor.clone();
-        let borrow_rate =
-            self._get_borrow_rate(pool_params, OptionalArg::Some(utilisation.clone()));
+        let capital_utilisation = self.get_capital_utilisation();
+        let borrow_rate = self.get_borrow_rate();
 
-        self.compute_deposit_rate(utilisation, borrow_rate, reserve_factor)
+        self.compute_deposit_rate(
+            &capital_utilisation,
+            &borrow_rate,
+            &pool_params.reserve_factor,
+        )
     }
 
     fn get_borrow_rate(&self) -> Self::BigUint {
         let pool_params = self.pool_params().get();
-        self._get_borrow_rate(pool_params, OptionalArg::None)
+        let capital_utilisation = self.get_capital_utilisation();
+
+        self.compute_borrow_rate(
+            &pool_params.r_base,
+            &pool_params.r_slope1,
+            &pool_params.r_slope2,
+            &pool_params.u_optimal,
+            &capital_utilisation,
+        )
     }
 
     fn get_timestamp_diff(&self, timestamp: u64) -> SCResult<Self::BigUint> {
