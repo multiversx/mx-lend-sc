@@ -1,26 +1,30 @@
 elrond_wasm::imports!();
+elrond_wasm::derive_imports!();
 
-use crate::{DebtPosition, PoolParams, RepayPostion};
-use elrond_wasm::storage::mappers::{SafeMapMapper, SingleValueMapper};
-use elrond_wasm::types::{Address, BoxedBytes, TokenIdentifier};
+use common_structs::{DebtPosition, PoolParams, RepayPostion};
 
 #[elrond_wasm::module]
 pub trait StorageModule {
+    #[view(getPoolAsset)]
     #[storage_mapper("pool_asset")]
     fn pool_asset(&self) -> SingleValueMapper<Self::Storage, TokenIdentifier>;
 
+    #[view(getLendToken)]
     #[storage_mapper("lend_token")]
     fn lend_token(&self) -> SingleValueMapper<Self::Storage, TokenIdentifier>;
 
+    #[view(borrowToken)]
     #[storage_mapper("borrow_token")]
     fn borrow_token(&self) -> SingleValueMapper<Self::Storage, TokenIdentifier>;
 
+    #[view(getReserves)]
     #[storage_mapper("reserves")]
     fn reserves(
         &self,
         token_id: &TokenIdentifier,
     ) -> SingleValueMapper<Self::Storage, Self::BigUint>;
 
+    #[view(getLastError)]
     #[storage_mapper("last_error")]
     fn last_error(&self) -> SingleValueMapper<Self::Storage, BoxedBytes>;
 
@@ -29,6 +33,7 @@ pub trait StorageModule {
         &self,
     ) -> SafeMapMapper<Self::Storage, BoxedBytes, DebtPosition<Self::BigUint>>;
 
+    #[view(getDebtNonce)]
     #[storage_mapper("debt_nonce")]
     fn debt_nonce(&self) -> SingleValueMapper<Self::Storage, u64>;
 
@@ -37,24 +42,19 @@ pub trait StorageModule {
         &self,
     ) -> SafeMapMapper<Self::Storage, BoxedBytes, RepayPostion<Self::BigUint>>;
 
+    #[view(getPoolParams)]
     #[storage_mapper("pool_params")]
     fn pool_params(&self) -> SingleValueMapper<Self::Storage, PoolParams<Self::BigUint>>;
 
-    #[storage_mapper("healthFactorThreshold")]
+    #[view(getHealthFactorThreshold)]
+    #[storage_mapper("health_factor_threshold")]
     fn health_factor_threshold(&self) -> SingleValueMapper<Self::Storage, u32>;
 
-    #[storage_mapper("lendingPool")]
+    #[view(getLendingPool)]
+    #[storage_mapper("lending_pool")]
     fn lending_pool(&self) -> SingleValueMapper<Self::Storage, Address>;
 
-    #[storage_mapper("totalBorrow")]
+    #[view(getTotalBorrow)]
+    #[storage_mapper("total_borrow")]
     fn total_borrow(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
-
-    #[storage_mapper("repayPositionAmount")]
-    fn repay_position_amount(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
-
-    #[storage_mapper("repayPositionIdentifier")]
-    fn repay_position_id(&self) -> SingleValueMapper<Self::Storage, TokenIdentifier>;
-
-    #[storage_mapper("repayPositionNonce")]
-    fn repay_position_nonce(&self) -> SingleValueMapper<Self::Storage, u64>;
 }

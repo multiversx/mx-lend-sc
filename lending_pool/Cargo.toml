@@ -22,12 +22,13 @@ optional = true
 [dependencies.liquidity_pool]
 path = "../liquidity_pool"
 
-[dependencies.router]
-path = "../router"
-
 [dev-dependencies.elrond-wasm-debug]
 version = "0.18"
 
 [dependencies.elrond-wasm-output]
 version = "0.18"
 features = ["wasm-output-mode", "panic-message"]
+
+[dependencies.common_structs]
+path = "../common/structs"
+

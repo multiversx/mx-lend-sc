@@ -1,20 +1,17 @@
-#![no_std]
-#![allow(non_snake_case)]
 #![allow(clippy::too_many_arguments)]
 
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-mod pool_factory;
+use super::factory;
+use super::proxy_common;
 
-const LEND_TOKEN_PREFIX: &[u8] = b"L";
-const BORROW_TOKEN_PREFIX: &[u8] = b"B";
+use common_structs::{BORROW_TOKEN_PREFIX, LEND_TOKEN_PREFIX};
+use liquidity_pool::tokens::ProxyTrait as _;
 
-#[elrond_wasm::contract]
-pub trait Router: pool_factory::PoolFactoryModule {
-    #[init]
-    fn init(&self) {}
-
+#[elrond_wasm::module]
+pub trait RouterModule: proxy_common::ProxyCommonModule + factory::FactoryModule {
+    #[only_owner]
     #[endpoint(createLiquidityPool)]
     fn create_liquidity_pool(
         &self,
@@ -27,7 +24,6 @@ pub trait Router: pool_factory::PoolFactoryModule {
         reserve_factor: Self::BigUint,
         pool_bytecode: BoxedBytes,
     ) -> SCResult<Address> {
-        only_owner!(self, "only owner can create new pools");
         require!(
             !self.pools_map().contains_key(&base_asset),
             "asset already supported"
@@ -47,36 +43,32 @@ pub trait Router: pool_factory::PoolFactoryModule {
 
         if !address.is_zero() {
             self.pools_map().insert(base_asset, address.clone());
-            self.pools_allowed().insert(address.clone(), true);
+            self.pools_allowed().insert(address.clone());
         }
 
         Ok(address)
     }
 
+    #[only_owner]
     #[endpoint(upgradeLiquidityPool)]
     fn upgrade_liquidity_pool(
         &self,
         base_asset: TokenIdentifier,
         new_bytecode: BoxedBytes,
     ) -> SCResult<()> {
-        only_owner!(self, "only owner can upgrade existing pools");
-
         require!(
             self.pools_map().contains_key(&base_asset),
             "no pool found for this asset"
         );
 
         let pool_address = self.pools_map().get(&base_asset).unwrap();
-
         let success = self.upgrade_pool(&pool_address, &new_bytecode);
-
-        if !success {
-            return sc_error!("pair upgrade failed");
-        }
+        require!(success, "pair upgrade failed");
 
         Ok(())
     }
 
+    #[only_owner]
     #[payable("EGLD")]
     #[endpoint(issueLendToken)]
     fn issue_lend_token(
@@ -85,10 +77,9 @@ pub trait Router: pool_factory::PoolFactoryModule {
         token_ticker: TokenIdentifier,
         #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
-        only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&token_ticker).unwrap();
         self.liquidity_pool_proxy(pool_address)
-            .issue_endpoint(
+            .issue(
                 plain_ticker,
                 token_ticker,
                 BoxedBytes::from(LEND_TOKEN_PREFIX),
@@ -99,6 +90,7 @@ pub trait Router: pool_factory::PoolFactoryModule {
         Ok(())
     }
 
+    #[only_owner]
     #[payable("EGLD")]
     #[endpoint(issueBorrowToken)]
     fn issue_borrow_token(
@@ -107,10 +99,9 @@ pub trait Router: pool_factory::PoolFactoryModule {
         token_ticker: TokenIdentifier,
         #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
-        only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&token_ticker).unwrap();
         self.liquidity_pool_proxy(pool_address)
-            .issue_endpoint(
+            .issue(
                 plain_ticker,
                 token_ticker,
                 BoxedBytes::from(BORROW_TOKEN_PREFIX),
@@ -121,31 +112,31 @@ pub trait Router: pool_factory::PoolFactoryModule {
         Ok(())
     }
 
+    #[only_owner]
     #[endpoint(setLendRoles)]
     fn set_lend_roles(
         &self,
         asset_ticker: TokenIdentifier,
         #[var_args] roles: VarArgs<EsdtLocalRole>,
     ) -> SCResult<()> {
-        only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&asset_ticker).unwrap();
         self.liquidity_pool_proxy(pool_address)
-            .set_lend_token_roles_endpoint(roles)
+            .set_lend_token_roles(roles.into_vec())
             .execute_on_dest_context();
 
         Ok(())
     }
 
+    #[only_owner]
     #[endpoint(setBorrowRoles)]
     fn set_borrow_roles(
         &self,
         asset_ticker: TokenIdentifier,
         #[var_args] roles: VarArgs<EsdtLocalRole>,
     ) -> SCResult<()> {
-        only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&asset_ticker).unwrap();
         self.liquidity_pool_proxy(pool_address)
-            .set_borrow_token_roles_endpoint(roles)
+            .set_borrow_token_roles(roles.into_vec())
             .execute_on_dest_context();
 
         Ok(())
@@ -154,9 +145,12 @@ pub trait Router: pool_factory::PoolFactoryModule {
     #[endpoint(setTickerAfterIssue)]
     fn set_ticker_after_issue(&self, token_ticker: TokenIdentifier) -> SCResult<()> {
         let caller = self.blockchain().get_caller();
-        let is_pool_allowed = self.pools_allowed().get(&caller).unwrap_or_default();
+        let is_pool_allowed = self.pools_allowed().contains(&caller);
         require!(is_pool_allowed, "access restricted: unknown caller address");
-        require!(!token_ticker.is_egld(), "invalid ticker provided");
+        require!(
+            token_ticker.is_valid_esdt_identifier(),
+            "invalid ticker provided"
+        );
         self.pools_map().insert(token_ticker, caller);
         Ok(())
     }
@@ -169,9 +163,7 @@ pub trait Router: pool_factory::PoolFactoryModule {
     #[storage_mapper("pools_map")]
     fn pools_map(&self) -> SafeMapMapper<Self::Storage, TokenIdentifier, Address>;
 
+    #[view(getPoolAllowed)]
     #[storage_mapper("pool_allowed")]
-    fn pools_allowed(&self) -> SafeMapMapper<Self::Storage, Address, bool>;
-
-    #[proxy]
-    fn liquidity_pool_proxy(&self, sc_address: Address) -> liquidity_pool::Proxy<Self::SendApi>;
+    fn pools_allowed(&self) -> SafeSetMapper<Self::Storage, Address>;
 }

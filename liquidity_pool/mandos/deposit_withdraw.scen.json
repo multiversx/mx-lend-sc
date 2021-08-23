@@ -69,13 +69,13 @@
                     },
                     "storage": {
                         "str:pool_asset": "str:WBT-abcdef",
-                        "str:lendingPool": "address:owner",
                         "str:debt_nonce": "1",
                         "str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000",
                         "str:lend_token": "str:LEND-abcdef",
                         "str:reserves|nested:str:WBT-abcdef": "100,000"
                     },
-                    "code": "file:../output/liquidity_pool.wasm"
+                    "code": "file:../output/liquidity_pool.wasm",
+                    "owner": "address:owner"
                 },
                 "+": ""
             }
@@ -140,12 +140,12 @@
                     },
                     "storage": {
                         "str:pool_asset": "str:WBT-abcdef",
-                        "str:lendingPool": "address:owner",
                         "str:debt_nonce": "1",
                         "str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000",
                         "str:lend_token": "str:LEND-abcdef"
                     },
-                    "code": "file:../output/liquidity_pool.wasm"
+                    "code": "file:../output/liquidity_pool.wasm",
+                    "owner": "address:owner"
                 },
                 "+": ""
             }

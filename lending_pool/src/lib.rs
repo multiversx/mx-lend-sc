@@ -1,22 +1,27 @@
 #![no_std]
-#![allow(non_snake_case)]
-
-pub mod models;
-pub use models::*;
-
-use elrond_wasm::*;
 
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
+mod factory;
+mod proxy_common;
+mod router;
+
+pub use common_structs::*;
+
+use liquidity_pool::liquidity::ProxyTrait as _;
+use liquidity_pool::tokens::ProxyTrait as _;
+
 #[elrond_wasm::contract]
-pub trait LendingPool {
+pub trait LendingPool:
+    factory::FactoryModule + router::RouterModule + proxy_common::ProxyCommonModule
+{
     #[init]
     fn init(&self) {}
 
     #[payable("*")]
-    #[endpoint]
-    fn deposit(
+    #[endpoint(deposit)]
+    fn deposit_endpoint(
         &self,
         #[var_args] caller: OptionalArg<Address>,
         #[payment_token] asset: TokenIdentifier,
@@ -33,15 +38,15 @@ pub trait LendingPool {
         require!(!pool_address.is_zero(), "invalid liquidity pool address");
 
         self.liquidity_pool_proxy(pool_address)
-            .deposit_asset_endpoint(initial_caller, asset, amount)
+            .deposit_asset(initial_caller, asset, amount)
             .execute_on_dest_context();
 
         Ok(())
     }
 
     #[payable("*")]
-    #[endpoint]
-    fn withdraw(
+    #[endpoint(withdraw)]
+    fn withdraw_endpoint(
         &self,
         #[payment_amount] amount: Self::BigUint,
         #[var_args] caller: OptionalArg<Address>,
@@ -59,7 +64,7 @@ pub trait LendingPool {
         require!(!pool_address.is_zero(), "invalid liquidity pool address");
 
         self.liquidity_pool_proxy(pool_address)
-            .withdraw_endpoint(initial_caller, lend_token, amount)
+            .withdraw(initial_caller, lend_token, amount)
             .execute_on_dest_context();
 
         Ok(())
@@ -67,11 +72,12 @@ pub trait LendingPool {
 
     #[payable("*")]
     #[endpoint(lockBTokens)]
-    fn lock_b_tokens(
+    fn lock_b_tokens_endpoint(
         &self,
         asset_to_repay: TokenIdentifier,
         #[var_args] caller: OptionalArg<Address>,
         #[payment_token] borrow_token: TokenIdentifier,
+        #[payment_nonce] token_nonce: u64,
         #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
         let initial_caller = caller
@@ -88,27 +94,16 @@ pub trait LendingPool {
             "asset not supported"
         );
 
-        let nft_nonce = self.call_value().esdt_token_nonce();
-
-        let mut args = ArgBuffer::new();
-        args.push_argument_bytes(initial_caller.as_bytes());
-
-        self.send().direct_esdt_nft_execute(
-            &asset_address,
-            &borrow_token,
-            nft_nonce,
-            &amount,
-            self.blockchain().get_gas_left() / 2,
-            b"lockBTokens",
-            &args,
-        )?;
+        self.liquidity_pool_proxy(asset_address)
+            .lock_b_tokens(initial_caller, borrow_token, token_nonce, amount)
+            .execute_on_dest_context_ignore_result();
 
         Ok(())
     }
 
     #[payable("*")]
-    #[endpoint]
-    fn repay(
+    #[endpoint(repay)]
+    fn repay_endpoint(
         &self,
         repay_unique_id: BoxedBytes,
         #[var_args] initial_caller: OptionalArg<Address>,
@@ -127,8 +122,7 @@ pub trait LendingPool {
 
         let results = self
             .liquidity_pool_proxy(asset_address)
-            .repay_endpoint(repay_unique_id, asset, amount)
-            .with_gas_limit(self.blockchain().get_gas_left() / 2)
+            .repay(repay_unique_id, asset, amount)
             .execute_on_dest_context();
 
         let collateral_token_address = self.get_pool_address(results.collateral_identifier.clone());
@@ -139,20 +133,20 @@ pub trait LendingPool {
         );
 
         self.liquidity_pool_proxy(collateral_token_address)
-            .mint_l_tokens_endpoint(
+            .mint_l_tokens(
                 caller,
                 results.collateral_identifier,
                 results.amount,
                 results.collateral_timestamp,
             )
-            .execute_on_dest_context();
+            .execute_on_dest_context_ignore_result();
 
         Ok(())
     }
 
     #[payable("*")]
-    #[endpoint]
-    fn liquidate(
+    #[endpoint(liquidate)]
+    fn liquidate_endpoint(
         &self,
         liquidate_unique_id: BoxedBytes,
         #[var_args] initial_caller: OptionalArg<Address>,
@@ -171,14 +165,10 @@ pub trait LendingPool {
 
         let results = self
             .liquidity_pool_proxy(asset_address)
-            .liquidate_endpoint(liquidate_unique_id, asset, amount)
-            .with_gas_limit(self.blockchain().get_gas_left() / 2)
+            .liquidate(liquidate_unique_id, asset, amount)
             .execute_on_dest_context();
 
         let collateral_token_address = self.get_pool_address(results.collateral_token.clone());
-
-        self.set_token_identifier_liq(results.collateral_token.clone());
-        self.set_token_amount_liq(results.amount.clone());
 
         require!(
             collateral_token_address != Address::zero(),
@@ -186,21 +176,20 @@ pub trait LendingPool {
         );
 
         self.liquidity_pool_proxy(collateral_token_address)
-            .mint_l_tokens_endpoint(
+            .mint_l_tokens(
                 caller,
                 results.collateral_token,
                 results.amount,
                 self.blockchain().get_block_timestamp(),
             )
-            .with_gas_limit(self.blockchain().get_gas_left() / 2)
-            .execute_on_dest_context();
+            .execute_on_dest_context_ignore_result();
 
         Ok(())
     }
 
     #[payable("*")]
-    #[endpoint]
-    fn borrow(
+    #[endpoint(borrow)]
+    fn borrow_endpoint(
         &self,
         asset_to_put_as_collateral: TokenIdentifier,
         asset_to_borrow: TokenIdentifier,
@@ -252,94 +241,23 @@ pub trait LendingPool {
 
         let metadata = esdt_nft_data.decode_attributes::<InterestMetadata>()?;
         self.liquidity_pool_proxy(borrow_token_pool_address)
-            .borrow_endpoint(
+            .borrow(
                 initial_caller.clone(),
                 asset_collateral_lend_token.clone(),
                 amount.clone(),
                 metadata.timestamp,
             )
-            .with_gas_limit(self.blockchain().get_gas_left() / 2)
-            .execute_on_dest_context();
+            .execute_on_dest_context_ignore_result();
 
-        let mut args_burn_lend = ArgBuffer::new();
-        args_burn_lend.push_argument_bytes(initial_caller.as_bytes());
-
-        self.send().direct_esdt_nft_execute(
-            &collateral_token_pool_address,
-            &asset_collateral_lend_token,
-            nft_nonce,
-            &amount,
-            self.blockchain().get_gas_left() / 2,
-            b"burnLendTokens",
-            &args_burn_lend,
-        )?;
+        self.liquidity_pool_proxy(collateral_token_pool_address)
+            .burn_l_tokens(
+                asset_collateral_lend_token,
+                nft_nonce,
+                amount,
+                initial_caller,
+            )
+            .execute_on_dest_context_ignore_result();
 
         Ok(())
     }
-
-    #[endpoint(setRouterAddress)]
-    fn set_router_address(&self, address: Address) -> SCResult<()> {
-        only_owner!(self, "permission denied");
-        self.router().set(&address);
-        Ok(())
-    }
-
-    fn get_pool_address(&self, asset: TokenIdentifier) -> Address {
-        if !self.pools_map().contains_key(&asset) {
-            let router_address = self.router().get();
-            let pool_address = self
-                .router_proxy(router_address)
-                .get_pool_address(asset.clone())
-                .with_gas_limit(self.blockchain().get_gas_left() / 2)
-                .execute_on_dest_context();
-
-            self.pools_map().insert(asset, pool_address.clone());
-            return pool_address;
-        }
-
-        self.pools_map().get(&asset).unwrap_or_else(Address::zero)
-    }
-
-    #[endpoint(setTickerAfterIssue)]
-    fn set_ticker_after_issue(&self, token_ticker: TokenIdentifier) -> SCResult<()> {
-        let caller = self.blockchain().get_caller();
-        // let is_pool_allowed = self.pools_allowed().get(&caller).unwrap_or_default();
-        // require!(is_pool_allowed, "access restricted: unknown caller address");
-        require!(!token_ticker.is_egld(), "invalid ticker provided");
-        self.pools_map().insert(token_ticker, caller);
-        Ok(())
-    }
-
-    #[endpoint(setTicker)]
-    fn set_ticker(&self, token_ticker: TokenIdentifier, pool_address: Address) -> SCResult<()> {
-        require!(!token_ticker.is_egld(), "invalid ticker provided");
-        self.pools_map().insert(token_ticker, pool_address);
-        Ok(())
-    }
-
-    #[storage_set("tokenIdentifierLiq")]
-    fn set_token_identifier_liq(&self, token: TokenIdentifier);
-
-    #[view(tokenIdentifierLiq)]
-    #[storage_get("tokenIdentifierLiq")]
-    fn get_token_identifier_liq(&self) -> TokenIdentifier;
-
-    #[storage_set("tokenAmountLiq")]
-    fn set_token_amount_liq(&self, amount: Self::BigUint);
-
-    #[view(tokenAmountLiq)]
-    #[storage_get("tokenAmountLiq")]
-    fn get_token_amount_liq(&self) -> Self::BigUint;
-
-    #[storage_mapper("router")]
-    fn router(&self) -> SingleValueMapper<Self::Storage, Address>;
-
-    #[storage_mapper("pools_map")]
-    fn pools_map(&self) -> SafeMapMapper<Self::Storage, TokenIdentifier, Address>;
-
-    #[proxy]
-    fn liquidity_pool_proxy(&self, sc_address: Address) -> liquidity_pool::Proxy<Self::SendApi>;
-
-    #[proxy]
-    fn router_proxy(&self, sc_address: Address) -> router::Proxy<Self::SendApi>;
 }

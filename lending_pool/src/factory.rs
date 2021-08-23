@@ -3,7 +3,7 @@
 elrond_wasm::imports!();
 
 #[elrond_wasm::module]
-pub trait PoolFactoryModule {
+pub trait FactoryModule {
     fn create_pool(
         &self,
         base_asset: &TokenIdentifier,

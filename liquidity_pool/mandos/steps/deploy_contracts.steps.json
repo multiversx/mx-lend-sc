@@ -20,7 +20,6 @@
 				"contractCode": "file:../../output/liquidity_pool.wasm",
 				"arguments": [
 					"str:WBT-abcdef",
-					"address:owner",
 					"0",
 					"40000000",
 					"1000000000",
@@ -45,11 +44,11 @@
 					"balance": "0",
 					"storage": {
 						"str:pool_asset": "str:WBT-abcdef",
-						"str:lendingPool": "address:owner",
 						"str:debt_nonce": "1",
 						"str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000"
 					},
-					"code": "file:../../output/liquidity_pool.wasm"
+					"code": "file:../../output/liquidity_pool.wasm",
+					"owner": "address:owner"
 				},
 				"+": ""
 			}

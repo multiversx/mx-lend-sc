@@ -1,13 +1,16 @@
 elrond_wasm::imports!();
+elrond_wasm::derive_imports!();
 
-use crate::{
-    IssueData, PoolParams, BORROW_TOKEN_PREFIX, DEBT_TOKEN_NAME, LEND_TOKEN_NAME, LEND_TOKEN_PREFIX,
-};
-use elrond_wasm::types::{BoxedBytes, OptionalArg, H256};
-use elrond_wasm::*;
+use super::library;
+use super::storage;
+
+use common_structs::{IssueData, PoolParams, BORROW_TOKEN_PREFIX, LEND_TOKEN_PREFIX};
+
+const LEND_TOKEN_NAME: &[u8] = b"IntBearing";
+const DEBT_TOKEN_NAME: &[u8] = b"DebtBearing";
 
 #[elrond_wasm::module]
-pub trait UtilsModule: crate::library::LibraryModule + crate::storage::StorageModule {
+pub trait UtilsModule: library::LibraryModule + storage::StorageModule {
     fn prepare_issue_data(&self, prefix: BoxedBytes, ticker: BoxedBytes) -> IssueData {
         let prefixed_ticker = [prefix.as_slice(), ticker.as_slice()].concat();
         let mut issue_data = IssueData {
@@ -66,13 +69,14 @@ pub trait UtilsModule: crate::library::LibraryModule + crate::storage::StorageMo
         self.compute_capital_utilisation(borrowed_amount, reserve_amount)
     }
 
-    fn get_debt_interest(&self, amount: Self::BigUint, timestamp: u64) -> Self::BigUint {
+    fn get_debt_interest(&self, amount: Self::BigUint, timestamp: u64) -> SCResult<Self::BigUint> {
         let now = self.blockchain().get_block_timestamp();
-        let time_diff = Self::BigUint::from(now - timestamp);
+        require!(now >= timestamp, "Now is bigger than timestamp");
 
+        let time_diff = Self::BigUint::from(now - timestamp);
         let borrow_rate = self.get_borrow_rate();
 
-        self.compute_debt(amount, time_diff, borrow_rate)
+        Ok(self.compute_debt(amount, time_diff, borrow_rate))
     }
 
     fn get_deposit_rate(&self) -> Self::BigUint {

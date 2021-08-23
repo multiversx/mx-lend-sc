@@ -9,9 +9,10 @@ const TICKER_SEPARATOR: u8 = b'-';
 
 #[elrond_wasm::module]
 pub trait PriceOracleModule {
+    #[only_owner]
     #[endpoint(setAggregatorAddress)]
     fn set_aggregator_address(&self, address: Address) -> SCResult<()> {
-        self.fee_estimator_contract_address().set(&address);
+        self.aggregator_address().set(&address);
         Ok(())
     }
 
@@ -51,7 +52,7 @@ pub trait PriceOracleModule {
     #[proxy]
     fn aggregator_proxy(&self, address: Address) -> proxy::Proxy<Self::SendApi>;
 
-    #[view(aggregatorAddress)]
-    #[storage_mapper("aggregatorAddress")]
+    #[view(getAggregatorAddress)]
+    #[storage_mapper("aggregator_address")]
     fn aggregator_address(&self) -> SingleValueMapper<Self::Storage, Address>;
 }

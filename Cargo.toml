@@ -4,8 +4,8 @@ members = [
     "liquidity_pool/abi",
     "lending_pool",
     "lending_pool/abi",
-    "router",
-    "router/abi",
     "safety_module",
     "safety_module/abi",
+    "common/structs",
+    "common/modules/price_oracle",
 ]

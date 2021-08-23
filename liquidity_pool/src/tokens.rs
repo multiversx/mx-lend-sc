@@ -1,29 +1,26 @@
 elrond_wasm::imports!();
-use crate::{DebtMetadata, InterestMetadata, LEND_TOKEN_PREFIX};
-use elrond_wasm::esdt::ESDTSystemSmartContractProxy;
-use elrond_wasm::esdt::SemiFungibleTokenProperties;
-use elrond_wasm::types::{
-    Address, ArgBuffer, AsyncCall, AsyncCallResult, BoxedBytes, EsdtLocalRole, SCResult,
-    TokenIdentifier, VarArgs, H256,
-};
-use elrond_wasm::*;
+elrond_wasm::derive_imports!();
+
+use common_structs::{DebtMetadata, InterestMetadata, LEND_TOKEN_PREFIX};
+
+use super::library;
+use super::storage;
+use super::utils;
 
 #[elrond_wasm::module]
 pub trait TokensModule:
-    crate::storage::StorageModule + crate::utils::UtilsModule + crate::library::LibraryModule
+    storage::StorageModule + utils::UtilsModule + library::LibraryModule
 {
+    #[only_owner]
+    #[payable("*")]
+    #[endpoint(mintLTokens)]
     fn mint_l_tokens(
         &self,
         initial_caller: Address,
-        lend_token: TokenIdentifier,
-        amount: Self::BigUint,
+        #[payment_token] lend_token: TokenIdentifier,
+        #[payment_amount] amount: Self::BigUint,
         interest_timestamp: u64,
     ) -> SCResult<()> {
-        require!(
-            self.blockchain().get_caller() == self.lending_pool().get(),
-            "can only by called by lending pool"
-        );
-
         require!(
             lend_token == self.lend_token().get(),
             "asset is not supported by this pool"
@@ -47,18 +44,16 @@ pub trait TokensModule:
         Ok(())
     }
 
+    #[only_owner]
+    #[payable("*")]
+    #[endpoint(burnLTokens)]
     fn burn_l_tokens(
         &self,
-        lend_token: TokenIdentifier,
-        token_nonce: u64,
-        amount: Self::BigUint,
+        #[payment_token] lend_token: TokenIdentifier,
+        #[payment_nonce] token_nonce: u64,
+        #[payment_amount] amount: Self::BigUint,
         initial_caller: Address,
     ) -> SCResult<()> {
-        require!(
-            self.blockchain().get_caller() == self.lending_pool().get(),
-            "can only by called by lending pool"
-        );
-
         require!(
             lend_token == self.lend_token().get(),
             "asset is not supported by this pool"
@@ -72,6 +67,8 @@ pub trait TokensModule:
         Ok(())
     }
 
+    #[only_owner]
+    #[endpoint]
     fn issue(
         &self,
         plain_ticker: BoxedBytes,
@@ -112,20 +109,22 @@ pub trait TokensModule:
             .with_callback(self.callbacks().issue_callback(&token_prefix)))
     }
 
+    #[only_owner]
+    #[endpoint(setLendTokensRoles)]
     fn set_lend_token_roles(
         &self,
-        roles: VarArgs<EsdtLocalRole>,
+        roles: Vec<EsdtLocalRole>,
     ) -> SCResult<AsyncCall<Self::SendApi>> {
-        only_owner!(self, "only owner can set roles");
         require!(!self.lend_token().is_empty(), "token not issued yet");
         Ok(self.set_roles(self.lend_token().get(), roles))
     }
 
+    #[only_owner]
+    #[endpoint(setBorrowTokenRoles)]
     fn set_borrow_token_roles(
         &self,
-        roles: VarArgs<EsdtLocalRole>,
+        roles: Vec<EsdtLocalRole>,
     ) -> SCResult<AsyncCall<Self::SendApi>> {
-        only_owner!(self, "only owner can set roles");
         require!(!self.borrow_token().is_empty(), "token not issued yet");
         Ok(self.set_roles(self.borrow_token().get(), roles))
     }
@@ -133,7 +132,7 @@ pub trait TokensModule:
     fn set_roles(
         &self,
         token: TokenIdentifier,
-        roles: VarArgs<EsdtLocalRole>,
+        roles: Vec<EsdtLocalRole>,
     ) -> AsyncCall<Self::SendApi> {
         ESDTSystemSmartContractProxy::new_proxy_obj(self.send())
             .set_special_roles(
@@ -194,7 +193,8 @@ pub trait TokensModule:
                 let caller = self.blockchain().get_owner_address();
                 let (returned_tokens, token_id) = self.call_value().payment_token_pair();
                 if token_id.is_egld() && returned_tokens > 0 {
-                    self.send().direct_egld(&caller, &returned_tokens, &[]);
+                    self.send()
+                        .direct(&caller, &token_id, 0, &returned_tokens, &[]);
                 }
                 self.last_error().set(&message.err_msg);
             }

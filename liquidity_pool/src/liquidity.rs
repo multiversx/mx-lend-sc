@@ -1,26 +1,26 @@
 elrond_wasm::imports!();
-use crate::{DebtMetadata, DebtPosition, InterestMetadata, LiquidateData, RepayPostion};
-use elrond_wasm::types::{Address, BoxedBytes, SCResult, TokenIdentifier, H256};
-use elrond_wasm::*;
+elrond_wasm::derive_imports!();
+
+use common_structs::{DebtMetadata, DebtPosition, InterestMetadata, LiquidateData, RepayPostion};
+
+use super::library;
+use super::storage;
+use super::tokens;
+use super::utils;
 
 #[elrond_wasm::module]
-pub trait LiquidityPoolModule:
-    crate::storage::StorageModule
-    + crate::tokens::TokensModule
-    + crate::utils::UtilsModule
-    + crate::library::LibraryModule
+pub trait LiquidityModule:
+    storage::StorageModule + tokens::TokensModule + utils::UtilsModule + library::LibraryModule
 {
+    #[only_owner]
+    #[payable("*")]
+    #[endpoint(depositAsset)]
     fn deposit_asset(
         &self,
         initial_caller: Address,
-        asset: TokenIdentifier,
-        amount: Self::BigUint,
+        #[payment_token] asset: TokenIdentifier,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
-        require!(
-            self.lending_pool().get() == self.blockchain().get_caller(),
-            "permission denied"
-        );
-
         let pool_asset = self.pool_asset().get();
         require!(
             asset == pool_asset,
@@ -45,17 +45,16 @@ pub trait LiquidityPoolModule:
         Ok(())
     }
 
+    #[only_owner]
+    #[payable("*")]
+    #[endpoint(borrow)]
     fn borrow(
         &self,
         initial_caller: Address,
-        lend_token: TokenIdentifier,
-        amount: Self::BigUint,
+        #[payment_token] lend_token: TokenIdentifier,
+        #[payment_amount] amount: Self::BigUint,
         timestamp: u64,
     ) -> SCResult<()> {
-        require!(
-            self.blockchain().get_caller() == self.lending_pool().get(),
-            "can only be called through lending pool"
-        );
         require!(amount > 0, "lend amount must be bigger then 0");
         require!(!initial_caller.is_zero(), "invalid address provided");
 
@@ -118,16 +117,16 @@ pub trait LiquidityPoolModule:
         Ok(())
     }
 
+    #[only_owner]
+    #[payable("*")]
+    #[endpoint(lockBTokens)]
     fn lock_b_tokens(
         &self,
         initial_caller: Address,
-        borrow_token: TokenIdentifier,
-        amount: Self::BigUint,
+        #[payment_token] borrow_token: TokenIdentifier,
+        #[payment_nonce] token_nonce: u64,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<H256> {
-        require!(
-            self.blockchain().get_caller() == self.lending_pool().get(),
-            "can only be called by lending pool"
-        );
         require!(amount > 0, "amount must be greater then 0");
         require!(!initial_caller.is_zero(), "invalid address");
 
@@ -136,12 +135,10 @@ pub trait LiquidityPoolModule:
             "borrow token not supported by this pool"
         );
 
-        let nft_nonce = self.call_value().esdt_token_nonce();
-
         let esdt_nft_data = self.blockchain().get_esdt_token_data(
             &self.blockchain().get_sc_address(),
             &borrow_token,
-            nft_nonce,
+            token_nonce,
         );
 
         let debt_position_id = esdt_nft_data.hash.clone();
@@ -160,7 +157,7 @@ pub trait LiquidityPoolModule:
         let data = [
             borrow_token.as_esdt_identifier(),
             amount.to_bytes_be().as_slice(),
-            &nft_nonce.to_be_bytes()[..],
+            &token_nonce.to_be_bytes()[..],
         ]
         .concat();
 
@@ -168,7 +165,7 @@ pub trait LiquidityPoolModule:
         let repay_position = RepayPostion {
             identifier: borrow_token,
             amount,
-            nonce: nft_nonce,
+            nonce: token_nonce,
             borrow_timestamp: metadata.timestamp,
             collateral_identifier: metadata.collateral_identifier,
             collateral_amount: metadata.collateral_amount,
@@ -180,16 +177,15 @@ pub trait LiquidityPoolModule:
         Ok(unique_repay_id)
     }
 
+    #[only_owner]
+    #[payable("*")]
+    #[endpoint]
     fn repay(
         &self,
         unique_id: BoxedBytes,
-        asset: TokenIdentifier,
-        amount: Self::BigUint,
+        #[payment_token] asset: TokenIdentifier,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<RepayPostion<Self::BigUint>> {
-        require!(
-            self.blockchain().get_caller() == self.lending_pool().get(),
-            "function can only be called by lending pool"
-        );
         require!(amount > 0, "amount must be greater then 0");
         require!(
             asset == self.pool_asset().get(),
@@ -230,7 +226,7 @@ pub trait LiquidityPoolModule:
         let interest = self.get_debt_interest(
             repay_position.amount.clone(),
             repay_position.borrow_timestamp,
-        );
+        )?;
 
         if repay_position.amount.clone() + interest == amount {
             self.repay_position().remove(&unique_id);
@@ -239,10 +235,6 @@ pub trait LiquidityPoolModule:
             self.repay_position()
                 .insert(unique_id, repay_position.clone());
         }
-
-        self.repay_position_amount().set(&amount);
-        self.repay_position_id().set(&repay_position.identifier);
-        self.repay_position_nonce().set(&repay_position.nonce);
 
         /*self.send().esdt_local_burn(
             amount.clone(),
@@ -255,16 +247,15 @@ pub trait LiquidityPoolModule:
         Ok(repay_position)
     }
 
+    #[only_owner]
+    #[payable("*")]
+    #[endpoint]
     fn withdraw(
         &self,
         initial_caller: Address,
-        lend_token: TokenIdentifier,
-        amount: Self::BigUint,
+        #[payment_token] lend_token: TokenIdentifier,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
-        require!(
-            self.blockchain().get_caller() == self.lending_pool().get(),
-            "permission denied"
-        );
         require!(
             lend_token == self.lend_token().get(),
             "lend token not supported"
@@ -299,16 +290,15 @@ pub trait LiquidityPoolModule:
         Ok(())
     }
 
+    #[only_owner]
+    #[payable("*")]
+    #[endpoint]
     fn liquidate(
         &self,
         position_id: BoxedBytes,
-        token: TokenIdentifier,
-        amount: Self::BigUint,
+        #[payment_token] token: TokenIdentifier,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<LiquidateData<Self::BigUint>> {
-        require!(
-            self.blockchain().get_caller() == self.lending_pool().get(),
-            "function can only be called by lending pool"
-        );
         require!(amount > 0, "amount must be bigger then 0");
         require!(
             token == self.pool_asset().get(),
@@ -330,7 +320,8 @@ pub trait LiquidityPoolModule:
             "the health factor is not low enough"
         );
 
-        let interest = self.get_debt_interest(debt_position.size.clone(), debt_position.timestamp);
+        let interest =
+            self.get_debt_interest(debt_position.size.clone(), debt_position.timestamp)?;
 
         require!(
             debt_position.size.clone() + interest == amount,
