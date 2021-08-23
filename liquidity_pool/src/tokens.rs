@@ -1,17 +1,14 @@
 elrond_wasm::imports!();
+elrond_wasm::derive_imports!();
+
 use crate::{DebtMetadata, InterestMetadata, LEND_TOKEN_PREFIX};
-use elrond_wasm::esdt::ESDTSystemSmartContractProxy;
-use elrond_wasm::esdt::SemiFungibleTokenProperties;
-use elrond_wasm::types::{
-    Address, ArgBuffer, AsyncCall, AsyncCallResult, BoxedBytes, EsdtLocalRole, SCResult,
-    TokenIdentifier, VarArgs, H256,
-};
-use elrond_wasm::*;
 
 #[elrond_wasm::module]
 pub trait TokensModule:
     crate::storage::StorageModule + crate::utils::UtilsModule + crate::library::LibraryModule
 {
+    #[payable("*")]
+    #[endpoint(mintLTokens)]
     fn mint_l_tokens(
         &self,
         initial_caller: Address,
@@ -47,6 +44,8 @@ pub trait TokensModule:
         Ok(())
     }
 
+    #[payable("*")]
+    #[endpoint(burnLTokens)]
     fn burn_l_tokens(
         &self,
         lend_token: TokenIdentifier,
@@ -72,6 +71,7 @@ pub trait TokensModule:
         Ok(())
     }
 
+    #[endpoint]
     fn issue(
         &self,
         plain_ticker: BoxedBytes,
@@ -112,20 +112,22 @@ pub trait TokensModule:
             .with_callback(self.callbacks().issue_callback(&token_prefix)))
     }
 
+    #[only_owner]
+    #[endpoint(setLendTokensRoles)]
     fn set_lend_token_roles(
         &self,
-        roles: VarArgs<EsdtLocalRole>,
+        roles: Vec<EsdtLocalRole>,
     ) -> SCResult<AsyncCall<Self::SendApi>> {
-        only_owner!(self, "only owner can set roles");
         require!(!self.lend_token().is_empty(), "token not issued yet");
         Ok(self.set_roles(self.lend_token().get(), roles))
     }
 
+    #[only_owner]
+    #[endpoint(setBorrowTokenRoles)]
     fn set_borrow_token_roles(
         &self,
-        roles: VarArgs<EsdtLocalRole>,
+        roles: Vec<EsdtLocalRole>,
     ) -> SCResult<AsyncCall<Self::SendApi>> {
-        only_owner!(self, "only owner can set roles");
         require!(!self.borrow_token().is_empty(), "token not issued yet");
         Ok(self.set_roles(self.borrow_token().get(), roles))
     }
@@ -133,7 +135,7 @@ pub trait TokensModule:
     fn set_roles(
         &self,
         token: TokenIdentifier,
-        roles: VarArgs<EsdtLocalRole>,
+        roles: Vec<EsdtLocalRole>,
     ) -> AsyncCall<Self::SendApi> {
         ESDTSystemSmartContractProxy::new_proxy_obj(self.send())
             .set_special_roles(

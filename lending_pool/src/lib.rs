@@ -1,13 +1,14 @@
 #![no_std]
 #![allow(non_snake_case)]
 
+elrond_wasm::imports!();
+elrond_wasm::derive_imports!();
+
 pub mod models;
 pub use models::*;
 
-use elrond_wasm::*;
-
-elrond_wasm::imports!();
-elrond_wasm::derive_imports!();
+use liquidity_pool::liquidity::ProxyTrait as _;
+use liquidity_pool::tokens::ProxyTrait as _;
 
 #[elrond_wasm::contract]
 pub trait LendingPool {
@@ -33,7 +34,7 @@ pub trait LendingPool {
         require!(!pool_address.is_zero(), "invalid liquidity pool address");
 
         self.liquidity_pool_proxy(pool_address)
-            .deposit_asset_endpoint(initial_caller, asset, amount)
+            .deposit_asset(initial_caller, asset, amount)
             .execute_on_dest_context();
 
         Ok(())
@@ -59,7 +60,7 @@ pub trait LendingPool {
         require!(!pool_address.is_zero(), "invalid liquidity pool address");
 
         self.liquidity_pool_proxy(pool_address)
-            .withdraw_endpoint(initial_caller, lend_token, amount)
+            .withdraw(initial_caller, lend_token, amount)
             .execute_on_dest_context();
 
         Ok(())
@@ -127,7 +128,7 @@ pub trait LendingPool {
 
         let results = self
             .liquidity_pool_proxy(asset_address)
-            .repay_endpoint(repay_unique_id, asset, amount)
+            .repay(repay_unique_id, asset, amount)
             .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context();
 
@@ -139,7 +140,7 @@ pub trait LendingPool {
         );
 
         self.liquidity_pool_proxy(collateral_token_address)
-            .mint_l_tokens_endpoint(
+            .mint_l_tokens(
                 caller,
                 results.collateral_identifier,
                 results.amount,
@@ -171,7 +172,7 @@ pub trait LendingPool {
 
         let results = self
             .liquidity_pool_proxy(asset_address)
-            .liquidate_endpoint(liquidate_unique_id, asset, amount)
+            .liquidate(liquidate_unique_id, asset, amount)
             .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context();
 
@@ -186,7 +187,7 @@ pub trait LendingPool {
         );
 
         self.liquidity_pool_proxy(collateral_token_address)
-            .mint_l_tokens_endpoint(
+            .mint_l_tokens(
                 caller,
                 results.collateral_token,
                 results.amount,
@@ -252,7 +253,7 @@ pub trait LendingPool {
 
         let metadata = esdt_nft_data.decode_attributes::<InterestMetadata>()?;
         self.liquidity_pool_proxy(borrow_token_pool_address)
-            .borrow_endpoint(
+            .borrow(
                 initial_caller.clone(),
                 asset_collateral_lend_token.clone(),
                 amount.clone(),

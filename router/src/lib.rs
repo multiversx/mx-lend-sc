@@ -10,6 +10,8 @@ mod pool_factory;
 const LEND_TOKEN_PREFIX: &[u8] = b"L";
 const BORROW_TOKEN_PREFIX: &[u8] = b"B";
 
+use liquidity_pool::tokens::ProxyTrait as _;
+
 #[elrond_wasm::contract]
 pub trait Router: pool_factory::PoolFactoryModule {
     #[init]
@@ -88,7 +90,7 @@ pub trait Router: pool_factory::PoolFactoryModule {
         only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&token_ticker).unwrap();
         self.liquidity_pool_proxy(pool_address)
-            .issue_endpoint(
+            .issue(
                 plain_ticker,
                 token_ticker,
                 BoxedBytes::from(LEND_TOKEN_PREFIX),
@@ -110,7 +112,7 @@ pub trait Router: pool_factory::PoolFactoryModule {
         only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&token_ticker).unwrap();
         self.liquidity_pool_proxy(pool_address)
-            .issue_endpoint(
+            .issue(
                 plain_ticker,
                 token_ticker,
                 BoxedBytes::from(BORROW_TOKEN_PREFIX),
@@ -121,31 +123,31 @@ pub trait Router: pool_factory::PoolFactoryModule {
         Ok(())
     }
 
+    #[only_owner]
     #[endpoint(setLendRoles)]
     fn set_lend_roles(
         &self,
         asset_ticker: TokenIdentifier,
         #[var_args] roles: VarArgs<EsdtLocalRole>,
     ) -> SCResult<()> {
-        only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&asset_ticker).unwrap();
         self.liquidity_pool_proxy(pool_address)
-            .set_lend_token_roles_endpoint(roles)
+            .set_lend_token_roles(roles.into_vec())
             .execute_on_dest_context();
 
         Ok(())
     }
 
+    #[only_owner]
     #[endpoint(setBorrowRoles)]
     fn set_borrow_roles(
         &self,
         asset_ticker: TokenIdentifier,
         #[var_args] roles: VarArgs<EsdtLocalRole>,
     ) -> SCResult<()> {
-        only_owner!(self, "only owner may call this function");
         let pool_address = self.pools_map().get(&asset_ticker).unwrap();
         self.liquidity_pool_proxy(pool_address)
-            .set_borrow_token_roles_endpoint(roles)
+            .set_borrow_token_roles(roles.into_vec())
             .execute_on_dest_context();
 
         Ok(())

@@ -50,7 +50,7 @@ pub struct DebtMetadata<BigUint: BigUintApi> {
     pub collateral_timestamp: u64,
 }
 
-#[derive(TopEncode, TopDecode, TypeAbi, PartialEq, Clone)]
+#[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, TypeAbi, PartialEq, Clone)]
 pub struct RepayPostion<BigUint: BigUintApi> {
     pub identifier: TokenIdentifier,
     pub amount: BigUint,

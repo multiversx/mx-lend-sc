@@ -1,20 +1,22 @@
 elrond_wasm::imports!();
+elrond_wasm::derive_imports!();
+
 use crate::{DebtMetadata, DebtPosition, InterestMetadata, LiquidateData, RepayPostion};
-use elrond_wasm::types::{Address, BoxedBytes, SCResult, TokenIdentifier, H256};
-use elrond_wasm::*;
 
 #[elrond_wasm::module]
-pub trait LiquidityPoolModule:
+pub trait LiquidityModule:
     crate::storage::StorageModule
     + crate::tokens::TokensModule
     + crate::utils::UtilsModule
     + crate::library::LibraryModule
 {
+    #[payable("*")]
+    #[endpoint(depositAsset)]
     fn deposit_asset(
         &self,
         initial_caller: Address,
-        asset: TokenIdentifier,
-        amount: Self::BigUint,
+        #[payment_token] asset: TokenIdentifier,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
         require!(
             self.lending_pool().get() == self.blockchain().get_caller(),
@@ -45,11 +47,13 @@ pub trait LiquidityPoolModule:
         Ok(())
     }
 
+    #[payable("*")]
+    #[endpoint(borrow)]
     fn borrow(
         &self,
         initial_caller: Address,
-        lend_token: TokenIdentifier,
-        amount: Self::BigUint,
+        #[payment_token] lend_token: TokenIdentifier,
+        #[payment_amount] amount: Self::BigUint,
         timestamp: u64,
     ) -> SCResult<()> {
         require!(
@@ -118,11 +122,13 @@ pub trait LiquidityPoolModule:
         Ok(())
     }
 
+    #[payable("*")]
+    #[endpoint(lockBTokens)]
     fn lock_b_tokens(
         &self,
         initial_caller: Address,
-        borrow_token: TokenIdentifier,
-        amount: Self::BigUint,
+        #[payment_token] borrow_token: TokenIdentifier,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<H256> {
         require!(
             self.blockchain().get_caller() == self.lending_pool().get(),
@@ -180,11 +186,13 @@ pub trait LiquidityPoolModule:
         Ok(unique_repay_id)
     }
 
+    #[payable("*")]
+    #[endpoint]
     fn repay(
         &self,
         unique_id: BoxedBytes,
-        asset: TokenIdentifier,
-        amount: Self::BigUint,
+        #[payment_token] asset: TokenIdentifier,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<RepayPostion<Self::BigUint>> {
         require!(
             self.blockchain().get_caller() == self.lending_pool().get(),
@@ -230,7 +238,7 @@ pub trait LiquidityPoolModule:
         let interest = self.get_debt_interest(
             repay_position.amount.clone(),
             repay_position.borrow_timestamp,
-        );
+        )?;
 
         if repay_position.amount.clone() + interest == amount {
             self.repay_position().remove(&unique_id);
@@ -239,10 +247,6 @@ pub trait LiquidityPoolModule:
             self.repay_position()
                 .insert(unique_id, repay_position.clone());
         }
-
-        self.repay_position_amount().set(&amount);
-        self.repay_position_id().set(&repay_position.identifier);
-        self.repay_position_nonce().set(&repay_position.nonce);
 
         /*self.send().esdt_local_burn(
             amount.clone(),
@@ -255,11 +259,13 @@ pub trait LiquidityPoolModule:
         Ok(repay_position)
     }
 
+    #[payable("*")]
+    #[endpoint]
     fn withdraw(
         &self,
         initial_caller: Address,
-        lend_token: TokenIdentifier,
-        amount: Self::BigUint,
+        #[payment_token] lend_token: TokenIdentifier,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
         require!(
             self.blockchain().get_caller() == self.lending_pool().get(),
@@ -299,11 +305,13 @@ pub trait LiquidityPoolModule:
         Ok(())
     }
 
+    #[payable("*")]
+    #[endpoint]
     fn liquidate(
         &self,
         position_id: BoxedBytes,
-        token: TokenIdentifier,
-        amount: Self::BigUint,
+        #[payment_token] token: TokenIdentifier,
+        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<LiquidateData<Self::BigUint>> {
         require!(
             self.blockchain().get_caller() == self.lending_pool().get(),
@@ -330,7 +338,8 @@ pub trait LiquidityPoolModule:
             "the health factor is not low enough"
         );
 
-        let interest = self.get_debt_interest(debt_position.size.clone(), debt_position.timestamp);
+        let interest =
+            self.get_debt_interest(debt_position.size.clone(), debt_position.timestamp)?;
 
         require!(
             debt_position.size.clone() + interest == amount,
