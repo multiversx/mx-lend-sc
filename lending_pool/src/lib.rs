@@ -4,7 +4,7 @@ elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
 mod factory;
-mod proxy_common;
+mod liq_pools;
 mod router;
 
 pub use common_structs::*;
@@ -14,7 +14,7 @@ use liquidity_pool::tokens::ProxyTrait as _;
 
 #[elrond_wasm::contract]
 pub trait LendingPool:
-    factory::FactoryModule + router::RouterModule + proxy_common::ProxyCommonModule
+    factory::FactoryModule + router::RouterModule + liq_pools::LiqPoolsModule
 {
     #[init]
     fn init(&self) {}

@@ -60,13 +60,14 @@ pub trait TokensModule:
     }
 
     #[only_owner]
+    #[payable("EGLD")]
     #[endpoint]
     fn issue(
         &self,
         plain_ticker: BoxedBytes,
         token_ticker: TokenIdentifier,
         token_prefix: BoxedBytes,
-        issue_cost: Self::BigUint,
+        #[payment_amount] issue_cost: Self::BigUint,
     ) -> SCResult<AsyncCall<Self::SendApi>> {
         require!(
             token_ticker == self.pool_asset().get(),

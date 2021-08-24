@@ -4,13 +4,13 @@ elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
 use super::factory;
-use super::proxy_common;
+use super::liq_pools;
 
 use common_structs::{BORROW_TOKEN_PREFIX, LEND_TOKEN_PREFIX};
 use liquidity_pool::tokens::ProxyTrait as _;
 
 #[elrond_wasm::module]
-pub trait RouterModule: proxy_common::ProxyCommonModule + factory::FactoryModule {
+pub trait RouterModule: liq_pools::LiqPoolsModule + factory::FactoryModule {
     #[only_owner]
     #[endpoint(createLiquidityPool)]
     fn create_liquidity_pool(
@@ -159,11 +159,4 @@ pub trait RouterModule: proxy_common::ProxyCommonModule + factory::FactoryModule
     fn get_pool_address(&self, asset: &TokenIdentifier) -> Address {
         self.pools_map().get(asset).unwrap_or_else(Address::zero)
     }
-
-    #[storage_mapper("pools_map")]
-    fn pools_map(&self) -> SafeMapMapper<Self::Storage, TokenIdentifier, Address>;
-
-    #[view(getPoolAllowed)]
-    #[storage_mapper("pool_allowed")]
-    fn pools_allowed(&self) -> SafeSetMapper<Self::Storage, Address>;
 }
