@@ -58,6 +58,10 @@ pub trait StorageModule {
     #[storage_mapper("lendingPool")]
     fn lending_pool(&self) -> SingleValueMapper<Self::Storage, Address>;
 
+    /// price oracle address
+    #[storage_mapper("priceOracle")]
+    fn price_oracle(&self) -> SingleValueMapper<Self::Storage, Address>;
+
     //
     // total borrowing from pool
     #[storage_mapper("totalBorrow")]

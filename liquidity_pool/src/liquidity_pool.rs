@@ -102,8 +102,6 @@ pub trait LiquidityPoolModule:
 
         // send collateral requested to the user
 
-        // self.send().direct(&initial_caller, &asset, &amount, &[]);
-
         borrows_reserve += amount.clone();
         asset_reserve -= amount.clone();
 
@@ -114,7 +112,8 @@ pub trait LiquidityPoolModule:
         self.reserves().insert(borrows_token, borrows_reserve);
         self.reserves().insert(asset, asset_reserve);
 
-        let current_health = self.compute_health_factor();
+        let current_health = self.calculate_health_factor(amount.clone(), lend_token.clone(), amount);
+        require!(current_health >= self.health_factor_threshold().get().unwrap_or_default(), "borrow imposible, collaterization to low");
         let debt_position = DebtPosition::<Self::BigUint> {
             size: amount.clone(), // this will be initial L tokens amount
             health_factor: current_health,
@@ -125,6 +124,7 @@ pub trait LiquidityPoolModule:
         };
         self.debt_positions()
             .insert(position_id.into_boxed_bytes(), debt_position);
+
 
         Ok(())
     }
@@ -366,6 +366,7 @@ pub trait LiquidityPoolModule:
             !debt_position.is_liquidated,
             "position is already liquidated"
         );
+        self.update_debt_position_health_factor(position_id.clone());
         require!(
             debt_position.health_factor < self.health_factor_threshold().get(),
             "the health factor is not low enough"
@@ -390,4 +391,34 @@ pub trait LiquidityPoolModule:
 
         Ok(liquidate_data)
     }
+
+    fn update_debt_position_health_factor(&self, position_id: BoxedBytes)  {
+        let mut debt_position = self.debt_positions().get(&position_id).unwrap_or_default();
+        let health_factor = self.calculate_health_factor(debt_position.size,
+                                                         debt_position.collateral_identifier,
+                                                         debt_position.collateral_amount);
+        debt_position.health_factor = health_factor;
+        self.debt_positions().insert(position_id, debt_position.clone());
+    }
+
+    fn calculate_health_factor(&self, borrow_size: Self::BigUint, collateral_identifier: TokenIdentifier, collateral_amount: Self::BigUint) -> u32 {
+        let usdt: &'static [u8] = b"usdt";
+        let usd_ticker = TokenIdentifier(BoxedBytes::from(usdt));
+        let collateral_token_price = self.price_oracle_proxy(self.price_oracle().get())
+            .get_price_for_pair(collateral_identifier, &usd_ticker)
+            .execute_on_dest_context();
+        let token_ticker = self.price_oracle_proxy(self.price_oracle().get())
+            .get_token_ticker(self.asset_reserve().get()).execute_on_dest_context();
+        let borrowed_token_price = self.price_oracle_proxy(self.price_oracle().get())
+            .get_price_for_pair(token_ticker, &usd_ticker)
+            .execute_on_dest_context();
+        let collateral_tokens_value = collateral_token_price * collateral_amount;
+        let borrow_token_value = borrowed_token_price * borrow_size;
+        let health_factor = (collateral_tokens_value*1000)/borrow_token_value;
+        return health_factor;
+    }
+
+    #[proxy]
+    fn price_oracle_proxy(&self, sc_address: Address) -> price_racle::Proxy<Self::SendApi>;
+
 }

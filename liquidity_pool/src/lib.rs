@@ -178,6 +178,11 @@ pub trait LiquidityPool:
         self.set_borrow_token_roles(roles)
     }
 
+    #[endpoint(setPriceOracleAddress)]
+    fn set_price_oracle_address(&self, sc_address: Address) {
+        self.price_oracle().set(&sc_address);
+    }
+
     /// VIEWS
 
     #[view(repayPositionsIds)]

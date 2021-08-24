@@ -21,6 +21,9 @@ version = "0.18"
 version = "0.18"
 optional = true
 
+[dependencies.price_oracle]
+path = "../price_oracle"
+
 [dev-dependencies.elrond-wasm-debug]
 version = "0.18"
 
