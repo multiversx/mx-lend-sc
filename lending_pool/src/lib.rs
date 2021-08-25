@@ -191,73 +191,65 @@ pub trait LendingPool:
     #[endpoint(borrow)]
     fn borrow_endpoint(
         &self,
-        asset_to_put_as_collateral: TokenIdentifier,
+        asset_collateral: TokenIdentifier,
         asset_to_borrow: TokenIdentifier,
         #[var_args] caller: OptionalArg<Address>,
-        #[payment_token] asset_collateral_lend_token: TokenIdentifier,
-        #[payment_amount] amount: Self::BigUint,
+        #[payment_token] payment_lend_id: TokenIdentifier,
+        #[payment_amount] payment_amount: Self::BigUint,
+        #[payment_nonce] payment_nonce: u64,
     ) -> SCResult<()> {
         let initial_caller = caller
             .into_option()
             .unwrap_or_else(|| self.blockchain().get_caller());
 
-        require!(amount > 0, "amount must be greater than 0");
+        require!(payment_amount > 0, "amount must be greater than 0");
         require!(!initial_caller.is_zero(), "invalid address provided");
-        require!(
-            self.pools_map().contains_key(&asset_to_put_as_collateral),
-            "asset not supported"
-        );
-        require!(
-            self.pools_map().contains_key(&asset_to_borrow),
-            "asset not supported"
-        );
+        require!(payment_nonce != 0, "payment token be a lend token");
 
-        let collateral_token_pool_address = self
-            .pools_map()
-            .get(&asset_to_put_as_collateral)
-            .unwrap_or_else(Address::zero);
-
-        let borrow_token_pool_address = self
-            .pools_map()
-            .get(&asset_to_borrow)
-            .unwrap_or_else(Address::zero);
-
+        let collateral_token_pool_address = self.get_pool_address_non_zero(&asset_collateral)?;
+        let borrow_token_pool_address = self.get_pool_address_non_zero(&asset_to_borrow)?;
+        let lend_token_pool_address = self.get_pool_address_non_zero(&payment_lend_id)?;
         require!(
-            !collateral_token_pool_address.is_zero(),
-            "invalid liquidity pool address"
+            collateral_token_pool_address == lend_token_pool_address,
+            "Collateral and lend pool addresses differ"
         );
         require!(
-            !borrow_token_pool_address.is_zero(),
-            "invalid liquidity pool address"
+            collateral_token_pool_address != borrow_token_pool_address,
+            "Collateral and borrow pool addresses are the same"
         );
 
-        let nft_nonce = self.call_value().esdt_token_nonce();
-
-        let esdt_nft_data = self.blockchain().get_esdt_token_data(
-            &self.blockchain().get_sc_address(),
-            &asset_collateral_lend_token,
-            nft_nonce,
-        );
-
-        let metadata = esdt_nft_data.decode_attributes::<InterestMetadata>()?;
+        let metadata = self.get_interest_metadata(&payment_lend_id, payment_nonce)?;
         self.liquidity_pool_proxy(borrow_token_pool_address)
             .borrow(
                 initial_caller.clone(),
-                asset_collateral_lend_token.clone(),
-                amount.clone(),
+                asset_collateral.clone(),
+                payment_amount.clone(),
                 metadata.timestamp,
             )
             .execute_on_dest_context_ignore_result();
 
         self.liquidity_pool_proxy(collateral_token_pool_address)
             .burn_l_tokens(
-                asset_collateral_lend_token,
-                nft_nonce,
-                amount,
+                payment_lend_id,
+                payment_nonce,
+                payment_amount,
                 initial_caller,
             )
             .execute_on_dest_context_ignore_result();
 
         Ok(())
+    }
+
+    fn get_interest_metadata(
+        &self,
+        token_id: &TokenIdentifier,
+        nonce: u64,
+    ) -> SCResult<InterestMetadata> {
+        let esdt_nft_data = self.blockchain().get_esdt_token_data(
+            &self.blockchain().get_sc_address(),
+            token_id,
+            nonce,
+        );
+        SCResult::from(esdt_nft_data.decode_attributes::<InterestMetadata>())
     }
 }

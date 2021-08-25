@@ -43,73 +43,72 @@ pub trait LiquidityModule:
     }
 
     #[only_owner]
-    #[payable("*")]
     #[endpoint(borrow)]
     fn borrow(
         &self,
         initial_caller: Address,
-        #[payment_token] lend_token: TokenIdentifier,
-        #[payment_amount] amount: Self::BigUint,
-        timestamp: u64,
+        collateral_id: TokenIdentifier,
+        collateral_amount: Self::BigUint,
+        deposit_timestamp: u64,
     ) -> SCResult<()> {
-        require!(amount > 0, "lend amount must be bigger then 0");
-        require!(!initial_caller.is_zero(), "invalid address provided");
+        // require!(amount > 0, "lend amount must be bigger then 0");
+        // require!(!initial_caller.is_zero(), "invalid address provided");
 
-        let borrows_token = self.borrow_token().get();
-        let asset = self.pool_asset().get();
+        // let borrows_token = self.borrow_token().get();
+        // let asset = self.pool_asset().get();
 
-        let mut borrows_reserve = self.reserves(&borrows_token).get();
-        let mut asset_reserve = self.reserves(&asset).get();
+        // let mut borrows_reserve = self.reserves(&borrows_token).get();
+        // let mut asset_reserve = self.reserves(&asset).get();
 
-        require!(
-            asset_reserve != Self::BigUint::zero(),
-            "asset reserve is empty"
-        );
+        // require!(
+        //     asset_reserve != Self::BigUint::zero(),
+        //     "asset reserve is empty"
+        // );
 
-        let position_id = self.get_nft_hash();
-        let debt_metadata = DebtMetadata {
-            timestamp: self.blockchain().get_block_timestamp(),
-            collateral_amount: amount.clone(),
-            collateral_identifier: lend_token.clone(),
-            collateral_timestamp: timestamp,
-        };
+        // let position_id = self.get_nft_hash();
+        // let debt_metadata = DebtMetadata {
+        //     timestamp: self.blockchain().get_block_timestamp(),
+        //     collateral_amount: amount.clone(),
+        //     collateral_identifier: lend_token.clone(),
+        //     collateral_timestamp: timestamp,
+        // };
 
-        self.mint_debt(amount.clone(), debt_metadata.clone(), position_id.clone());
+        // self.mint_debt(amount.clone(), debt_metadata.clone(), position_id.clone());
 
-        let nonce = self
-            .blockchain()
-            .get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &borrows_token);
+        // let nonce = self
+        //     .blockchain()
+        //     .get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &borrows_token);
 
-        // send debt position tokens
+        // // send debt position tokens
 
-        self.send()
-            .direct(&initial_caller, &borrows_token, nonce, &amount, &[]);
+        // self.send()
+        //     .direct(&initial_caller, &borrows_token, nonce, &amount, &[]);
 
-        // send collateral requested to the user
+        // // send collateral requested to the user
 
-        // self.send().direct(&initial_caller, &asset, &amount, &[]);
+        // // self.send().direct(&initial_caller, &asset, &amount, &[]);
 
-        borrows_reserve += amount.clone();
-        asset_reserve -= amount.clone();
+        // borrows_reserve += amount.clone();
+        // asset_reserve -= amount.clone();
 
-        let mut total_borrow = self.total_borrow().get();
-        total_borrow += amount.clone();
-        self.total_borrow().set(&total_borrow);
+        // let mut total_borrow = self.total_borrow().get();
+        // total_borrow += amount.clone();
+        // self.total_borrow().set(&total_borrow);
 
-        self.reserves(&borrows_token).set(&borrows_reserve);
-        self.reserves(&asset).set(&asset_reserve);
+        // self.reserves(&borrows_token).set(&borrows_reserve);
+        // self.reserves(&asset).set(&asset_reserve);
 
-        let current_health = self.compute_health_factor();
-        let debt_position = DebtPosition::<Self::BigUint> {
-            size: amount.clone(), // this will be initial L tokens amount
-            health_factor: current_health,
-            is_liquidated: false,
-            timestamp: debt_metadata.timestamp,
-            collateral_amount: amount,
-            collateral_identifier: lend_token,
-        };
-        self.debt_positions()
-            .insert(position_id.into_boxed_bytes(), debt_position);
+        // let current_health = self.compute_health_factor();
+        // let debt_position = DebtPosition::<Self::BigUint> {
+        //     size: amount.clone(), // this will be initial L tokens amount
+        //     health_factor: current_health,
+        //     is_liquidated: false,
+        //     timestamp: debt_metadata.timestamp,
+        //     collateral_amount: amount,
+        //     collateral_identifier: lend_token,
+        // };
+        // self.debt_positions()
+        //     .insert(position_id.into_boxed_bytes(), debt_position);
 
         Ok(())
     }

@@ -75,7 +75,8 @@ pub trait LibraryModule {
         let bp = Self::BigUint::from(BP);
         let secs_year = Self::BigUint::from(SECONDS_IN_YEAR);
         let percentage = &(time_diff * deposit_rate) / &secs_year;
+        let interest = &percentage * amount / bp;
 
-        amount + &(&(&percentage * amount) / &bp)
+        amount + &interest
     }
 }

@@ -160,6 +160,14 @@ pub trait RouterModule: proxy_common::ProxyCommonModule + factory::FactoryModule
         self.pools_map().get(asset).unwrap_or_else(Address::zero)
     }
 
+    fn get_pool_address_non_zero(&self, asset: &TokenIdentifier) -> SCResult<Address> {
+        require!(
+            self.pools_map().contains_key(asset),
+            "No pool address for asset"
+        );
+        Ok(self.pools_map().get(asset).unwrap_or_else(Address::zero))
+    }
+
     #[storage_mapper("pools_map")]
     fn pools_map(&self) -> SafeMapMapper<Self::Storage, TokenIdentifier, Address>;
 
