@@ -8,9 +8,15 @@ use super::storage;
 use super::tokens;
 use super::utils;
 
+use price_aggregator_proxy::*;
+
 #[elrond_wasm::module]
 pub trait LiquidityModule:
-    storage::StorageModule + tokens::TokensModule + utils::UtilsModule + library::LibraryModule
+    storage::StorageModule
+    + tokens::TokensModule
+    + utils::UtilsModule
+    + library::LibraryModule
+    + price_aggregator_proxy::PriceAggregatorModule
 {
     #[only_owner]
     #[payable("*")]
