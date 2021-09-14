@@ -27,12 +27,10 @@ pub trait LendingPool:
         #[payment_token] asset: TokenIdentifier,
         #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
-        let initial_caller = caller
-            .into_option()
-            .unwrap_or_else(|| self.blockchain().get_caller());
+        let initial_caller = self.caller_from_option_or_sender(caller);
 
-        require!(amount > 0, "amount must be greater than 0");
-        require!(!initial_caller.is_zero(), "invalid address provided");
+        self.require_amount_greater_than_zero(&amount)?;
+        self.require_valid_address_provided(&initial_caller)?;
 
         let pool_address = self.get_pool_address(&asset);
         require!(!pool_address.is_zero(), "invalid liquidity pool address");
@@ -53,12 +51,10 @@ pub trait LendingPool:
         #[payment_amount] amount: Self::BigUint,
         #[var_args] caller: OptionalArg<Address>,
     ) -> SCResult<()> {
-        let initial_caller = caller
-            .into_option()
-            .unwrap_or_else(|| self.blockchain().get_caller());
+        let initial_caller = self.caller_from_option_or_sender(caller);
 
-        require!(amount > 0, "amount must be greater than 0");
-        require!(!initial_caller.is_zero(), "invalid address provided");
+        self.require_amount_greater_than_zero(&amount)?;
+        self.require_valid_address_provided(&initial_caller)?;
 
         let pool_address = self.get_pool_address(&lend_token);
         require!(!pool_address.is_zero(), "invalid liquidity pool address");
@@ -66,123 +62,6 @@ pub trait LendingPool:
         self.liquidity_pool_proxy(pool_address)
             .withdraw(initial_caller, lend_token, token_nonce, amount)
             .execute_on_dest_context();
-
-        Ok(())
-    }
-
-    #[payable("*")]
-    #[endpoint(lockBTokens)]
-    fn lock_b_tokens_endpoint(
-        &self,
-        asset_to_repay: TokenIdentifier,
-        #[var_args] caller: OptionalArg<Address>,
-        #[payment_token] borrow_token: TokenIdentifier,
-        #[payment_nonce] token_nonce: u64,
-        #[payment_amount] amount: Self::BigUint,
-    ) -> SCResult<()> {
-        let initial_caller = caller
-            .into_option()
-            .unwrap_or_else(|| self.blockchain().get_caller());
-
-        require!(amount > 0, "amount must be greater than 0");
-        require!(!initial_caller.is_zero(), "invalid address provided");
-
-        let asset_address = self.get_pool_address(&asset_to_repay);
-
-        require!(
-            self.pools_map().contains_key(&asset_to_repay),
-            "asset not supported"
-        );
-
-        self.liquidity_pool_proxy(asset_address)
-            .lock_b_tokens(initial_caller, borrow_token, token_nonce, amount)
-            .execute_on_dest_context_ignore_result();
-
-        Ok(())
-    }
-
-    #[payable("*")]
-    #[endpoint(repay)]
-    fn repay_endpoint(
-        &self,
-        repay_unique_id: BoxedBytes,
-        #[var_args] initial_caller: OptionalArg<Address>,
-        #[payment_token] asset: TokenIdentifier,
-        #[payment_amount] amount: Self::BigUint,
-    ) -> SCResult<()> {
-        let caller = initial_caller
-            .into_option()
-            .unwrap_or_else(|| self.blockchain().get_caller());
-
-        require!(amount > 0, "amount must be greater than 0");
-        require!(!caller.is_zero(), "invalid address provided");
-        require!(self.pools_map().contains_key(&asset), "asset not supported");
-
-        let asset_address = self.get_pool_address(&asset);
-
-        let results = self
-            .liquidity_pool_proxy(asset_address)
-            .repay(repay_unique_id, asset, amount)
-            .execute_on_dest_context();
-
-        let collateral_token_address = self.get_pool_address(&results.collateral_identifier);
-
-        require!(
-            collateral_token_address != Address::zero(),
-            "asset is not supported"
-        );
-
-        self.liquidity_pool_proxy(collateral_token_address)
-            .mint_l_tokens(
-                caller,
-                results.collateral_identifier,
-                results.amount,
-                results.collateral_timestamp,
-            )
-            .execute_on_dest_context_ignore_result();
-
-        Ok(())
-    }
-
-    #[payable("*")]
-    #[endpoint(liquidate)]
-    fn liquidate_endpoint(
-        &self,
-        liquidate_unique_id: BoxedBytes,
-        #[var_args] initial_caller: OptionalArg<Address>,
-        #[payment_token] asset: TokenIdentifier,
-        #[payment_amount] amount: Self::BigUint,
-    ) -> SCResult<()> {
-        let caller = initial_caller
-            .into_option()
-            .unwrap_or_else(|| self.blockchain().get_caller());
-
-        require!(amount > 0, "amount must be greater than 0");
-        require!(!caller.is_zero(), "invalid address provided");
-        require!(self.pools_map().contains_key(&asset), "asset not supported");
-
-        let asset_address = self.get_pool_address(&asset);
-
-        let results = self
-            .liquidity_pool_proxy(asset_address)
-            .liquidate(liquidate_unique_id, asset, amount)
-            .execute_on_dest_context();
-
-        let collateral_token_address = self.get_pool_address(&results.collateral_token);
-
-        require!(
-            collateral_token_address != Address::zero(),
-            "asset is not supported"
-        );
-
-        self.liquidity_pool_proxy(collateral_token_address)
-            .mint_l_tokens(
-                caller,
-                results.collateral_token,
-                results.amount,
-                self.blockchain().get_block_timestamp(),
-            )
-            .execute_on_dest_context_ignore_result();
 
         Ok(())
     }
@@ -198,17 +77,17 @@ pub trait LendingPool:
         #[payment_nonce] payment_nonce: u64,
         #[payment_amount] payment_amount: Self::BigUint,
     ) -> SCResult<()> {
-        let initial_caller = caller
-            .into_option()
-            .unwrap_or_else(|| self.blockchain().get_caller());
+        let initial_caller = self.caller_from_option_or_sender(caller);
 
-        require!(payment_amount > 0, "amount must be greater than 0");
-        require!(!initial_caller.is_zero(), "invalid address provided");
+        self.require_amount_greater_than_zero(&payment_amount)?;
+        self.require_valid_address_provided(&initial_caller)?;
+
         require!(payment_nonce != 0, "payment token be a lend token");
 
         let collateral_token_pool_address = self.get_pool_address_non_zero(&asset_collateral)?;
         let borrow_token_pool_address = self.get_pool_address_non_zero(&asset_to_borrow)?;
         let lend_token_pool_address = self.get_pool_address_non_zero(&payment_lend_id)?;
+
         require!(
             collateral_token_pool_address == lend_token_pool_address,
             "Collateral and lend pool addresses differ"
@@ -240,6 +119,113 @@ pub trait LendingPool:
         Ok(())
     }
 
+    #[payable("*")]
+    #[endpoint(lockBTokens)]
+    fn lock_b_tokens_endpoint(
+        &self,
+        asset_to_repay: TokenIdentifier,
+        #[var_args] caller: OptionalArg<Address>,
+        #[payment_token] borrow_token: TokenIdentifier,
+        #[payment_nonce] token_nonce: u64,
+        #[payment_amount] amount: Self::BigUint,
+    ) -> SCResult<()> {
+        let initial_caller = self.caller_from_option_or_sender(caller);
+
+        self.require_asset_supported(&asset_to_repay)?;
+        self.require_amount_greater_than_zero(&amount)?;
+        self.require_valid_address_provided(&initial_caller)?;
+
+        let asset_address = self.get_pool_address(&asset_to_repay);
+
+        self.liquidity_pool_proxy(asset_address)
+            .lock_b_tokens(initial_caller, borrow_token, token_nonce, amount)
+            .execute_on_dest_context_ignore_result();
+
+        Ok(())
+    }
+
+    #[payable("*")]
+    #[endpoint(repay)]
+    fn repay_endpoint(
+        &self,
+        repay_unique_id: BoxedBytes,
+        #[var_args] caller: OptionalArg<Address>,
+        #[payment_token] asset: TokenIdentifier,
+        #[payment_amount] amount: Self::BigUint,
+    ) -> SCResult<()> {
+        let initial_caller = self.caller_from_option_or_sender(caller);
+
+        self.require_asset_supported(&asset)?;
+        self.require_amount_greater_than_zero(&amount)?;
+        self.require_valid_address_provided(&initial_caller)?;
+
+        let asset_address = self.get_pool_address(&asset);
+
+        let results = self
+            .liquidity_pool_proxy(asset_address)
+            .repay(repay_unique_id, asset, amount)
+            .execute_on_dest_context();
+
+        let collateral_token_address = self.get_pool_address(&results.collateral_identifier);
+
+        require!(
+            collateral_token_address != Address::zero(),
+            "asset is not supported"
+        );
+
+        self.liquidity_pool_proxy(collateral_token_address)
+            .mint_l_tokens(
+                initial_caller,
+                results.collateral_identifier,
+                results.amount,
+                results.collateral_timestamp,
+            )
+            .execute_on_dest_context_ignore_result();
+
+        Ok(())
+    }
+
+    #[payable("*")]
+    #[endpoint(liquidate)]
+    fn liquidate_endpoint(
+        &self,
+        liquidate_unique_id: BoxedBytes,
+        #[var_args] caller: OptionalArg<Address>,
+        #[payment_token] asset: TokenIdentifier,
+        #[payment_amount] amount: Self::BigUint,
+    ) -> SCResult<()> {
+        let initial_caller = self.caller_from_option_or_sender(caller);
+
+        self.require_asset_supported(&asset)?;
+        self.require_amount_greater_than_zero(&amount)?;
+        self.require_valid_address_provided(&initial_caller)?;
+
+        let asset_address = self.get_pool_address(&asset);
+
+        let results = self
+            .liquidity_pool_proxy(asset_address)
+            .liquidate(liquidate_unique_id, asset, amount)
+            .execute_on_dest_context();
+
+        let collateral_token_address = self.get_pool_address(&results.collateral_token);
+
+        require!(
+            collateral_token_address != Address::zero(),
+            "asset is not supported"
+        );
+
+        self.liquidity_pool_proxy(collateral_token_address)
+            .mint_l_tokens(
+                initial_caller,
+                results.collateral_token,
+                results.amount,
+                self.blockchain().get_block_timestamp(),
+            )
+            .execute_on_dest_context_ignore_result();
+
+        Ok(())
+    }
+
     fn get_interest_metadata(
         &self,
         token_id: &TokenIdentifier,
@@ -251,5 +237,29 @@ pub trait LendingPool:
             nonce,
         );
         esdt_nft_data.decode_attributes().into()
+    }
+
+    fn caller_from_option_or_sender(&self, caller: OptionalArg<Address>) -> Address {
+        caller
+            .into_option()
+            .unwrap_or_else(|| self.blockchain().get_caller())
+    }
+
+    fn require_amount_greater_than_zero(&self, amount: &Self::BigUint) -> SCResult<()> {
+        require!(amount > &0, "amount must be greater than 0");
+
+        Ok(())
+    }
+
+    fn require_valid_address_provided(&self, caller: &Address) -> SCResult<()> {
+        require!(!caller.is_zero(), "invalid address provided");
+
+        Ok(())
+    }
+
+    fn require_asset_supported(&self, asset: &TokenIdentifier) -> SCResult<()> {
+        require!(self.pools_map().contains_key(asset), "asset not supported");
+
+        Ok(())
     }
 }
