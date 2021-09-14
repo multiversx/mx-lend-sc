@@ -125,10 +125,14 @@ pub trait LiquidityModule:
         Ok(())
     }
 
+    // Returns the asset token ID, the amount of debt paid
     #[only_owner]
     #[payable("*")]
     #[endpoint]
-    fn repay(&self, initial_caller: Address) -> SCResult<()> {
+    fn repay(
+        &self,
+        initial_caller: Address,
+    ) -> SCResult<MultiResult3<TokenIdentifier, Self::BigUint, u64>> {
         require!(!initial_caller.is_zero(), "invalid initial caller");
 
         let transfers = self.get_all_esdt_transfers();
@@ -174,20 +178,6 @@ pub trait LiquidityModule:
 
         let debt_metadata = esdt_nft_data.decode_attributes::<DebtMetadata<Self::BigUint>>()?;
 
-        /*
-        let repay_position = RepayPostion {
-            identifier: borrow_token_id.clone(),
-            nonce: borrow_token_nonce,
-            amount: borrow_token_amount.clone(),
-            borrow_timestamp: metadata.timestamp,
-            collateral_identifier: metadata.collateral_identifier,
-            collateral_amount: metadata.collateral_amount,
-            collateral_timestamp: metadata.collateral_timestamp,
-        };
-        */
-
-        ////////////////////////////////////////////////////////////////////////////////////
-
         let accumulated_debt =
             self.get_debt_interest(borrow_token_amount, debt_metadata.timestamp)?;
         let total_owed = borrow_token_amount + &accumulated_debt;
@@ -203,19 +193,26 @@ pub trait LiquidityModule:
                 .direct(&initial_caller, &asset_token_id, 0, &extra_asset_paid, &[]);
         }
 
-        debt_position.collateral_amount -= asset_amount;
+        // TODO: Instead of borrow_token_amount (i.e. 1:1 ratio), calculate how much collateral amount was repaid
+        debt_position.collateral_amount -= borrow_token_amount;
         if debt_position.collateral_amount == 0 {
             self.debt_positions().remove(debt_position_id);
         } else {
             let _ = self
                 .debt_positions()
-                .insert(debt_position_id.clone(), debt_position);
+                .insert(debt_position_id.clone(), debt_position.clone());
         }
 
         self.send()
             .esdt_local_burn(borrow_token_id, borrow_token_nonce, borrow_token_amount);
 
-        Ok(())
+        // Same here, use calculated amount of repaid collateral instead of borrow_token_amount
+        Ok((
+            debt_position.collateral_identifier,
+            borrow_token_amount.clone(),
+            debt_position.timestamp,
+        )
+            .into())
     }
 
     #[only_owner]

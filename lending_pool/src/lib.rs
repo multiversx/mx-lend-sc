@@ -9,12 +9,17 @@ mod router;
 
 pub use common_structs::*;
 
+use liquidity_pool::multi_transfer;
+
 use liquidity_pool::liquidity::ProxyTrait as _;
 use liquidity_pool::tokens::ProxyTrait as _;
 
 #[elrond_wasm::contract]
 pub trait LendingPool:
-    factory::FactoryModule + router::RouterModule + proxy_common::ProxyCommonModule
+    factory::FactoryModule
+    + router::RouterModule
+    + multi_transfer::MultiTransferModule
+    + proxy_common::ProxyCommonModule
 {
     #[init]
     fn init(&self) {}
@@ -71,73 +76,48 @@ pub trait LendingPool:
     }
 
     #[payable("*")]
-    #[endpoint(lockBTokens)]
-    fn lock_b_tokens_endpoint(
+    #[endpoint(repay)]
+    fn repay_endpoint(
         &self,
         asset_to_repay: TokenIdentifier,
         #[var_args] caller: OptionalArg<Address>,
-        #[payment_token] borrow_token: TokenIdentifier,
-        #[payment_nonce] token_nonce: u64,
-        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
         let initial_caller = caller
             .into_option()
             .unwrap_or_else(|| self.blockchain().get_caller());
 
-        require!(amount > 0, "amount must be greater than 0");
-        require!(!initial_caller.is_zero(), "invalid address provided");
-
         let asset_address = self.get_pool_address(&asset_to_repay);
-
         require!(
             self.pools_map().contains_key(&asset_to_repay),
             "asset not supported"
         );
 
-        self.liquidity_pool_proxy(asset_address)
-            .lock_b_tokens(initial_caller, borrow_token, token_nonce, amount)
-            .execute_on_dest_context_ignore_result();
+        // TODO: Use SC Proxy instead of manual call in 0.19.0
 
-        Ok(())
-    }
+        let transfers = self.get_all_esdt_transfers();
+        let raw_results = self.multi_transfer_via_execute_on_dest_context(
+            &asset_address,
+            &transfers,
+            &b"repay"[..].into(),
+            &[initial_caller.as_bytes().into()],
+        );
 
-    #[payable("*")]
-    #[endpoint(repay)]
-    fn repay_endpoint(
-        &self,
-        repay_unique_id: BoxedBytes,
-        #[var_args] initial_caller: OptionalArg<Address>,
-        #[payment_token] asset: TokenIdentifier,
-        #[payment_amount] amount: Self::BigUint,
-    ) -> SCResult<()> {
-        let caller = initial_caller
-            .into_option()
-            .unwrap_or_else(|| self.blockchain().get_caller());
+        let collateral_id = TokenIdentifier::top_decode(raw_results[0].as_slice())?;
+        let collateral_amount_repaid = Self::BigUint::top_decode(raw_results[1].as_slice())?;
+        let borrow_timestamp = u64::top_decode(raw_results[2].as_slice())?;
 
-        require!(amount > 0, "amount must be greater than 0");
-        require!(!caller.is_zero(), "invalid address provided");
-        require!(self.pools_map().contains_key(&asset), "asset not supported");
-
-        let asset_address = self.get_pool_address(&asset);
-
-        let results = self
-            .liquidity_pool_proxy(asset_address)
-            .repay(repay_unique_id, asset, amount)
-            .execute_on_dest_context();
-
-        let collateral_token_address = self.get_pool_address(&results.collateral_identifier);
-
+        let collateral_token_address = self.get_pool_address(&collateral_id);
         require!(
-            collateral_token_address != Address::zero(),
-            "asset is not supported"
+            !collateral_token_address.is_zero(),
+            "Collateral not supported"
         );
 
         self.liquidity_pool_proxy(collateral_token_address)
             .mint_l_tokens(
-                caller,
-                results.collateral_identifier,
-                results.amount,
-                results.collateral_timestamp,
+                collateral_id,
+                collateral_amount_repaid,
+                initial_caller,
+                borrow_timestamp,
             )
             .execute_on_dest_context_ignore_result();
 
@@ -177,9 +157,9 @@ pub trait LendingPool:
 
         self.liquidity_pool_proxy(collateral_token_address)
             .mint_l_tokens(
-                caller,
                 results.collateral_token,
                 results.amount,
+                caller,
                 self.blockchain().get_block_timestamp(),
             )
             .execute_on_dest_context_ignore_result();
