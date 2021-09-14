@@ -176,7 +176,7 @@ pub trait TokensModule:
             lend_token,
             token_nonce,
         );
-        nft_info.decode_attributes::<InterestMetadata>().into()
+        nft_info.decode_attributes().into()
     }
 
     #[callback]

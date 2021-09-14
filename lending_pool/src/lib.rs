@@ -250,6 +250,6 @@ pub trait LendingPool:
             token_id,
             nonce,
         );
-        esdt_nft_data.decode_attributes::<InterestMetadata>().into()
+        esdt_nft_data.decode_attributes().into()
     }
 }
