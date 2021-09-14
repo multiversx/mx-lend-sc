@@ -42,32 +42,6 @@ pub trait LiquidityPool:
         });
     }
 
-    #[view(repayPositionsIds)]
-    fn get_repay_positions_ids(&self) -> MultiResultVec<BoxedBytes> {
-        self.repay_position().keys().collect()
-    }
-
-    #[view(repayPosition)]
-    fn view_repay_position(&self, position_id: BoxedBytes) -> Option<RepayPostion<Self::BigUint>> {
-        self.repay_position().get(&position_id)
-    }
-
-    #[view(debtPosition)]
-    fn view_debt_position(&self, position_id: BoxedBytes) -> Option<DebtPosition<Self::BigUint>> {
-        self.debt_positions().get(&position_id)
-    }
-
-    #[view(getDebtInterest)]
-    fn view_debt_interest(&self, amount: Self::BigUint, timestamp: u64) -> SCResult<Self::BigUint> {
-        self.get_debt_interest(amount, timestamp)
-    }
-
-    #[view(getPositionInterest)]
-    fn get_debt_position_interest(&self, position_id: BoxedBytes) -> SCResult<Self::BigUint> {
-        let debt_position = self.debt_positions().get(&position_id).unwrap_or_default();
-        self.get_debt_interest(debt_position.size.clone(), debt_position.timestamp)
-    }
-
     #[only_owner]
     #[endpoint(setHealthFactorThreshold)]
     fn endpoint_health_factor_threshold(&self, health_factor_threashdol: u32) {

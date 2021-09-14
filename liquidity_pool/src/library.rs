@@ -8,78 +8,75 @@ const SECONDS_IN_YEAR: u32 = 31556926;
 pub trait LibraryModule {
     fn compute_borrow_rate(
         &self,
-        r_base: Self::BigUint,
-        r_slope1: Self::BigUint,
-        r_slope2: Self::BigUint,
-        u_optimal: Self::BigUint,
-        u_current: Self::BigUint,
+        r_base: &Self::BigUint,
+        r_slope1: &Self::BigUint,
+        r_slope2: &Self::BigUint,
+        u_optimal: &Self::BigUint,
+        u_current: &Self::BigUint,
     ) -> Self::BigUint {
         let bp = Self::BigUint::from(BP);
 
-        let borrow_rate: Self::BigUint;
         if u_current < u_optimal {
-            let utilisation_ratio = (u_current * r_slope1) / u_optimal;
-            borrow_rate = r_base + utilisation_ratio;
+            let utilisation_ratio = &(u_current * r_slope1) / u_optimal;
+            r_base + &utilisation_ratio
         } else {
-            let denominator = bp - u_optimal.clone();
-            let numerator = (u_current - u_optimal) * r_slope2;
-            borrow_rate = (r_base + r_slope1) + numerator / denominator;
+            let denominator = &bp - u_optimal;
+            let numerator = &(u_current - u_optimal) * r_slope2;
+            (r_base + r_slope1) + numerator / denominator
         }
-
-        borrow_rate
     }
 
     fn compute_deposit_rate(
         &self,
-        u_current: Self::BigUint,
-        borrow_rate: Self::BigUint,
-        reserve_factor: Self::BigUint,
+        u_current: &Self::BigUint,
+        borrow_rate: &Self::BigUint,
+        reserve_factor: &Self::BigUint,
     ) -> Self::BigUint {
         let bp = Self::BigUint::from(BP);
-        let loan_ratio = u_current.clone() * borrow_rate;
-        let deposit_rate = u_current * loan_ratio * (bp.clone() - reserve_factor);
-        deposit_rate / (bp.clone() * bp.clone() * bp)
+        let loan_ratio = u_current * borrow_rate;
+        let deposit_rate = &(u_current * &loan_ratio) * &(&bp - reserve_factor);
+        deposit_rate / (&bp * &bp * bp)
     }
 
     fn compute_capital_utilisation(
         &self,
-        borrowed_amount: Self::BigUint,
-        total_pool_reserves: Self::BigUint,
+        borrowed_amount: &Self::BigUint,
+        total_pool_reserves: &Self::BigUint,
     ) -> Self::BigUint {
         let bp = Self::BigUint::from(BP);
-        (borrowed_amount * bp) / total_pool_reserves
+        &(borrowed_amount * &bp) / total_pool_reserves
     }
 
     fn compute_debt(
         &self,
-        amount: Self::BigUint,
-        time_diff: Self::BigUint,
-        borrow_rate: Self::BigUint,
+        amount: &Self::BigUint,
+        time_diff: &Self::BigUint,
+        borrow_rate: &Self::BigUint,
     ) -> Self::BigUint {
         let bp = Self::BigUint::from(BP);
         let secs_year = Self::BigUint::from(SECONDS_IN_YEAR);
-        let time_unit_percentage = (time_diff * bp.clone()) / secs_year;
-
-        let debt_percetange = (time_unit_percentage * borrow_rate) / bp.clone();
+        let time_unit_percentage = (time_diff * &bp) / secs_year;
+        let debt_percetange = &(&time_unit_percentage * borrow_rate) / &bp;
 
         if debt_percetange <= bp {
-            let amount_diff = ((bp.clone() - debt_percetange) * amount.clone()) / bp;
-            return amount - amount_diff;
+            let amount_diff = (&(&bp - &debt_percetange) * amount) / bp;
+            amount - &amount_diff
+        } else {
+            (&debt_percetange * amount) / bp
         }
-
-        (debt_percetange * amount) / bp
     }
 
     fn compute_withdrawal_amount(
         &self,
-        amount: Self::BigUint,
-        time_diff: Self::BigUint,
-        deposit_rate: Self::BigUint,
+        amount: &Self::BigUint,
+        time_diff: &Self::BigUint,
+        deposit_rate: &Self::BigUint,
     ) -> Self::BigUint {
         let bp = Self::BigUint::from(BP);
         let secs_year = Self::BigUint::from(SECONDS_IN_YEAR);
-        let percentage = (time_diff * deposit_rate) / secs_year;
+        let percentage = &(time_diff * deposit_rate) / &secs_year;
+        let interest = &percentage * amount / bp;
 
-        amount.clone() + ((percentage * amount) / bp)
+        amount + &interest
     }
 }

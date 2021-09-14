@@ -14,7 +14,7 @@ pub struct DepositMetadata {
     pub timestamp: u64,
 }
 
-#[derive(TopEncode, TopDecode, TypeAbi)]
+#[derive(TopEncode, TopDecode, TypeAbi, Default)]
 pub struct InterestMetadata {
     pub timestamp: u64,
 }
@@ -94,5 +94,11 @@ impl<BigUint: BigUintApi> Default for RepayPostion<BigUint> {
             collateral_amount: BigUint::zero(),
             collateral_timestamp: 0u64,
         }
+    }
+}
+
+impl InterestMetadata {
+    pub fn new(timestamp: u64) -> Self {
+        InterestMetadata { timestamp }
     }
 }

@@ -27,43 +27,37 @@ pub trait LiquidityModule:
             "asset not supported for this liquidity pool"
         );
 
-        let interest_metadata = InterestMetadata {
-            timestamp: self.blockchain().get_block_timestamp(),
-        };
-        self.mint_interest(amount.clone(), interest_metadata);
-
-        let lend_token = self.lend_token().get();
-        let nonce = self
-            .blockchain()
-            .get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &lend_token);
+        let interest_metadata = InterestMetadata::new(self.blockchain().get_block_timestamp());
+        let new_nonce = self.mint_interest(&amount, &interest_metadata);
 
         self.reserves(&pool_asset).update(|x| *x += &amount);
-
-        self.send()
-            .direct(&initial_caller, &lend_token, nonce, &amount, &[]);
+        self.send().direct(
+            &initial_caller,
+            &self.lend_token().get(),
+            new_nonce,
+            &amount,
+            &[],
+        );
 
         Ok(())
     }
 
     #[only_owner]
-    #[payable("*")]
     #[endpoint(borrow)]
     fn borrow(
         &self,
         initial_caller: Address,
-        #[payment_token] lend_token: TokenIdentifier,
-        #[payment_amount] amount: Self::BigUint,
-        timestamp: u64,
+        collateral_id: TokenIdentifier,
+        collateral_amount: Self::BigUint,
+        deposit_timestamp: u64,
     ) -> SCResult<()> {
-        require!(amount > 0, "lend amount must be bigger then 0");
+        require!(collateral_amount > 0, "lend amount must be bigger then 0");
         require!(!initial_caller.is_zero(), "invalid address provided");
 
         let borrows_token = self.borrow_token().get();
         let asset = self.pool_asset().get();
 
-        let mut borrows_reserve = self.reserves(&borrows_token).get();
         let mut asset_reserve = self.reserves(&asset).get();
-
         require!(
             asset_reserve != Self::BigUint::zero(),
             "asset reserve is empty"
@@ -72,12 +66,16 @@ pub trait LiquidityModule:
         let position_id = self.get_nft_hash();
         let debt_metadata = DebtMetadata {
             timestamp: self.blockchain().get_block_timestamp(),
-            collateral_amount: amount.clone(),
-            collateral_identifier: lend_token.clone(),
-            collateral_timestamp: timestamp,
+            collateral_amount: collateral_amount.clone(),
+            collateral_identifier: collateral_id.clone(),
+            collateral_timestamp: deposit_timestamp,
         };
 
-        self.mint_debt(amount.clone(), debt_metadata.clone(), position_id.clone());
+        self.mint_debt(
+            collateral_amount.clone(),
+            debt_metadata.clone(),
+            position_id.clone(),
+        );
 
         let nonce = self
             .blockchain()
@@ -85,31 +83,34 @@ pub trait LiquidityModule:
 
         // send debt position tokens
 
-        self.send()
-            .direct(&initial_caller, &borrows_token, nonce, &amount, &[]);
+        self.send().direct(
+            &initial_caller,
+            &borrows_token,
+            nonce,
+            &collateral_amount,
+            &[],
+        );
 
         // send collateral requested to the user
 
         // self.send().direct(&initial_caller, &asset, &amount, &[]);
 
-        borrows_reserve += amount.clone();
-        asset_reserve -= amount.clone();
-
-        let mut total_borrow = self.total_borrow().get();
-        total_borrow += amount.clone();
-        self.total_borrow().set(&total_borrow);
-
-        self.reserves(&borrows_token).set(&borrows_reserve);
+        asset_reserve -= &collateral_amount;
         self.reserves(&asset).set(&asset_reserve);
+
+        self.total_borrow()
+            .update(|total_borrow| *total_borrow += &collateral_amount);
+        self.reserves(&borrows_token)
+            .update(|borrows_reserve| *borrows_reserve += &collateral_amount);
 
         let current_health = self.compute_health_factor();
         let debt_position = DebtPosition::<Self::BigUint> {
-            size: amount.clone(), // this will be initial L tokens amount
+            size: collateral_amount.clone(), // this will be initial L tokens amount
             health_factor: current_health,
             is_liquidated: false,
             timestamp: debt_metadata.timestamp,
-            collateral_amount: amount,
-            collateral_identifier: lend_token,
+            collateral_amount,
+            collateral_identifier: collateral_id,
         };
         self.debt_positions()
             .insert(position_id.into_boxed_bytes(), debt_position);
@@ -254,6 +255,7 @@ pub trait LiquidityModule:
         &self,
         initial_caller: Address,
         #[payment_token] lend_token: TokenIdentifier,
+        #[payment_nonce] token_nonce: u64,
         #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
         require!(
@@ -262,30 +264,23 @@ pub trait LiquidityModule:
         );
 
         let pool_asset = self.pool_asset().get();
-        let mut asset_reserve = self.reserves(&pool_asset).get();
-
-        let nft_nonce = self.call_value().esdt_token_nonce();
-        let nft_info = self.blockchain().get_esdt_token_data(
-            &self.blockchain().get_sc_address(),
-            &lend_token,
-            nft_nonce,
-        );
-        let metadata: InterestMetadata = nft_info.decode_attributes::<InterestMetadata>()?;
+        let metadata = self.get_lend_token_attributes(&lend_token, token_nonce)?;
 
         let deposit_rate = self.get_deposit_rate();
-        let time_diff =
-            Self::BigUint::from(self.blockchain().get_block_timestamp() - metadata.timestamp);
-        let withdrawal_amount =
-            self.compute_withdrawal_amount(amount.clone(), time_diff, deposit_rate);
-        require!(asset_reserve >= withdrawal_amount, "insufficient funds");
+        let time_diff = self.get_timestamp_diff(metadata.timestamp)?;
+        let withdrawal_amount = self.compute_withdrawal_amount(&amount, &time_diff, &deposit_rate);
 
-        asset_reserve -= &withdrawal_amount;
-        self.reserves(&pool_asset).set(&asset_reserve);
+        self.reserves(&pool_asset).update(|asset_reserve| {
+            require!(*asset_reserve >= withdrawal_amount, "insufficient funds");
+            *asset_reserve -= &withdrawal_amount;
+            Ok(())
+        })?;
+
+        self.send()
+            .esdt_local_burn(&lend_token, token_nonce, &amount);
 
         self.send()
             .direct(&initial_caller, &pool_asset, 0, &withdrawal_amount, &[]);
-
-        self.send().esdt_local_burn(&lend_token, nft_nonce, &amount);
 
         Ok(())
     }
