@@ -14,7 +14,7 @@ pub struct DepositMetadata {
     pub timestamp: u64,
 }
 
-#[derive(TopEncode, TopDecode, TypeAbi)]
+#[derive(TopEncode, TopDecode, TypeAbi, Default)]
 pub struct InterestMetadata {
     pub timestamp: u64,
 }
@@ -100,11 +100,5 @@ impl<BigUint: BigUintApi> Default for RepayPostion<BigUint> {
 impl InterestMetadata {
     pub fn new(timestamp: u64) -> Self {
         InterestMetadata { timestamp }
-    }
-}
-
-impl Default for InterestMetadata {
-    fn default() -> Self {
-        InterestMetadata { timestamp: 0 }
     }
 }

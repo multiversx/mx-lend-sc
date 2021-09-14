@@ -28,7 +28,7 @@ pub trait LiquidityModule:
         );
 
         let interest_metadata = InterestMetadata::new(self.blockchain().get_block_timestamp());
-        let new_nonce = self.mint_interest(amount.clone(), interest_metadata);
+        let new_nonce = self.mint_interest(&amount, &interest_metadata);
 
         self.reserves(&pool_asset).update(|x| *x += &amount);
         self.send().direct(
@@ -57,9 +57,7 @@ pub trait LiquidityModule:
         let borrows_token = self.borrow_token().get();
         let asset = self.pool_asset().get();
 
-        let mut borrows_reserve = self.reserves(&borrows_token).get();
         let mut asset_reserve = self.reserves(&asset).get();
-
         require!(
             asset_reserve != Self::BigUint::zero(),
             "asset reserve is empty"
@@ -97,15 +95,13 @@ pub trait LiquidityModule:
 
         // self.send().direct(&initial_caller, &asset, &amount, &[]);
 
-        borrows_reserve += collateral_amount.clone();
-        asset_reserve -= collateral_amount.clone();
-
-        let mut total_borrow = self.total_borrow().get();
-        total_borrow += collateral_amount.clone();
-        self.total_borrow().set(&total_borrow);
-
-        self.reserves(&borrows_token).set(&borrows_reserve);
+        asset_reserve -= &collateral_amount;
         self.reserves(&asset).set(&asset_reserve);
+
+        self.total_borrow()
+            .update(|total_borrow| *total_borrow += &collateral_amount);
+        self.reserves(&borrows_token)
+            .update(|borrows_reserve| *borrows_reserve += &collateral_amount);
 
         let current_health = self.compute_health_factor();
         let debt_position = DebtPosition::<Self::BigUint> {
@@ -268,22 +264,23 @@ pub trait LiquidityModule:
         );
 
         let pool_asset = self.pool_asset().get();
-        let asset_reserve = &self.reserves(&pool_asset).get();
         let metadata = self.get_lend_token_attributes(&lend_token, token_nonce)?;
 
         let deposit_rate = self.get_deposit_rate();
         let time_diff = self.get_timestamp_diff(metadata.timestamp)?;
-        let withdrawal_amount = &self.compute_withdrawal_amount(&amount, &time_diff, &deposit_rate);
+        let withdrawal_amount = self.compute_withdrawal_amount(&amount, &time_diff, &deposit_rate);
 
-        require!(asset_reserve >= withdrawal_amount, "insufficient funds");
-        self.reserves(&pool_asset)
-            .set(&(asset_reserve - withdrawal_amount));
+        self.reserves(&pool_asset).update(|asset_reserve| {
+            require!(*asset_reserve >= withdrawal_amount, "insufficient funds");
+            *asset_reserve -= &withdrawal_amount;
+            Ok(())
+        })?;
 
         self.send()
             .esdt_local_burn(&lend_token, token_nonce, &amount);
 
         self.send()
-            .direct(&initial_caller, &pool_asset, 0, withdrawal_amount, &[]);
+            .direct(&initial_caller, &pool_asset, 0, &withdrawal_amount, &[]);
 
         Ok(())
     }

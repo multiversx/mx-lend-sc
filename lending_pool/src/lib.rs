@@ -195,8 +195,8 @@ pub trait LendingPool:
         asset_to_borrow: TokenIdentifier,
         #[var_args] caller: OptionalArg<Address>,
         #[payment_token] payment_lend_id: TokenIdentifier,
-        #[payment_amount] payment_amount: Self::BigUint,
         #[payment_nonce] payment_nonce: u64,
+        #[payment_amount] payment_amount: Self::BigUint,
     ) -> SCResult<()> {
         let initial_caller = caller
             .into_option()
@@ -222,7 +222,7 @@ pub trait LendingPool:
         self.liquidity_pool_proxy(borrow_token_pool_address)
             .borrow(
                 initial_caller.clone(),
-                asset_collateral.clone(),
+                asset_collateral,
                 payment_amount.clone(),
                 metadata.timestamp,
             )
@@ -250,6 +250,6 @@ pub trait LendingPool:
             token_id,
             nonce,
         );
-        SCResult::from(esdt_nft_data.decode_attributes::<InterestMetadata>())
+        esdt_nft_data.decode_attributes::<InterestMetadata>().into()
     }
 }
