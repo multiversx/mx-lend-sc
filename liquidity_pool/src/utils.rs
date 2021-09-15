@@ -4,9 +4,7 @@ elrond_wasm::derive_imports!();
 use super::library;
 use super::storage;
 
-use common_structs::{
-    DebtPosition, IssueData, RepayPostion, BORROW_TOKEN_PREFIX, LEND_TOKEN_PREFIX,
-};
+use common_structs::{DebtPosition, IssueData, BORROW_TOKEN_PREFIX, LEND_TOKEN_PREFIX};
 
 const LEND_TOKEN_NAME: &[u8] = b"IntBearing";
 const DEBT_TOKEN_NAME: &[u8] = b"DebtBearing";
@@ -47,11 +45,11 @@ pub trait UtilsModule: library::LibraryModule + storage::StorageModule {
     }
 
     #[view(getDebtInterest)]
-    fn get_debt_interest(&self, amount: Self::BigUint, timestamp: u64) -> SCResult<Self::BigUint> {
+    fn get_debt_interest(&self, amount: &Self::BigUint, timestamp: u64) -> SCResult<Self::BigUint> {
         let time_diff = self.get_timestamp_diff(timestamp)?;
         let borrow_rate = self.get_borrow_rate();
 
-        Ok(self.compute_debt(&amount, &time_diff, &borrow_rate))
+        Ok(self.compute_debt(amount, &time_diff.into(), &borrow_rate))
     }
 
     #[view(getDepositRate)]
@@ -81,16 +79,6 @@ pub trait UtilsModule: library::LibraryModule + storage::StorageModule {
         )
     }
 
-    #[view(repayPositionsIds)]
-    fn get_repay_positions_ids(&self) -> MultiResultVec<BoxedBytes> {
-        self.repay_position().keys().collect()
-    }
-
-    #[view(repayPosition)]
-    fn view_repay_position(&self, position_id: BoxedBytes) -> Option<RepayPostion<Self::BigUint>> {
-        self.repay_position().get(&position_id)
-    }
-
     #[view(debtPosition)]
     fn view_debt_position(&self, position_id: BoxedBytes) -> Option<DebtPosition<Self::BigUint>> {
         self.debt_positions().get(&position_id)
@@ -99,12 +87,12 @@ pub trait UtilsModule: library::LibraryModule + storage::StorageModule {
     #[view(getPositionInterest)]
     fn get_debt_position_interest(&self, position_id: BoxedBytes) -> SCResult<Self::BigUint> {
         let debt_position = self.debt_positions().get(&position_id).unwrap_or_default();
-        self.get_debt_interest(debt_position.size.clone(), debt_position.timestamp)
+        self.get_debt_interest(&debt_position.size, debt_position.timestamp)
     }
 
-    fn get_timestamp_diff(&self, timestamp: u64) -> SCResult<Self::BigUint> {
+    fn get_timestamp_diff(&self, timestamp: u64) -> SCResult<u64> {
         let current_time = self.blockchain().get_block_timestamp();
         require!(current_time >= timestamp, "Invalid timestamp");
-        Ok(Self::BigUint::from(current_time - timestamp))
+        Ok(current_time - timestamp)
     }
 }
