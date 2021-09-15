@@ -28,8 +28,12 @@ pub trait TokensModule:
         require!(amount > 0, "amount must be greater then 0");
         require!(!initial_caller.is_zero(), "invalid address");
 
-        let interest_metadata = InterestMetadata::new(interest_timestamp);
-        let new_nonce = self.mint_interest(&amount, &interest_metadata);
+        let new_nonce = self.mint_interest(&lend_token, &amount);
+
+        self.interest_metadata(new_nonce).set(&InterestMetadata {
+            timestamp: self.blockchain().get_block_timestamp(),
+        });
+
         self.send()
             .direct(&initial_caller, &lend_token, new_nonce, &amount, &[]);
 
@@ -137,14 +141,14 @@ pub trait TokensModule:
             .with_callback(self.callbacks().set_roles_callback())
     }
 
-    fn mint_interest(&self, amount: &Self::BigUint, metadata: &InterestMetadata) -> u64 {
+    fn mint_interest(&self, token_id: &TokenIdentifier, amount: &Self::BigUint) -> u64 {
         self.send().esdt_nft_create::<InterestMetadata>(
-            &self.lend_token().get(),
+            token_id,
             amount,
             &BoxedBytes::empty(),
             &Self::BigUint::zero(),
             &BoxedBytes::empty(),
-            metadata,
+            &(),
             &[BoxedBytes::empty()],
         )
     }

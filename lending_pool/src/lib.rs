@@ -23,9 +23,9 @@ pub trait LendingPool:
     #[endpoint(deposit)]
     fn deposit_endpoint(
         &self,
-        #[var_args] caller: OptionalArg<Address>,
         #[payment_token] asset: TokenIdentifier,
         #[payment_amount] amount: Self::BigUint,
+        #[var_args] caller: OptionalArg<Address>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -70,50 +70,36 @@ pub trait LendingPool:
     #[endpoint(borrow)]
     fn borrow_endpoint(
         &self,
-        asset_collateral: TokenIdentifier,
+        #[payment_token] lend_token_id: TokenIdentifier,
+        #[payment_nonce] lend_token_nonce: u64,
+        #[payment_amount] amount: Self::BigUint,
         asset_to_borrow: TokenIdentifier,
+        asset_collateral: TokenIdentifier,
         #[var_args] caller: OptionalArg<Address>,
-        #[payment_token] payment_lend_id: TokenIdentifier,
-        #[payment_nonce] payment_nonce: u64,
-        #[payment_amount] payment_amount: Self::BigUint,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
-        self.require_amount_greater_than_zero(&payment_amount)?;
+        self.require_amount_greater_than_zero(&amount)?;
         self.require_valid_address_provided(&initial_caller)?;
 
-        require!(payment_nonce != 0, "payment token be a lend token");
+        require!(lend_token_nonce != 0, "lend token can not have nonce zero");
 
-        let collateral_token_pool_address = self.get_pool_address_non_zero(&asset_collateral)?;
         let borrow_token_pool_address = self.get_pool_address_non_zero(&asset_to_borrow)?;
-        let lend_token_pool_address = self.get_pool_address_non_zero(&payment_lend_id)?;
+        let lend_token_pool_address = self.get_pool_address_non_zero(&lend_token_id)?;
 
-        require!(
-            collateral_token_pool_address == lend_token_pool_address,
-            "Collateral and lend pool addresses differ"
-        );
-        require!(
-            collateral_token_pool_address != borrow_token_pool_address,
-            "Collateral and borrow pool addresses are the same"
-        );
+        let metadata = self.get_interest_metadata(&lend_token_id, lend_token_nonce)?;
 
-        let metadata = self.get_interest_metadata(&payment_lend_id, payment_nonce)?;
         self.liquidity_pool_proxy(borrow_token_pool_address)
             .borrow(
                 initial_caller.clone(),
                 asset_collateral,
-                payment_amount.clone(),
+                amount.clone(),
                 metadata.timestamp,
             )
             .execute_on_dest_context_ignore_result();
 
-        self.liquidity_pool_proxy(collateral_token_pool_address)
-            .burn_l_tokens(
-                payment_lend_id,
-                payment_nonce,
-                payment_amount,
-                initial_caller,
-            )
+        self.liquidity_pool_proxy(lend_token_pool_address)
+            .burn_l_tokens(lend_token_id, lend_token_nonce, amount, initial_caller)
             .execute_on_dest_context_ignore_result();
 
         Ok(())

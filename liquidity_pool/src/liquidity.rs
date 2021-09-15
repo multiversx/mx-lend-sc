@@ -33,10 +33,15 @@ pub trait LiquidityModule:
             "asset not supported for this liquidity pool"
         );
 
-        let interest_metadata = InterestMetadata::new(self.blockchain().get_block_timestamp());
-        let new_nonce = self.mint_interest(&amount, &interest_metadata);
+        let lend_token_id = self.lend_token().get();
+        let new_nonce = self.mint_interest(&lend_token_id, &amount);
+
+        self.interest_metadata(new_nonce).set(&InterestMetadata {
+            timestamp: self.blockchain().get_block_timestamp(),
+        });
 
         self.reserves(&pool_asset).update(|x| *x += &amount);
+
         self.send().direct(
             &initial_caller,
             &self.lend_token().get(),
