@@ -52,6 +52,6 @@ pub trait StorageModule {
     fn lending_pool(&self) -> SingleValueMapper<Self::Storage, Address>;
 
     #[view(getTotalBorrow)]
-    #[storage_mapper("total_borrow")]
-    fn total_borrow(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
+    #[storage_mapper("borrowed_amount")]
+    fn borrowed_amount(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
 }

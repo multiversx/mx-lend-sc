@@ -41,10 +41,10 @@ pub trait LibraryModule {
     fn compute_capital_utilisation(
         &self,
         borrowed_amount: &Self::BigUint,
-        total_pool_reserves: &Self::BigUint,
+        total_reserves: &Self::BigUint,
     ) -> Self::BigUint {
         let bp = Self::BigUint::from(BP);
-        &(borrowed_amount * &bp) / total_pool_reserves
+        &(borrowed_amount * &bp) / total_reserves
     }
 
     fn compute_debt(

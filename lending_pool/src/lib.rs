@@ -11,8 +11,8 @@ pub use common_structs::*;
 
 use liquidity_pool::multi_transfer;
 
-use liquidity_pool::liquidity::ProxyTrait as _;
-use liquidity_pool::tokens::ProxyTrait as _;
+// use liquidity_pool::liquidity::ProxyTrait as _;
+// use liquidity_pool::tokens::ProxyTrait as _;
 
 #[elrond_wasm::contract]
 pub trait LendingPool:

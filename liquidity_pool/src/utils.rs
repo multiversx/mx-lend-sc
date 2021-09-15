@@ -1,16 +1,21 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use super::library;
-use super::storage;
+use crate::{library, storage};
 
-use common_structs::{DebtPosition, IssueData, BORROW_TOKEN_PREFIX, LEND_TOKEN_PREFIX};
+use common_structs::*;
 
+use price_aggregator_proxy::*;
+
+const TICKER_SEPARATOR: u8 = b'-';
 const LEND_TOKEN_NAME: &[u8] = b"IntBearing";
 const DEBT_TOKEN_NAME: &[u8] = b"DebtBearing";
+const DOLLAR_TICKER: &[u8] = b"USD";
 
 #[elrond_wasm::module]
-pub trait UtilsModule: library::LibraryModule + storage::StorageModule {
+pub trait UtilsModule:
+    library::LibraryModule + storage::StorageModule + price_aggregator_proxy::PriceAggregatorModule
+{
     fn prepare_issue_data(&self, prefix: BoxedBytes, ticker: BoxedBytes) -> IssueData {
         let prefixed_ticker = [prefix.as_slice(), ticker.as_slice()].concat();
         let mut issue_data = IssueData {
@@ -32,6 +37,24 @@ pub trait UtilsModule: library::LibraryModule + storage::StorageModule {
         issue_data
     }
 
+    fn get_pool_asset_dollar_value(&self, token_id: &TokenIdentifier) -> Self::BigUint {
+        let from_ticker = self.get_token_ticker(token_id);
+        let to_ticker = DOLLAR_TICKER.into();
+        let opt_price = self.get_price_for_pair(from_ticker, to_ticker);
+
+        opt_price.ok_or(Self::BigUint::zero).into()
+    }
+
+    fn get_token_ticker(&self, token_id: &TokenIdentifier) -> BoxedBytes {
+        for (i, char) in token_id.as_esdt_identifier().iter().enumerate() {
+            if *char == TICKER_SEPARATOR {
+                return token_id.as_esdt_identifier()[..i].into();
+            }
+        }
+
+        token_id.as_name().into()
+    }
+
     fn compute_health_factor(&self) -> u32 {
         1u32
     }
@@ -39,7 +62,7 @@ pub trait UtilsModule: library::LibraryModule + storage::StorageModule {
     #[view(getCapitalUtilisation)]
     fn get_capital_utilisation(&self) -> Self::BigUint {
         let reserve_amount = self.reserves(&self.pool_asset().get()).get();
-        let borrowed_amount = self.total_borrow().get();
+        let borrowed_amount = self.borrowed_amount().get();
 
         self.compute_capital_utilisation(&borrowed_amount, &reserve_amount)
     }

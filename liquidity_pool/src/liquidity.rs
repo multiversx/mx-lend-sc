@@ -9,7 +9,7 @@ use super::storage;
 use super::tokens;
 use super::utils;
 
-use price_aggregator_proxy::*;
+// use price_aggregator_proxy::*;
 const REPAY_PAYMENTS_LEN: usize = 2;
 
 #[elrond_wasm::module]
@@ -68,14 +68,17 @@ pub trait LiquidityModule:
         require!(collateral_amount > 0, "lend amount must be bigger then 0");
         require!(!initial_caller.is_zero(), "invalid initial caller address");
 
-        let borrows_token = self.borrow_token().get();
-        let asset = self.pool_asset().get();
+        let borrow_token_id = self.borrow_token().get();
+        let pool_token_id = self.pool_asset().get();
 
-        let mut asset_reserve = self.reserves(&asset).get();
-        require!(
-            asset_reserve != Self::BigUint::zero(),
-            "asset reserve is empty"
-        );
+        let mut asset_reserve = self.reserves(&pool_token_id).get();
+        let borrowed_amount = self.borrowed_amount().get();
+
+        let pool_params = self.pool_params().get();
+
+
+        let ltv = Self::BigUint::zero();
+
 
         let debt_metadata = DebtMetadata {
             timestamp: self.blockchain().get_block_timestamp(),
@@ -85,44 +88,6 @@ pub trait LiquidityModule:
         };
 
         let newNonce = self.mint_position_tokens(&collateral_id, &collateral_amount);
-
-        let nonce = self
-            .blockchain()
-            .get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &borrows_token);
-
-        // send debt position tokens
-
-        self.send().direct(
-            &initial_caller,
-            &borrows_token,
-            nonce,
-            &collateral_amount,
-            &[],
-        );
-
-        // send collateral requested to the user
-
-        // self.send().direct(&initial_caller, &asset, &amount, &[]);
-
-        asset_reserve -= &collateral_amount;
-        self.reserves(&asset).set(&asset_reserve);
-
-        self.total_borrow()
-            .update(|total_borrow| *total_borrow += &collateral_amount);
-        self.reserves(&borrows_token)
-            .update(|borrows_reserve| *borrows_reserve += &collateral_amount);
-
-        let current_health = self.compute_health_factor();
-        let debt_position = DebtPosition::<Self::BigUint> {
-            size: collateral_amount.clone(), // this will be initial L tokens amount
-            health_factor: current_health,
-            is_liquidated: false,
-            timestamp: debt_metadata.timestamp,
-            collateral_amount,
-            collateral_identifier: collateral_id,
-        };
-        self.debt_positions()
-            .insert(BoxedBytes::zeros(0), debt_position);
 
         Ok(())
     }
