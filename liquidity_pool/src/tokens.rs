@@ -16,9 +16,9 @@ pub trait TokensModule:
     #[endpoint(mintLTokens)]
     fn mint_l_tokens(
         &self,
-        initial_caller: Address,
         #[payment_token] lend_token: TokenIdentifier,
         #[payment_amount] amount: Self::BigUint,
+        initial_caller: Address,
         interest_timestamp: u64,
     ) -> SCResult<()> {
         require!(

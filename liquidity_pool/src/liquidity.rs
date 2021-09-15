@@ -1,16 +1,23 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use common_structs::{DebtMetadata, DebtPosition, InterestMetadata, LiquidateData, RepayPostion};
+use common_structs::{DebtMetadata, DebtPosition, InterestMetadata, LiquidateData};
 
 use super::library;
+use super::multi_transfer;
 use super::storage;
 use super::tokens;
 use super::utils;
 
+const REPAY_PAYMENTS_LEN: usize = 2;
+
 #[elrond_wasm::module]
 pub trait LiquidityModule:
-    storage::StorageModule + tokens::TokensModule + utils::UtilsModule + library::LibraryModule
+    storage::StorageModule
+    + tokens::TokensModule
+    + utils::UtilsModule
+    + library::LibraryModule
+    + multi_transfer::MultiTransferModule
 {
     #[only_owner]
     #[payable("*")]
@@ -52,7 +59,7 @@ pub trait LiquidityModule:
         deposit_timestamp: u64,
     ) -> SCResult<()> {
         require!(collateral_amount > 0, "lend amount must be bigger then 0");
-        require!(!initial_caller.is_zero(), "invalid address provided");
+        require!(!initial_caller.is_zero(), "invalid initial caller address");
 
         let borrows_token = self.borrow_token().get();
         let asset = self.pool_asset().get();
@@ -118,134 +125,94 @@ pub trait LiquidityModule:
         Ok(())
     }
 
-    #[only_owner]
-    #[payable("*")]
-    #[endpoint(lockBTokens)]
-    fn lock_b_tokens(
-        &self,
-        initial_caller: Address,
-        #[payment_token] borrow_token: TokenIdentifier,
-        #[payment_nonce] token_nonce: u64,
-        #[payment_amount] amount: Self::BigUint,
-    ) -> SCResult<H256> {
-        require!(amount > 0, "amount must be greater then 0");
-        require!(!initial_caller.is_zero(), "invalid address");
-
-        require!(
-            borrow_token == self.borrow_token().get(),
-            "borrow token not supported by this pool"
-        );
-
-        let esdt_nft_data = self.blockchain().get_esdt_token_data(
-            &self.blockchain().get_sc_address(),
-            &borrow_token,
-            token_nonce,
-        );
-
-        let debt_position_id = esdt_nft_data.hash.clone();
-        let debt_position: DebtPosition<Self::BigUint> = self
-            .debt_positions()
-            .get(&debt_position_id)
-            .unwrap_or_default();
-
-        require!(
-            debt_position != DebtPosition::default(),
-            "invalid debt position"
-        );
-        require!(!debt_position.is_liquidated, "position is liquidated");
-
-        let metadata = esdt_nft_data.decode_attributes::<DebtMetadata<Self::BigUint>>()?;
-        let data = [
-            borrow_token.as_esdt_identifier(),
-            amount.to_bytes_be().as_slice(),
-            &token_nonce.to_be_bytes()[..],
-        ]
-        .concat();
-
-        let unique_repay_id = self.crypto().keccak256(&data);
-        let repay_position = RepayPostion {
-            identifier: borrow_token,
-            amount,
-            nonce: token_nonce,
-            borrow_timestamp: metadata.timestamp,
-            collateral_identifier: metadata.collateral_identifier,
-            collateral_amount: metadata.collateral_amount,
-            collateral_timestamp: metadata.collateral_timestamp,
-        };
-        self.repay_position()
-            .insert(unique_repay_id.clone().into_boxed_bytes(), repay_position);
-
-        Ok(unique_repay_id)
-    }
-
+    // Returns the asset token ID, the amount of debt paid
     #[only_owner]
     #[payable("*")]
     #[endpoint]
     fn repay(
         &self,
-        unique_id: BoxedBytes,
-        #[payment_token] asset: TokenIdentifier,
-        #[payment_amount] amount: Self::BigUint,
-    ) -> SCResult<RepayPostion<Self::BigUint>> {
-        require!(amount > 0, "amount must be greater then 0");
-        require!(
-            asset == self.pool_asset().get(),
-            "asset is not supported by this pool"
-        );
+        initial_caller: Address,
+    ) -> SCResult<MultiResult3<TokenIdentifier, Self::BigUint, u64>> {
+        require!(!initial_caller.is_zero(), "invalid initial caller");
+
+        let transfers = self.get_all_esdt_transfers();
 
         require!(
-            self.repay_position().contains_key(&unique_id),
-            "there are no locked borrowed token for this id, lock b tokens first"
+            transfers.len() == REPAY_PAYMENTS_LEN,
+            "Invalid number of payments"
         );
-        let mut repay_position: RepayPostion<Self::BigUint> =
-            self.repay_position().get(&unique_id).unwrap_or_default();
-
         require!(
-            repay_position.amount >= amount,
-            "b tokens amount locked must be equal with the amount of asset token send"
+            transfers[0].token_name == self.borrow_token().get(),
+            "First payment should be the borrow SFTs"
         );
+        require!(
+            transfers[1].token_name == self.pool_asset().get(),
+            "Second payment should be this pool's asset"
+        );
+
+        let borrow_token_id = &transfers[0].token_name;
+        let borrow_token_nonce = transfers[0].token_nonce;
+        let borrow_token_amount = &transfers[0].amount;
+
+        let asset_token_id = &transfers[1].token_name;
+        let asset_amount = &transfers[1].amount;
 
         let esdt_nft_data = self.blockchain().get_esdt_token_data(
             &self.blockchain().get_sc_address(),
-            &repay_position.identifier,
-            repay_position.nonce,
+            borrow_token_id,
+            borrow_token_nonce,
         );
 
-        let debt_position_id = esdt_nft_data.hash;
-
+        let debt_position_id = &esdt_nft_data.hash;
         require!(
-            self.debt_positions().contains_key(&debt_position_id),
-            "invalid debt position id"
+            self.debt_positions().contains_key(debt_position_id),
+            "invalid debt position"
         );
-        let debt_position = self
+
+        let mut debt_position = self
             .debt_positions()
-            .get(&debt_position_id)
+            .get(debt_position_id)
             .unwrap_or_default();
 
         require!(!debt_position.is_liquidated, "position is liquidated");
 
-        let interest = self.get_debt_interest(
-            repay_position.amount.clone(),
-            repay_position.borrow_timestamp,
-        )?;
+        let debt_metadata = esdt_nft_data.decode_attributes::<DebtMetadata<Self::BigUint>>()?;
 
-        if repay_position.amount.clone() + interest == amount {
-            self.repay_position().remove(&unique_id);
-        } else if repay_position.amount > amount {
-            repay_position.amount -= amount.clone();
-            self.repay_position()
-                .insert(unique_id, repay_position.clone());
+        let accumulated_debt =
+            self.get_debt_interest(borrow_token_amount, debt_metadata.timestamp)?;
+        let total_owed = borrow_token_amount + &accumulated_debt;
+
+        require!(
+            asset_amount >= &total_owed,
+            "Not enough asset tokens deposited"
+        );
+
+        let extra_asset_paid = asset_amount - &total_owed;
+        if extra_asset_paid > 0 {
+            self.send()
+                .direct(&initial_caller, &asset_token_id, 0, &extra_asset_paid, &[]);
         }
 
-        /*self.send().esdt_local_burn(
-            amount.clone(),
-            repay_position.nonce,
-            repay_position.identifier.clone(),
-        );*/
+        // TODO: Instead of borrow_token_amount (i.e. 1:1 ratio), calculate how much collateral amount was repaid
+        debt_position.collateral_amount -= borrow_token_amount;
+        if debt_position.collateral_amount == 0 {
+            self.debt_positions().remove(debt_position_id);
+        } else {
+            let _ = self
+                .debt_positions()
+                .insert(debt_position_id.clone(), debt_position.clone());
+        }
 
-        repay_position.amount = amount;
+        self.send()
+            .esdt_local_burn(borrow_token_id, borrow_token_nonce, borrow_token_amount);
 
-        Ok(repay_position)
+        // Same here, use calculated amount of repaid collateral instead of borrow_token_amount
+        Ok((
+            debt_position.collateral_identifier,
+            borrow_token_amount.clone(),
+            debt_position.timestamp,
+        )
+            .into())
     }
 
     #[only_owner]
@@ -268,7 +235,8 @@ pub trait LiquidityModule:
 
         let deposit_rate = self.get_deposit_rate();
         let time_diff = self.get_timestamp_diff(metadata.timestamp)?;
-        let withdrawal_amount = self.compute_withdrawal_amount(&amount, &time_diff, &deposit_rate);
+        let withdrawal_amount =
+            self.compute_withdrawal_amount(&amount, &time_diff.into(), &deposit_rate);
 
         self.reserves(&pool_asset).update(|asset_reserve| {
             require!(*asset_reserve >= withdrawal_amount, "insufficient funds");
@@ -315,8 +283,7 @@ pub trait LiquidityModule:
             "the health factor is not low enough"
         );
 
-        let interest =
-            self.get_debt_interest(debt_position.size.clone(), debt_position.timestamp)?;
+        let interest = self.get_debt_interest(&debt_position.size, debt_position.timestamp)?;
 
         require!(
             debt_position.size.clone() + interest == amount,

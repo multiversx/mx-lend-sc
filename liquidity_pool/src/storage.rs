@@ -1,7 +1,7 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use common_structs::{DebtPosition, PoolParams, RepayPostion};
+use common_structs::{DebtPosition, PoolParams};
 
 #[elrond_wasm::module]
 pub trait StorageModule {
@@ -36,11 +36,6 @@ pub trait StorageModule {
     #[view(getDebtNonce)]
     #[storage_mapper("debt_nonce")]
     fn debt_nonce(&self) -> SingleValueMapper<Self::Storage, u64>;
-
-    #[storage_mapper("repay_position")]
-    fn repay_position(
-        &self,
-    ) -> SafeMapMapper<Self::Storage, BoxedBytes, RepayPostion<Self::BigUint>>;
 
     #[view(getPoolParams)]
     #[storage_mapper("pool_params")]
