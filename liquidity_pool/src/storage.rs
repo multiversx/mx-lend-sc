@@ -1,7 +1,7 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use common_structs::{DebtPosition, InterestMetadata, PoolParams};
+use common_structs::{DebtMetadata, DebtPosition, InterestMetadata, PoolParams};
 
 #[elrond_wasm::module]
 pub trait StorageModule {
@@ -28,7 +28,10 @@ pub trait StorageModule {
     fn interest_metadata(&self, nonce: u64) -> SingleValueMapper<Self::Storage, InterestMetadata>;
 
     #[storage_mapper("debt_metadata")]
-    fn debt_metadata(&self, nonce: u64) -> SingleValueMapper<Self::Storage, InterestMetadata>;
+    fn debt_metadata(
+        &self,
+        nonce: u64,
+    ) -> SingleValueMapper<Self::Storage, DebtMetadata<Self::BigUint>>;
 
     #[view(getLastError)]
     #[storage_mapper("last_error")]

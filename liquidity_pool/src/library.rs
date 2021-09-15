@@ -79,4 +79,16 @@ pub trait LibraryModule {
 
         amount + &interest
     }
+
+    fn compute_borrowable_amount(
+        &self,
+        amount: &Self::BigUint,
+        price: &Self::BigUint,
+        ltv: &Self::BigUint,
+    ) -> Self::BigUint {
+        let bp = Self::BigUint::from(BP);
+        let total_collateral = amount * price;
+
+        (total_collateral * ltv) / bp
+    }
 }

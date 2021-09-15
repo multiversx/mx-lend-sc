@@ -37,12 +37,11 @@ pub trait UtilsModule:
         issue_data
     }
 
-    fn get_pool_asset_dollar_value(&self, token_id: &TokenIdentifier) -> Self::BigUint {
+    fn get_token_dollar_value(&self, token_id: &TokenIdentifier) -> SCResult<Self::BigUint> {
         let from_ticker = self.get_token_ticker(token_id);
-        let to_ticker = DOLLAR_TICKER.into();
-        let opt_price = self.get_price_for_pair(from_ticker, to_ticker);
+        let opt_price = self.get_price_for_pair(from_ticker, DOLLAR_TICKER.into());
 
-        opt_price.ok_or(Self::BigUint::zero).into()
+        opt_price.ok_or("failed to get token price").into()
     }
 
     fn get_token_ticker(&self, token_id: &TokenIdentifier) -> BoxedBytes {
