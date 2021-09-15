@@ -34,13 +34,6 @@ pub trait UtilsModule: library::LibraryModule + storage::StorageModule {
         issue_data
     }
 
-    fn get_nft_hash(&self) -> H256 {
-        let debt_nonce = self.debt_nonce().get();
-        let hash = self.crypto().keccak256(&debt_nonce.to_be_bytes()[..]);
-        self.debt_nonce().set(&(debt_nonce + 1));
-        hash
-    }
-
     fn compute_health_factor(&self) -> u32 {
         1u32
     }

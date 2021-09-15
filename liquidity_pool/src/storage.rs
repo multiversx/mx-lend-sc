@@ -27,6 +27,9 @@ pub trait StorageModule {
     #[storage_mapper("interest_metadata")]
     fn interest_metadata(&self, nonce: u64) -> SingleValueMapper<Self::Storage, InterestMetadata>;
 
+    #[storage_mapper("debt_metadata")]
+    fn debt_metadata(&self, nonce: u64) -> SingleValueMapper<Self::Storage, InterestMetadata>;
+
     #[view(getLastError)]
     #[storage_mapper("last_error")]
     fn last_error(&self) -> SingleValueMapper<Self::Storage, BoxedBytes>;
@@ -35,10 +38,6 @@ pub trait StorageModule {
     fn debt_positions(
         &self,
     ) -> SafeMapMapper<Self::Storage, BoxedBytes, DebtPosition<Self::BigUint>>;
-
-    #[view(getDebtNonce)]
-    #[storage_mapper("debt_nonce")]
-    fn debt_nonce(&self) -> SingleValueMapper<Self::Storage, u64>;
 
     #[storage_mapper("repay_position")]
     fn repay_position(

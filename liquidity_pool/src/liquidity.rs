@@ -34,7 +34,7 @@ pub trait LiquidityModule:
         );
 
         let lend_token_id = self.lend_token().get();
-        let new_nonce = self.mint_interest(&lend_token_id, &amount);
+        let new_nonce = self.mint_position_tokens(&lend_token_id, &amount);
 
         self.interest_metadata(new_nonce).set(&InterestMetadata {
             timestamp: self.blockchain().get_block_timestamp(),
@@ -74,7 +74,6 @@ pub trait LiquidityModule:
             "asset reserve is empty"
         );
 
-        let position_id = self.get_nft_hash();
         let debt_metadata = DebtMetadata {
             timestamp: self.blockchain().get_block_timestamp(),
             collateral_amount: collateral_amount.clone(),
@@ -82,11 +81,7 @@ pub trait LiquidityModule:
             collateral_timestamp: deposit_timestamp,
         };
 
-        self.mint_debt(
-            collateral_amount.clone(),
-            debt_metadata.clone(),
-            position_id.clone(),
-        );
+        let newNonce = self.mint_position_tokens(&collateral_id, &collateral_amount);
 
         let nonce = self
             .blockchain()
@@ -124,7 +119,7 @@ pub trait LiquidityModule:
             collateral_identifier: collateral_id,
         };
         self.debt_positions()
-            .insert(position_id.into_boxed_bytes(), debt_position);
+            .insert(BoxedBytes::zeros(0), debt_position);
 
         Ok(())
     }

@@ -70,7 +70,6 @@
 					},
 					"storage": {
 						"str:pool_asset": "str:WBT-abcdef",
-						"str:debt_nonce": "1",
 						"str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000",
 						"str:lend_token": "str:LEND-abcdef",
 						"str:reserves|nested:str:WBT-abcdef": "100,000"
@@ -153,7 +152,6 @@
 					},
 					"storage": {
 						"str:pool_asset": "str:WBT-abcdef",
-						"str:debt_nonce": "1",
 						"str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000",
 						"str:lend_token": "str:LEND-abcdef",
 						"str:reserves|nested:str:WBT-abcdef": "200,000"

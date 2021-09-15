@@ -1,7 +1,7 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use common_structs::{DebtMetadata, InterestMetadata, LEND_TOKEN_PREFIX};
+use common_structs::{InterestMetadata, LEND_TOKEN_PREFIX};
 
 use super::library;
 use super::storage;
@@ -28,7 +28,7 @@ pub trait TokensModule:
         require!(amount > 0, "amount must be greater then 0");
         require!(!initial_caller.is_zero(), "invalid address");
 
-        let new_nonce = self.mint_interest(&lend_token, &amount);
+        let new_nonce = self.mint_position_tokens(&lend_token, &amount);
 
         self.interest_metadata(new_nonce).set(&InterestMetadata {
             timestamp: self.blockchain().get_block_timestamp(),
@@ -141,8 +141,8 @@ pub trait TokensModule:
             .with_callback(self.callbacks().set_roles_callback())
     }
 
-    fn mint_interest(&self, token_id: &TokenIdentifier, amount: &Self::BigUint) -> u64 {
-        self.send().esdt_nft_create::<InterestMetadata>(
+    fn mint_position_tokens(&self, token_id: &TokenIdentifier, amount: &Self::BigUint) -> u64 {
+        self.send().esdt_nft_create(
             token_id,
             amount,
             &BoxedBytes::empty(),
@@ -151,23 +151,6 @@ pub trait TokensModule:
             &(),
             &[BoxedBytes::empty()],
         )
-    }
-
-    fn mint_debt(
-        &self,
-        amount: Self::BigUint,
-        metadata: DebtMetadata<Self::BigUint>,
-        position_id: H256,
-    ) {
-        self.send().esdt_nft_create::<DebtMetadata<Self::BigUint>>(
-            &self.borrow_token().get(),
-            &amount,
-            &BoxedBytes::empty(),
-            &Self::BigUint::zero(),
-            &position_id.into_boxed_bytes(),
-            &metadata,
-            &[BoxedBytes::empty()],
-        );
     }
 
     fn get_lend_token_attributes(
