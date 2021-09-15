@@ -9,16 +9,19 @@ use super::utils;
 
 #[elrond_wasm::module]
 pub trait TokensModule:
-    storage::StorageModule + utils::UtilsModule + library::LibraryModule
+    storage::StorageModule
+    + utils::UtilsModule
+    + library::LibraryModule
+    + price_aggregator_proxy::PriceAggregatorModule
 {
     #[only_owner]
     #[payable("*")]
     #[endpoint(mintLTokens)]
     fn mint_l_tokens(
         &self,
+        initial_caller: Address,
         #[payment_token] lend_token: TokenIdentifier,
         #[payment_amount] amount: Self::BigUint,
-        initial_caller: Address,
         interest_timestamp: u64,
     ) -> SCResult<()> {
         require!(
@@ -31,7 +34,7 @@ pub trait TokensModule:
         let new_nonce = self.mint_position_tokens(&lend_token, &amount);
 
         self.interest_metadata(new_nonce).set(&InterestMetadata {
-            timestamp: self.blockchain().get_block_timestamp(),
+            timestamp: interest_timestamp,
         });
 
         self.send()
@@ -151,19 +154,6 @@ pub trait TokensModule:
             &(),
             &[BoxedBytes::empty()],
         )
-    }
-
-    fn get_lend_token_attributes(
-        &self,
-        lend_token: &TokenIdentifier,
-        token_nonce: u64,
-    ) -> SCResult<InterestMetadata> {
-        let nft_info = self.blockchain().get_esdt_token_data(
-            &self.blockchain().get_sc_address(),
-            lend_token,
-            token_nonce,
-        );
-        nft_info.decode_attributes().into()
     }
 
     #[callback]

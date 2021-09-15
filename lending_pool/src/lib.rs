@@ -11,8 +11,8 @@ pub use common_structs::*;
 
 use liquidity_pool::multi_transfer;
 
-// use liquidity_pool::liquidity::ProxyTrait as _;
-// use liquidity_pool::tokens::ProxyTrait as _;
+use liquidity_pool::liquidity::ProxyTrait as _;
+use liquidity_pool::tokens::ProxyTrait as _;
 
 #[elrond_wasm::contract]
 pub trait LendingPool:
@@ -108,9 +108,9 @@ pub trait LendingPool:
 
         self.liquidity_pool_proxy(collateral_token_address)
             .mint_l_tokens(
+                initial_caller,
                 collateral_id,
                 collateral_amount_repaid,
-                initial_caller,
                 borrow_timestamp,
             )
             .execute_on_dest_context_ignore_result();
@@ -149,9 +149,9 @@ pub trait LendingPool:
 
         self.liquidity_pool_proxy(collateral_token_address)
             .mint_l_tokens(
+                initial_caller,
                 results.collateral_token,
                 results.amount,
-                initial_caller,
                 self.blockchain().get_block_timestamp(),
             )
             .execute_on_dest_context_ignore_result();

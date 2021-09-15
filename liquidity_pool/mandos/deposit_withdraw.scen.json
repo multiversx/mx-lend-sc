@@ -71,7 +71,8 @@
                         "str:pool_asset": "str:WBT-abcdef",
                         "str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000",
                         "str:lend_token": "str:LEND-abcdef",
-                        "str:reserves|nested:str:WBT-abcdef": "100,000"
+                        "str:reserves|nested:str:WBT-abcdef": "100,000",
+                        "+": ""
                     },
                     "code": "file:../output/liquidity_pool.wasm",
                     "owner": "address:owner"
@@ -96,8 +97,8 @@
                 "value": "0",
                 "esdt": {
                     "tokenIdentifier": "str:LEND-abcdef",
-                    "value": "100,000",
-                    "nonce": "1"
+                    "nonce": "1",
+                    "value": "100,000"
                 },
                 "function": "withdraw",
                 "arguments": [
@@ -140,7 +141,8 @@
                     "storage": {
                         "str:pool_asset": "str:WBT-abcdef",
                         "str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000",
-                        "str:lend_token": "str:LEND-abcdef"
+                        "str:lend_token": "str:LEND-abcdef",
+                        "+": ""
                     },
                     "code": "file:../output/liquidity_pool.wasm",
                     "owner": "address:owner"

@@ -89,6 +89,6 @@ pub trait LibraryModule {
         let bp = Self::BigUint::from(BP);
         let total_collateral = amount * price;
 
-        (total_collateral * ltv) / bp
+        (&total_collateral * ltv) / bp
     }
 }

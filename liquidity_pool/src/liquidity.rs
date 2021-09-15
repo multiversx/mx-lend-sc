@@ -9,7 +9,6 @@ use super::storage;
 use super::tokens;
 use super::utils;
 
-// use price_aggregator_proxy::*;
 const REPAY_PAYMENTS_LEN: usize = 2;
 
 #[elrond_wasm::module]
@@ -71,30 +70,29 @@ pub trait LiquidityModule:
         let borrow_token_id = self.borrow_token().get();
         let pool_token_id = self.pool_asset().get();
 
-        let mut asset_reserve = self.reserves(&pool_token_id).get();
-        let borrowed_amount = self.borrowed_amount().get();
+        
+        let ltv = Self::BigUint::from(500_000_000u64);
 
-        let ltv = Self::BigUint::from(500_000_000);
-
-        let collateral_price = self.get_token_dollar_value(collateral_token_id);
-        let pool_asset_price = self.get_token_dollar_value(pool_token_id);
+        let collateral_price = self.get_token_dollar_value(&collateral_token_id)?;
+        let pool_asset_price = self.get_token_dollar_value(&pool_token_id)?;
 
         let borrowable_amount =
             self.compute_borrowable_amount(&collateral_amount, &collateral_price, &ltv);
 
-        let total_borrowable = borrowable_amount / pool_asset_price;
+        let total_borrowable = &borrowable_amount / &pool_asset_price;
+        let asset_reserve = self.reserves(&pool_token_id).get();
 
         require!(
             asset_reserve < total_borrowable,
             "insufficient funds to perform loan"
         );
 
-        let newNonce = self.mint_position_tokens(&borrow_token_id, &collateral_amount);
+        let new_nonce = self.mint_position_tokens(&borrow_token_id, &collateral_amount);
 
-        self.debt_metadata(newNonce).set(&DebtMetadata {
+        self.debt_metadata(new_nonce).set(&DebtMetadata {
             timestamp: self.blockchain().get_block_timestamp(),
             collateral_amount: collateral_amount.clone(),
-            collateral_identifitoken_er: collateral_token_id.clone(),
+            collateral_identifier: collateral_token_id.clone(),
             collateral_timestamp: deposit_timestamp,
         });
 
@@ -104,8 +102,9 @@ pub trait LiquidityModule:
         self.send().direct(
             &initial_caller,
             &borrow_token_id,
-            newNonce,
+            new_nonce,
             &collateral_amount,
+            &[],
         );
 
         self.send()
@@ -197,7 +196,7 @@ pub trait LiquidityModule:
 
         // Same here, use calculated amount of repaid collateral instead of borrow_token_amount
         Ok((
-            debt_position.collateral_identifitoken_er,
+            debt_position.collateral_identifier,
             borrow_token_amount.clone(),
             debt_position.timestamp,
         )
@@ -220,7 +219,7 @@ pub trait LiquidityModule:
         );
 
         let pool_asset = self.pool_asset().get();
-        let metadata = self.get_lend_token_attributes(&lend_token, token_nonce)?;
+        let metadata = self.interest_metadata(token_nonce).get();
 
         let deposit_rate = self.get_deposit_rate();
         let time_diff = self.get_timestamp_diff(metadata.timestamp)?;
@@ -285,7 +284,7 @@ pub trait LiquidityModule:
             .insert(position_id, debt_position.clone());
 
         let liquidate_data = LiquidateData {
-            collateral_token: debt_position.collateral_identifitoken_er,
+            collateral_token: debt_position.collateral_identifier,
             amount: debt_position.size,
         };
 

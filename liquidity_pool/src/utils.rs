@@ -5,8 +5,6 @@ use crate::{library, storage};
 
 use common_structs::*;
 
-use price_aggregator_proxy::*;
-
 const TICKER_SEPARATOR: u8 = b'-';
 const LEND_TOKEN_NAME: &[u8] = b"IntBearing";
 const DEBT_TOKEN_NAME: &[u8] = b"DebtBearing";
