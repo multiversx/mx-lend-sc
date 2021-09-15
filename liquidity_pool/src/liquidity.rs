@@ -77,7 +77,7 @@ pub trait LiquidityModule:
         let pool_asset_price = self.get_token_dollar_value(&pool_token_id)?;
 
         let borrowable_amount =
-            self.compute_borrowable_amount(&collateral_amount, &collateral_price, &ltv);
+            self.compute_borrowable_amount(&collateral_amount, &collateral_price, &ltv, &0u64.into());
 
         let total_borrowable = &borrowable_amount / &pool_asset_price;
         let asset_reserve = self.reserves(&pool_token_id).get();

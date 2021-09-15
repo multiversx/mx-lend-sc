@@ -35,10 +35,10 @@ pub trait LendingPool:
         let initial_caller = self.caller_from_option_or_sender(caller);
 
         self.require_amount_greater_than_zero(&amount)?;
-        self.require_valid_address_provided(&initial_caller)?;
+        self.require_non_zero_address(&initial_caller)?;
 
         let pool_address = self.get_pool_address(&asset);
-        require!(!pool_address.is_zero(), "invalid liquidity pool address");
+        self.require_non_zero_address(&pool_address)?;
 
         self.liquidity_pool_proxy(pool_address)
             .deposit_asset(initial_caller, asset, amount)
@@ -59,10 +59,10 @@ pub trait LendingPool:
         let initial_caller = self.caller_from_option_or_sender(caller);
 
         self.require_amount_greater_than_zero(&amount)?;
-        self.require_valid_address_provided(&initial_caller)?;
+        self.require_non_zero_address(&initial_caller)?;
 
         let pool_address = self.get_pool_address(&lend_token);
-        require!(!pool_address.is_zero(), "invalid liquidity pool address");
+        self.require_non_zero_address(&pool_address)?;
 
         self.liquidity_pool_proxy(pool_address)
             .withdraw(initial_caller, lend_token, token_nonce, amount)
@@ -103,7 +103,7 @@ pub trait LendingPool:
         let collateral_token_address = self.get_pool_address(&collateral_id);
         require!(
             !collateral_token_address.is_zero(),
-            "Collateral not supported"
+            "collateral not supported"
         );
 
         self.liquidity_pool_proxy(collateral_token_address)
@@ -131,7 +131,7 @@ pub trait LendingPool:
 
         self.require_asset_supported(&asset)?;
         self.require_amount_greater_than_zero(&amount)?;
-        self.require_valid_address_provided(&initial_caller)?;
+        self.require_non_zero_address(&initial_caller)?;
 
         let asset_address = self.get_pool_address(&asset);
 
@@ -159,19 +159,6 @@ pub trait LendingPool:
         Ok(())
     }
 
-    fn get_interest_metadata(
-        &self,
-        token_id: &TokenIdentifier,
-        nonce: u64,
-    ) -> SCResult<InterestMetadata> {
-        let esdt_nft_data = self.blockchain().get_esdt_token_data(
-            &self.blockchain().get_sc_address(),
-            token_id,
-            nonce,
-        );
-        esdt_nft_data.decode_attributes().into()
-    }
-
     fn caller_from_option_or_sender(&self, caller: OptionalArg<Address>) -> Address {
         caller
             .into_option()
@@ -184,8 +171,8 @@ pub trait LendingPool:
         Ok(())
     }
 
-    fn require_valid_address_provided(&self, caller: &Address) -> SCResult<()> {
-        require!(!caller.is_zero(), "invalid address provided");
+    fn require_non_zero_address(&self, address: &Address) -> SCResult<()> {
+        require!(!address.is_zero(), "address is zero");
 
         Ok(())
     }

@@ -1,6 +1,6 @@
 elrond_wasm::imports!();
 
-const BP: u32 = 1000000000;
+const BP: u32 = 1_000_000_000;
 
 const SECONDS_IN_YEAR: u32 = 31556926;
 
@@ -85,6 +85,7 @@ pub trait LibraryModule {
         amount: &Self::BigUint,
         price: &Self::BigUint,
         ltv: &Self::BigUint,
+        _: &Self::BigUint, // price decs
     ) -> Self::BigUint {
         let bp = Self::BigUint::from(BP);
         let total_collateral = amount * price;
