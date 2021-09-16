@@ -23,6 +23,7 @@ pub trait LiquidityPool:
     + multi_transfer::MultiTransferModule
     + utils::UtilsModule
     + price_aggregator_proxy::PriceAggregatorModule
+    + common_checks::ChecksModule
 {
     #[init]
     fn init(

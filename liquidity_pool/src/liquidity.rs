@@ -1,7 +1,7 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use common_structs::{DebtMetadata, DebtPosition, InterestMetadata, LiquidateData};
+use common_structs::*;
 
 use super::library;
 use super::multi_transfer;
@@ -19,6 +19,7 @@ pub trait LiquidityModule:
     + library::LibraryModule
     + price_aggregator_proxy::PriceAggregatorModule
     + multi_transfer::MultiTransferModule
+    + common_checks::ChecksModule
 {
     #[only_owner]
     #[payable("*")]
@@ -64,20 +65,23 @@ pub trait LiquidityModule:
         collateral_amount: Self::BigUint,
         deposit_timestamp: u64,
     ) -> SCResult<()> {
-        require!(collateral_amount > 0, "lend amount must be bigger then 0");
-        require!(!initial_caller.is_zero(), "invalid initial caller address");
+        self.require_amount_greater_than_zero(&collateral_amount)?;
+        self.require_non_zero_address(&initial_caller)?;
 
         let borrow_token_id = self.borrow_token().get();
         let pool_token_id = self.pool_asset().get();
 
-        
         let ltv = Self::BigUint::from(500_000_000u64);
 
         let collateral_price = self.get_token_dollar_value(&collateral_token_id)?;
         let pool_asset_price = self.get_token_dollar_value(&pool_token_id)?;
 
-        let borrowable_amount =
-            self.compute_borrowable_amount(&collateral_amount, &collateral_price, &ltv, &0u64.into());
+        let borrowable_amount = self.compute_borrowable_amount(
+            &collateral_amount,
+            &collateral_price,
+            &ltv,
+            &0u64.into(),
+        );
 
         let total_borrowable = &borrowable_amount / &pool_asset_price;
         let asset_reserve = self.reserves(&pool_token_id).get();
@@ -98,6 +102,8 @@ pub trait LiquidityModule:
 
         self.borrowed_amount()
             .update(|total| *total += &total_borrowable);
+
+        // self.reserves
 
         self.send().direct(
             &initial_caller,

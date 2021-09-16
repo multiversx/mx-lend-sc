@@ -20,6 +20,7 @@ pub trait LendingPool:
     + router::RouterModule
     + multi_transfer::MultiTransferModule
     + proxy_common::ProxyCommonModule
+    + common_checks::ChecksModule
 {
     #[init]
     fn init(&self) {}
@@ -163,18 +164,6 @@ pub trait LendingPool:
         caller
             .into_option()
             .unwrap_or_else(|| self.blockchain().get_caller())
-    }
-
-    fn require_amount_greater_than_zero(&self, amount: &Self::BigUint) -> SCResult<()> {
-        require!(amount > &0, "amount must be greater than 0");
-
-        Ok(())
-    }
-
-    fn require_non_zero_address(&self, address: &Address) -> SCResult<()> {
-        require!(!address.is_zero(), "address is zero");
-
-        Ok(())
     }
 
     fn require_asset_supported(&self, asset: &TokenIdentifier) -> SCResult<()> {

@@ -29,6 +29,9 @@ features = ["wasm-output-mode", "panic-message"]
 [dependencies.common_structs]
 path = "../common/structs"
 
+[dependencies.common_checks]
+path = "../common/checks"
+
 [dependencies.price-aggregator-proxy]
 git = "https://github.com/ElrondNetwork/sc-chainlink-rs"
-rev = "4e1e19c"
+rev = "15dac38"
