@@ -4,7 +4,7 @@ elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
 mod factory;
-mod proxy_common;
+mod proxy;
 mod router;
 
 pub use common_structs::*;
@@ -19,8 +19,8 @@ pub trait LendingPool:
     factory::FactoryModule
     + router::RouterModule
     + multi_transfer::MultiTransferModule
-    + proxy_common::ProxyCommonModule
     + common_checks::ChecksModule
+    + proxy::ProxyModule
 {
     #[init]
     fn init(&self) {}
@@ -68,6 +68,51 @@ pub trait LendingPool:
         self.liquidity_pool_proxy(pool_address)
             .withdraw(initial_caller, lend_token, token_nonce, amount)
             .execute_on_dest_context();
+
+        Ok(())
+    }
+
+    #[payable("*")]
+    #[endpoint(borrow)]
+    fn borrow_endpoint(
+        &self,
+        #[payment_token] payment_lend_id: TokenIdentifier,
+        #[payment_nonce] payment_nonce: u64,
+        #[payment_amount] payment_amount: Self::BigUint,
+        collateral_token_id: TokenIdentifier,
+        asset_to_borrow: TokenIdentifier,
+        #[var_args] caller: OptionalArg<Address>,
+    ) -> SCResult<()> {
+        let initial_caller = self.caller_from_option_or_sender(caller);
+
+        self.require_amount_greater_than_zero(&payment_amount)?;
+        self.require_non_zero_address(&initial_caller)?;
+
+        let borrow_token_pool_address = self.get_pool_address_non_zero(&asset_to_borrow)?;
+        let lend_token_pool_address = self.get_pool_address_non_zero(&payment_lend_id)?;
+
+        let metadata = self
+            .liquidity_pool_proxy(lend_token_pool_address.clone())
+            .get_interest_metadata(payment_nonce)
+            .execute_on_dest_context();
+
+        self.liquidity_pool_proxy(borrow_token_pool_address)
+            .borrow(
+                initial_caller.clone(),
+                collateral_token_id,
+                payment_amount.clone(),
+                metadata.timestamp,
+            )
+            .execute_on_dest_context_ignore_result();
+
+        self.liquidity_pool_proxy(lend_token_pool_address)
+            .burn_l_tokens(
+                payment_lend_id,
+                payment_nonce,
+                payment_amount,
+                initial_caller,
+            )
+            .execute_on_dest_context_ignore_result();
 
         Ok(())
     }
@@ -142,11 +187,7 @@ pub trait LendingPool:
             .execute_on_dest_context();
 
         let collateral_token_address = self.get_pool_address(&results.collateral_token);
-
-        require!(
-            collateral_token_address != Address::zero(),
-            "asset is not supported"
-        );
+        self.require_non_zero_address(&collateral_token_address)?;
 
         self.liquidity_pool_proxy(collateral_token_address)
             .mint_l_tokens(

@@ -71,19 +71,19 @@ pub trait LiquidityModule:
         let borrow_token_id = self.borrow_token().get();
         let pool_token_id = self.pool_asset().get();
 
-        let ltv = Self::BigUint::from(500_000_000u64);
+        let ltv = Self::BigUint::from(1u64);
 
         let collateral_price = self.get_token_dollar_value(&collateral_token_id)?;
         let pool_asset_price = self.get_token_dollar_value(&pool_token_id)?;
 
         let borrowable_amount = self.compute_borrowable_amount(
             &collateral_amount,
-            &collateral_price,
+            &collateral_price.price,
             &ltv,
             &0u64.into(),
         );
 
-        let total_borrowable = &borrowable_amount / &pool_asset_price;
+        let total_borrowable = &borrowable_amount / &pool_asset_price.price;
         let asset_reserve = self.reserves(&pool_token_id).get();
 
         require!(
@@ -127,7 +127,7 @@ pub trait LiquidityModule:
         &self,
         initial_caller: Address,
     ) -> SCResult<MultiResult3<TokenIdentifier, Self::BigUint, u64>> {
-        require!(!initial_caller.is_zero(), "invalid initial caller");
+        self.require_non_zero_address(&initial_caller)?;
 
         let transfers = self.get_all_esdt_transfers();
 

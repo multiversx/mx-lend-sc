@@ -35,4 +35,3 @@ path = "../common/structs"
 [dependencies.common_checks]
 path = "../common/checks"
 
-

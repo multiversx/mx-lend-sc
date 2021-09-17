@@ -67,6 +67,12 @@ pub trait TokensModule:
     }
 
     #[only_owner]
+    #[endpoint(getInterestMetadata)]
+    fn get_interest_metadata(&self, nonce: u64) -> SCResult<InterestMetadata> {
+        Ok(self.interest_metadata(nonce).get())
+    }
+
+    #[only_owner]
     #[payable("EGLD")]
     #[endpoint]
     fn issue(
