@@ -143,6 +143,14 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
         Ok(())
     }
 
+    #[only_owner]
+    #[endpoint(setAssetLTV)]
+    fn set_asset_ltv(&self, asset: TokenIdentifier, ltv: Self::BigUint) -> SCResult<()> {
+        self.asset_ltv(&asset).set(&ltv);
+
+        Ok(())
+    }
+
     #[endpoint(setTickerAfterIssue)]
     fn set_ticker_after_issue(&self, token_ticker: TokenIdentifier) -> SCResult<()> {
         let caller = self.blockchain().get_caller();
@@ -178,5 +186,6 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
 
     #[view(getAssetLTV)]
     #[storage_mapper("asset_ltv")]
-    fn asset_ltv(&self, asset: &TokenIdentifier) -> SingleValueMapper<Self::Storage, Self::BigUint>;
+    fn asset_ltv(&self, asset: &TokenIdentifier)
+        -> SingleValueMapper<Self::Storage, Self::BigUint>;
 }

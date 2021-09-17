@@ -96,12 +96,15 @@ pub trait LendingPool:
             .get_interest_metadata(payment_nonce)
             .execute_on_dest_context();
 
+        let ltv = self.asset_ltv(&collateral_token_id).get();
+
         self.liquidity_pool_proxy(borrow_token_pool_address)
             .borrow(
                 initial_caller.clone(),
                 collateral_token_id,
                 payment_amount.clone(),
                 metadata.timestamp,
+                ltv,
             )
             .execute_on_dest_context_ignore_result();
 

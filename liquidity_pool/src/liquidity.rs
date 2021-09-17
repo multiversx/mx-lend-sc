@@ -64,14 +64,13 @@ pub trait LiquidityModule:
         collateral_token_id: TokenIdentifier,
         collateral_amount: Self::BigUint,
         deposit_timestamp: u64,
+        ltv: Self::BigUint,
     ) -> SCResult<()> {
         self.require_amount_greater_than_zero(&collateral_amount)?;
         self.require_non_zero_address(&initial_caller)?;
 
         let borrow_token_id = self.borrow_token().get();
         let pool_token_id = self.pool_asset().get();
-
-        let ltv = Self::BigUint::from(1u64);
 
         let collateral_price = self.get_token_dollar_value(&collateral_token_id)?;
         let pool_asset_price = self.get_token_dollar_value(&pool_token_id)?;
