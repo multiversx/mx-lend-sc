@@ -85,11 +85,13 @@ pub trait LibraryModule {
         amount: &Self::BigUint,
         price: &Self::BigUint,
         ltv: &Self::BigUint,
-        _: &Self::BigUint, // price decs
+        decimals: u8,
     ) -> Self::BigUint {
         let bp = Self::BigUint::from(BP);
+        let dec_big = Self::BigUint::from(decimals as u64);
+
         let total_collateral = amount * price;
 
-        (&total_collateral * ltv) / bp
+        ((&total_collateral * ltv) / bp) / dec_big
     }
 }
