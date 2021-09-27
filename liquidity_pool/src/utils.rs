@@ -1,16 +1,20 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use super::library;
-use super::storage;
+use crate::{library, storage};
+use price_aggregator_proxy::AggregatorResult;
 
-use common_structs::{DebtPosition, IssueData, BORROW_TOKEN_PREFIX, LEND_TOKEN_PREFIX};
+use common_structs::*;
 
+const TICKER_SEPARATOR: u8 = b'-';
 const LEND_TOKEN_NAME: &[u8] = b"IntBearing";
 const DEBT_TOKEN_NAME: &[u8] = b"DebtBearing";
+const DOLLAR_TICKER: &[u8] = b"USD";
 
 #[elrond_wasm::module]
-pub trait UtilsModule: library::LibraryModule + storage::StorageModule {
+pub trait UtilsModule:
+    library::LibraryModule + storage::StorageModule + price_aggregator_proxy::PriceAggregatorModule
+{
     fn prepare_issue_data(&self, prefix: BoxedBytes, ticker: BoxedBytes) -> IssueData {
         let prefixed_ticker = [prefix.as_slice(), ticker.as_slice()].concat();
         let mut issue_data = IssueData {
@@ -32,11 +36,24 @@ pub trait UtilsModule: library::LibraryModule + storage::StorageModule {
         issue_data
     }
 
-    fn get_nft_hash(&self) -> H256 {
-        let debt_nonce = self.debt_nonce().get();
-        let hash = self.crypto().keccak256(&debt_nonce.to_be_bytes()[..]);
-        self.debt_nonce().set(&(debt_nonce + 1));
-        hash
+    fn get_token_price_data(
+        &self,
+        token_id: &TokenIdentifier,
+    ) -> SCResult<AggregatorResult<Self::BigUint>> {
+        let from_ticker = self.get_token_ticker(token_id);
+        let result = self.get_full_result_for_pair(from_ticker, DOLLAR_TICKER.into());
+
+        result.ok_or("failed to get token price").into()
+    }
+
+    fn get_token_ticker(&self, token_id: &TokenIdentifier) -> BoxedBytes {
+        for (i, char) in token_id.as_esdt_identifier().iter().enumerate() {
+            if *char == TICKER_SEPARATOR {
+                return token_id.as_esdt_identifier()[..i].into();
+            }
+        }
+
+        token_id.as_name().into()
     }
 
     fn compute_health_factor(&self) -> u32 {
@@ -46,7 +63,7 @@ pub trait UtilsModule: library::LibraryModule + storage::StorageModule {
     #[view(getCapitalUtilisation)]
     fn get_capital_utilisation(&self) -> Self::BigUint {
         let reserve_amount = self.reserves(&self.pool_asset().get()).get();
-        let borrowed_amount = self.total_borrow().get();
+        let borrowed_amount = self.borrowed_amount().get();
 
         self.compute_capital_utilisation(&borrowed_amount, &reserve_amount)
     }

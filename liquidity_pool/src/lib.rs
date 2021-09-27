@@ -22,6 +22,8 @@ pub trait LiquidityPool:
     + liquidity::LiquidityModule
     + multi_transfer::MultiTransferModule
     + utils::UtilsModule
+    + price_aggregator_proxy::PriceAggregatorModule
+    + common_checks::ChecksModule
 {
     #[init]
     fn init(
@@ -34,7 +36,6 @@ pub trait LiquidityPool:
         reserve_factor: Self::BigUint,
     ) {
         self.pool_asset().set(&asset);
-        self.debt_nonce().set_if_empty(&1u64);
         self.pool_params().set(&PoolParams {
             r_base,
             r_slope1,

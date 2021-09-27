@@ -1,6 +1,6 @@
 elrond_wasm::imports!();
 
-const BP: u32 = 1000000000;
+const BP: u32 = 1_000_000_000;
 
 const SECONDS_IN_YEAR: u32 = 31556926;
 
@@ -41,10 +41,10 @@ pub trait LibraryModule {
     fn compute_capital_utilisation(
         &self,
         borrowed_amount: &Self::BigUint,
-        total_pool_reserves: &Self::BigUint,
+        total_reserves: &Self::BigUint,
     ) -> Self::BigUint {
         let bp = Self::BigUint::from(BP);
-        &(borrowed_amount * &bp) / total_pool_reserves
+        &(borrowed_amount * &bp) / total_reserves
     }
 
     fn compute_debt(
@@ -78,5 +78,20 @@ pub trait LibraryModule {
         let interest = &percentage * amount / bp;
 
         amount + &interest
+    }
+
+    fn compute_borrowable_amount(
+        &self,
+        amount: &Self::BigUint,
+        price: &Self::BigUint,
+        ltv: &Self::BigUint,
+        decimals: u8,
+    ) -> Self::BigUint {
+        let bp = Self::BigUint::from(BP);
+        let dec_big = Self::BigUint::from(decimals as u64);
+
+        let total_collateral = amount * price;
+
+        ((&total_collateral * ltv) / bp) / dec_big
     }
 }

@@ -4,13 +4,14 @@ elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
 use super::factory;
-use super::proxy_common;
+
+use super::proxy;
 
 use common_structs::{BORROW_TOKEN_PREFIX, LEND_TOKEN_PREFIX};
 use liquidity_pool::tokens::ProxyTrait as _;
 
 #[elrond_wasm::module]
-pub trait RouterModule: proxy_common::ProxyCommonModule + factory::FactoryModule {
+pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
     #[only_owner]
     #[endpoint(createLiquidityPool)]
     fn create_liquidity_pool(
@@ -142,6 +143,12 @@ pub trait RouterModule: proxy_common::ProxyCommonModule + factory::FactoryModule
         Ok(())
     }
 
+    #[only_owner]
+    #[endpoint(setAssetLTV)]
+    fn set_asset_ltv(&self, asset: TokenIdentifier, ltv: Self::BigUint) {
+        self.asset_ltv(&asset).set(&ltv);
+    }
+
     #[endpoint(setTickerAfterIssue)]
     fn set_ticker_after_issue(&self, token_ticker: TokenIdentifier) -> SCResult<()> {
         let caller = self.blockchain().get_caller();
@@ -163,9 +170,21 @@ pub trait RouterModule: proxy_common::ProxyCommonModule + factory::FactoryModule
     fn get_pool_address_non_zero(&self, asset: &TokenIdentifier) -> SCResult<Address> {
         require!(
             self.pools_map().contains_key(asset),
-            "No pool address for asset"
+            "no pool address for asset"
         );
         Ok(self.pools_map().get(asset).unwrap_or_else(Address::zero))
+    }
+
+    fn get_ltv_exists_and_non_zero(&self, token_id: &TokenIdentifier) -> SCResult<Self::BigUint> {
+        require!(
+            !self.asset_ltv(token_id).is_empty(),
+            "no LTV value present for asset"
+        );
+
+        let ltv = self.asset_ltv(token_id).get();
+        require!(ltv > 0, "LTV value can not be zero");
+
+        Ok(ltv)
     }
 
     #[storage_mapper("pools_map")]
@@ -174,4 +193,9 @@ pub trait RouterModule: proxy_common::ProxyCommonModule + factory::FactoryModule
     #[view(getPoolAllowed)]
     #[storage_mapper("pool_allowed")]
     fn pools_allowed(&self) -> SafeSetMapper<Self::Storage, Address>;
+
+    #[view(getAssetLTV)]
+    #[storage_mapper("asset_ltv")]
+    fn asset_ltv(&self, asset: &TokenIdentifier)
+        -> SingleValueMapper<Self::Storage, Self::BigUint>;
 }

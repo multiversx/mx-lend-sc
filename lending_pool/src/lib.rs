@@ -4,7 +4,7 @@ elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
 mod factory;
-mod proxy_common;
+mod proxy;
 mod router;
 
 pub use common_structs::*;
@@ -19,7 +19,8 @@ pub trait LendingPool:
     factory::FactoryModule
     + router::RouterModule
     + multi_transfer::MultiTransferModule
-    + proxy_common::ProxyCommonModule
+    + common_checks::ChecksModule
+    + proxy::ProxyModule
 {
     #[init]
     fn init(&self) {}
@@ -28,19 +29,17 @@ pub trait LendingPool:
     #[endpoint(deposit)]
     fn deposit_endpoint(
         &self,
-        #[var_args] caller: OptionalArg<Address>,
         #[payment_token] asset: TokenIdentifier,
         #[payment_amount] amount: Self::BigUint,
+        #[var_args] caller: OptionalArg<Address>,
     ) -> SCResult<()> {
-        let initial_caller = caller
-            .into_option()
-            .unwrap_or_else(|| self.blockchain().get_caller());
+        let initial_caller = self.caller_from_option_or_sender(caller);
 
-        require!(amount > 0, "amount must be greater than 0");
-        require!(!initial_caller.is_zero(), "invalid address provided");
+        self.require_amount_greater_than_zero(&amount)?;
+        self.require_non_zero_address(&initial_caller)?;
 
-        let pool_address = self.get_pool_address(&asset);
-        require!(!pool_address.is_zero(), "invalid liquidity pool address");
+        let pool_address = self.get_pool_address_non_zero(&asset)?;
+        self.require_non_zero_address(&pool_address)?;
 
         self.liquidity_pool_proxy(pool_address)
             .deposit_asset(initial_caller, asset, amount)
@@ -58,19 +57,65 @@ pub trait LendingPool:
         #[payment_amount] amount: Self::BigUint,
         #[var_args] caller: OptionalArg<Address>,
     ) -> SCResult<()> {
-        let initial_caller = caller
-            .into_option()
-            .unwrap_or_else(|| self.blockchain().get_caller());
+        let initial_caller = self.caller_from_option_or_sender(caller);
 
-        require!(amount > 0, "amount must be greater than 0");
-        require!(!initial_caller.is_zero(), "invalid address provided");
+        self.require_amount_greater_than_zero(&amount)?;
+        self.require_non_zero_address(&initial_caller)?;
 
         let pool_address = self.get_pool_address(&lend_token);
-        require!(!pool_address.is_zero(), "invalid liquidity pool address");
+        self.require_non_zero_address(&pool_address)?;
 
         self.liquidity_pool_proxy(pool_address)
             .withdraw(initial_caller, lend_token, token_nonce, amount)
             .execute_on_dest_context();
+
+        Ok(())
+    }
+
+    #[payable("*")]
+    #[endpoint(borrow)]
+    fn borrow_endpoint(
+        &self,
+        #[payment_token] payment_lend_id: TokenIdentifier,
+        #[payment_nonce] payment_nonce: u64,
+        #[payment_amount] payment_amount: Self::BigUint,
+        collateral_token_id: TokenIdentifier,
+        asset_to_borrow: TokenIdentifier,
+        #[var_args] caller: OptionalArg<Address>,
+    ) -> SCResult<()> {
+        let initial_caller = self.caller_from_option_or_sender(caller);
+
+        self.require_amount_greater_than_zero(&payment_amount)?;
+        self.require_non_zero_address(&initial_caller)?;
+
+        let borrow_token_pool_address = self.get_pool_address_non_zero(&asset_to_borrow)?;
+        let lend_token_pool_address = self.get_pool_address_non_zero(&payment_lend_id)?;
+
+        let metadata = self
+            .liquidity_pool_proxy(lend_token_pool_address.clone())
+            .get_interest_metadata(payment_nonce)
+            .execute_on_dest_context();
+
+        let ltv = self.get_ltv_exists_and_non_zero(&collateral_token_id)?;
+
+        self.liquidity_pool_proxy(borrow_token_pool_address)
+            .borrow(
+                initial_caller.clone(),
+                collateral_token_id,
+                payment_amount.clone(),
+                metadata.timestamp,
+                ltv,
+            )
+            .execute_on_dest_context_ignore_result();
+
+        self.liquidity_pool_proxy(lend_token_pool_address)
+            .burn_l_tokens(
+                payment_lend_id,
+                payment_nonce,
+                payment_amount,
+                initial_caller,
+            )
+            .execute_on_dest_context_ignore_result();
 
         Ok(())
     }
@@ -82,9 +127,7 @@ pub trait LendingPool:
         asset_to_repay: TokenIdentifier,
         #[var_args] caller: OptionalArg<Address>,
     ) -> SCResult<()> {
-        let initial_caller = caller
-            .into_option()
-            .unwrap_or_else(|| self.blockchain().get_caller());
+        let initial_caller = self.caller_from_option_or_sender(caller);
 
         let asset_address = self.get_pool_address(&asset_to_repay);
         require!(
@@ -109,14 +152,14 @@ pub trait LendingPool:
         let collateral_token_address = self.get_pool_address(&collateral_id);
         require!(
             !collateral_token_address.is_zero(),
-            "Collateral not supported"
+            "collateral not supported"
         );
 
         self.liquidity_pool_proxy(collateral_token_address)
             .mint_l_tokens(
+                initial_caller,
                 collateral_id,
                 collateral_amount_repaid,
-                initial_caller,
                 borrow_timestamp,
             )
             .execute_on_dest_context_ignore_result();
@@ -128,18 +171,16 @@ pub trait LendingPool:
     #[endpoint(liquidate)]
     fn liquidate_endpoint(
         &self,
-        liquidate_unique_id: BoxedBytes,
-        #[var_args] initial_caller: OptionalArg<Address>,
         #[payment_token] asset: TokenIdentifier,
         #[payment_amount] amount: Self::BigUint,
+        liquidate_unique_id: BoxedBytes,
+        #[var_args] caller: OptionalArg<Address>,
     ) -> SCResult<()> {
-        let caller = initial_caller
-            .into_option()
-            .unwrap_or_else(|| self.blockchain().get_caller());
+        let initial_caller = self.caller_from_option_or_sender(caller);
 
-        require!(amount > 0, "amount must be greater than 0");
-        require!(!caller.is_zero(), "invalid address provided");
-        require!(self.pools_map().contains_key(&asset), "asset not supported");
+        self.require_asset_supported(&asset)?;
+        self.require_amount_greater_than_zero(&amount)?;
+        self.require_non_zero_address(&initial_caller)?;
 
         let asset_address = self.get_pool_address(&asset);
 
@@ -149,17 +190,13 @@ pub trait LendingPool:
             .execute_on_dest_context();
 
         let collateral_token_address = self.get_pool_address(&results.collateral_token);
-
-        require!(
-            collateral_token_address != Address::zero(),
-            "asset is not supported"
-        );
+        self.require_non_zero_address(&collateral_token_address)?;
 
         self.liquidity_pool_proxy(collateral_token_address)
             .mint_l_tokens(
+                initial_caller,
                 results.collateral_token,
                 results.amount,
-                caller,
                 self.blockchain().get_block_timestamp(),
             )
             .execute_on_dest_context_ignore_result();
@@ -167,69 +204,15 @@ pub trait LendingPool:
         Ok(())
     }
 
-    #[payable("*")]
-    #[endpoint(borrow)]
-    fn borrow_endpoint(
-        &self,
-        asset_collateral: TokenIdentifier,
-        asset_to_borrow: TokenIdentifier,
-        #[var_args] caller: OptionalArg<Address>,
-        #[payment_token] payment_lend_id: TokenIdentifier,
-        #[payment_nonce] payment_nonce: u64,
-        #[payment_amount] payment_amount: Self::BigUint,
-    ) -> SCResult<()> {
-        let initial_caller = caller
+    fn caller_from_option_or_sender(&self, caller: OptionalArg<Address>) -> Address {
+        caller
             .into_option()
-            .unwrap_or_else(|| self.blockchain().get_caller());
-
-        require!(payment_amount > 0, "amount must be greater than 0");
-        require!(!initial_caller.is_zero(), "invalid address provided");
-        require!(payment_nonce != 0, "payment token be a lend token");
-
-        let collateral_token_pool_address = self.get_pool_address_non_zero(&asset_collateral)?;
-        let borrow_token_pool_address = self.get_pool_address_non_zero(&asset_to_borrow)?;
-        let lend_token_pool_address = self.get_pool_address_non_zero(&payment_lend_id)?;
-        require!(
-            collateral_token_pool_address == lend_token_pool_address,
-            "Collateral and lend pool addresses differ"
-        );
-        require!(
-            collateral_token_pool_address != borrow_token_pool_address,
-            "Collateral and borrow pool addresses are the same"
-        );
-
-        let metadata = self.get_interest_metadata(&payment_lend_id, payment_nonce)?;
-        self.liquidity_pool_proxy(borrow_token_pool_address)
-            .borrow(
-                initial_caller.clone(),
-                asset_collateral,
-                payment_amount.clone(),
-                metadata.timestamp,
-            )
-            .execute_on_dest_context_ignore_result();
-
-        self.liquidity_pool_proxy(collateral_token_pool_address)
-            .burn_l_tokens(
-                payment_lend_id,
-                payment_nonce,
-                payment_amount,
-                initial_caller,
-            )
-            .execute_on_dest_context_ignore_result();
-
-        Ok(())
+            .unwrap_or_else(|| self.blockchain().get_caller())
     }
 
-    fn get_interest_metadata(
-        &self,
-        token_id: &TokenIdentifier,
-        nonce: u64,
-    ) -> SCResult<InterestMetadata> {
-        let esdt_nft_data = self.blockchain().get_esdt_token_data(
-            &self.blockchain().get_sc_address(),
-            token_id,
-            nonce,
-        );
-        esdt_nft_data.decode_attributes().into()
+    fn require_asset_supported(&self, asset: &TokenIdentifier) -> SCResult<()> {
+        require!(self.pools_map().contains_key(asset), "asset not supported");
+
+        Ok(())
     }
 }

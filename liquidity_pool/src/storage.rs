@@ -1,7 +1,7 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use common_structs::{DebtPosition, PoolParams};
+use common_structs::{DebtMetadata, DebtPosition, InterestMetadata, PoolParams};
 
 #[elrond_wasm::module]
 pub trait StorageModule {
@@ -24,6 +24,15 @@ pub trait StorageModule {
         token_id: &TokenIdentifier,
     ) -> SingleValueMapper<Self::Storage, Self::BigUint>;
 
+    #[storage_mapper("interest_metadata")]
+    fn interest_metadata(&self, nonce: u64) -> SingleValueMapper<Self::Storage, InterestMetadata>;
+
+    #[storage_mapper("debt_metadata")]
+    fn debt_metadata(
+        &self,
+        nonce: u64,
+    ) -> SingleValueMapper<Self::Storage, DebtMetadata<Self::BigUint>>;
+
     #[view(getLastError)]
     #[storage_mapper("last_error")]
     fn last_error(&self) -> SingleValueMapper<Self::Storage, BoxedBytes>;
@@ -33,10 +42,6 @@ pub trait StorageModule {
         &self,
     ) -> SafeMapMapper<Self::Storage, BoxedBytes, DebtPosition<Self::BigUint>>;
 
-    #[view(getDebtNonce)]
-    #[storage_mapper("debt_nonce")]
-    fn debt_nonce(&self) -> SingleValueMapper<Self::Storage, u64>;
-
     #[view(getPoolParams)]
     #[storage_mapper("pool_params")]
     fn pool_params(&self) -> SingleValueMapper<Self::Storage, PoolParams<Self::BigUint>>;
@@ -45,11 +50,7 @@ pub trait StorageModule {
     #[storage_mapper("health_factor_threshold")]
     fn health_factor_threshold(&self) -> SingleValueMapper<Self::Storage, u32>;
 
-    #[view(getLendingPool)]
-    #[storage_mapper("lending_pool")]
-    fn lending_pool(&self) -> SingleValueMapper<Self::Storage, Address>;
-
     #[view(getTotalBorrow)]
-    #[storage_mapper("total_borrow")]
-    fn total_borrow(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
+    #[storage_mapper("borrowed_amount")]
+    fn borrowed_amount(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
 }

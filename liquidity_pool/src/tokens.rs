@@ -1,7 +1,7 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use common_structs::{DebtMetadata, InterestMetadata, LEND_TOKEN_PREFIX};
+use common_structs::{InterestMetadata, LEND_TOKEN_PREFIX};
 
 use super::library;
 use super::storage;
@@ -9,16 +9,19 @@ use super::utils;
 
 #[elrond_wasm::module]
 pub trait TokensModule:
-    storage::StorageModule + utils::UtilsModule + library::LibraryModule
+    storage::StorageModule
+    + utils::UtilsModule
+    + library::LibraryModule
+    + price_aggregator_proxy::PriceAggregatorModule
 {
     #[only_owner]
     #[payable("*")]
     #[endpoint(mintLTokens)]
     fn mint_l_tokens(
         &self,
+        initial_caller: Address,
         #[payment_token] lend_token: TokenIdentifier,
         #[payment_amount] amount: Self::BigUint,
-        initial_caller: Address,
         interest_timestamp: u64,
     ) -> SCResult<()> {
         require!(
@@ -28,8 +31,12 @@ pub trait TokensModule:
         require!(amount > 0, "amount must be greater then 0");
         require!(!initial_caller.is_zero(), "invalid address");
 
-        let interest_metadata = InterestMetadata::new(interest_timestamp);
-        let new_nonce = self.mint_interest(&amount, &interest_metadata);
+        let new_nonce = self.mint_position_tokens(&lend_token, &amount);
+
+        self.interest_metadata(new_nonce).set(&InterestMetadata {
+            timestamp: interest_timestamp,
+        });
+
         self.send()
             .direct(&initial_caller, &lend_token, new_nonce, &amount, &[]);
 
@@ -57,6 +64,12 @@ pub trait TokensModule:
             .esdt_local_burn(&lend_token, token_nonce, &amount);
 
         Ok(())
+    }
+
+    #[only_owner]
+    #[endpoint(getInterestMetadata)]
+    fn get_interest_metadata(&self, nonce: u64) -> SCResult<InterestMetadata> {
+        Ok(self.interest_metadata(nonce).get())
     }
 
     #[only_owner]
@@ -137,46 +150,16 @@ pub trait TokensModule:
             .with_callback(self.callbacks().set_roles_callback())
     }
 
-    fn mint_interest(&self, amount: &Self::BigUint, metadata: &InterestMetadata) -> u64 {
-        self.send().esdt_nft_create::<InterestMetadata>(
-            &self.lend_token().get(),
+    fn mint_position_tokens(&self, token_id: &TokenIdentifier, amount: &Self::BigUint) -> u64 {
+        self.send().esdt_nft_create(
+            token_id,
             amount,
             &BoxedBytes::empty(),
             &Self::BigUint::zero(),
             &BoxedBytes::empty(),
-            metadata,
+            &(),
             &[BoxedBytes::empty()],
         )
-    }
-
-    fn mint_debt(
-        &self,
-        amount: Self::BigUint,
-        metadata: DebtMetadata<Self::BigUint>,
-        position_id: H256,
-    ) {
-        self.send().esdt_nft_create::<DebtMetadata<Self::BigUint>>(
-            &self.borrow_token().get(),
-            &amount,
-            &BoxedBytes::empty(),
-            &Self::BigUint::zero(),
-            &position_id.into_boxed_bytes(),
-            &metadata,
-            &[BoxedBytes::empty()],
-        );
-    }
-
-    fn get_lend_token_attributes(
-        &self,
-        lend_token: &TokenIdentifier,
-        token_nonce: u64,
-    ) -> SCResult<InterestMetadata> {
-        let nft_info = self.blockchain().get_esdt_token_data(
-            &self.blockchain().get_sc_address(),
-            lend_token,
-            token_nonce,
-        );
-        nft_info.decode_attributes().into()
     }
 
     #[callback]

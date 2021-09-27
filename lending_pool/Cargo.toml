@@ -32,3 +32,6 @@ features = ["wasm-output-mode", "panic-message"]
 [dependencies.common_structs]
 path = "../common/structs"
 
+[dependencies.common_checks]
+path = "../common/checks"
+
