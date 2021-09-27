@@ -75,7 +75,7 @@ pub trait LiquidityModule:
         let collateral_data = self.get_token_price_data(&collateral_token_id)?;
         let pool_asset_data = self.get_token_price_data(&pool_token_id)?;
 
-        let borrowable_amount = self.compute_borrowable_amount(
+        let borrow_amount_in_dollars = self.compute_borrowable_amount(
             &collateral_amount,
             &collateral_data.price,
             &ltv,
@@ -83,11 +83,14 @@ pub trait LiquidityModule:
         );
 
         let pool_asset_dec_big = Self::BigUint::from(pool_asset_data.decimals as u64);
-        let total_borrowable = (&borrowable_amount / &pool_asset_data.price) / pool_asset_dec_big;
+        
+        let borrow_amount_in_tokens =
+            (&borrow_amount_in_dollars / &pool_asset_data.price) / pool_asset_dec_big;
+
         let asset_reserve = self.reserves(&pool_token_id).get();
 
         require!(
-            asset_reserve < total_borrowable,
+            asset_reserve > borrow_amount_in_tokens,
             "insufficient funds to perform loan"
         );
 
@@ -101,10 +104,10 @@ pub trait LiquidityModule:
         });
 
         self.borrowed_amount()
-            .update(|total| *total += &total_borrowable);
+            .update(|total| *total += &borrow_amount_in_tokens);
 
         self.reserves(&pool_token_id)
-            .update(|total| *total -= &borrowable_amount);
+            .update(|total| *total -= &borrow_amount_in_tokens);
 
         self.send().direct(
             &initial_caller,
@@ -114,8 +117,13 @@ pub trait LiquidityModule:
             &[],
         );
 
-        self.send()
-            .direct(&initial_caller, &pool_token_id, 0, &borrowable_amount, &[]);
+        self.send().direct(
+            &initial_caller,
+            &pool_token_id,
+            0,
+            &borrow_amount_in_tokens,
+            &[],
+        );
 
         Ok(())
     }

@@ -38,7 +38,7 @@ pub trait LendingPool:
         self.require_amount_greater_than_zero(&amount)?;
         self.require_non_zero_address(&initial_caller)?;
 
-        let pool_address = self.get_pool_address(&asset);
+        let pool_address = self.get_pool_address_non_zero(&asset)?;
         self.require_non_zero_address(&pool_address)?;
 
         self.liquidity_pool_proxy(pool_address)
@@ -96,7 +96,7 @@ pub trait LendingPool:
             .get_interest_metadata(payment_nonce)
             .execute_on_dest_context();
 
-        let ltv = self.asset_ltv(&collateral_token_id).get();
+        let ltv = self.get_ltv_exists_and_non_zero(&collateral_token_id)?;
 
         self.liquidity_pool_proxy(borrow_token_pool_address)
             .borrow(
@@ -171,10 +171,10 @@ pub trait LendingPool:
     #[endpoint(liquidate)]
     fn liquidate_endpoint(
         &self,
-        liquidate_unique_id: BoxedBytes,
-        #[var_args] caller: OptionalArg<Address>,
         #[payment_token] asset: TokenIdentifier,
         #[payment_amount] amount: Self::BigUint,
+        liquidate_unique_id: BoxedBytes,
+        #[var_args] caller: OptionalArg<Address>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 

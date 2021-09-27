@@ -145,10 +145,8 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
 
     #[only_owner]
     #[endpoint(setAssetLTV)]
-    fn set_asset_ltv(&self, asset: TokenIdentifier, ltv: Self::BigUint) -> SCResult<()> {
+    fn set_asset_ltv(&self, asset: TokenIdentifier, ltv: Self::BigUint) {
         self.asset_ltv(&asset).set(&ltv);
-
-        Ok(())
     }
 
     #[endpoint(setTickerAfterIssue)]
@@ -172,9 +170,21 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
     fn get_pool_address_non_zero(&self, asset: &TokenIdentifier) -> SCResult<Address> {
         require!(
             self.pools_map().contains_key(asset),
-            "No pool address for asset"
+            "no pool address for asset"
         );
         Ok(self.pools_map().get(asset).unwrap_or_else(Address::zero))
+    }
+
+    fn get_ltv_exists_and_non_zero(&self, token_id: &TokenIdentifier) -> SCResult<Self::BigUint> {
+        require!(
+            !self.asset_ltv(token_id).is_empty(),
+            "no LTV value present for asset"
+        );
+
+        let ltv = self.asset_ltv(token_id).get();
+        require!(ltv > 0, "LTV value can not be zero");
+
+        Ok(ltv)
     }
 
     #[storage_mapper("pools_map")]
