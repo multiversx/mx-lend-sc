@@ -47,7 +47,7 @@ pub trait LiquidityPool:
 
     #[only_owner]
     #[endpoint(setHealthFactorThreshold)]
-    fn endpoint_health_factor_threshold(&self, health_factor_threashdol: u32) {
+    fn set_health_factor_threshold(&self, health_factor_threashdol: u32) {
         self.health_factor_threshold()
             .set(&health_factor_threashdol);
     }

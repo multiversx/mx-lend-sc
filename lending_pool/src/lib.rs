@@ -27,7 +27,7 @@ pub trait LendingPool:
 
     #[payable("*")]
     #[endpoint(deposit)]
-    fn deposit_endpoint(
+    fn deposit(
         &self,
         #[payment_token] asset: TokenIdentifier,
         #[payment_amount] amount: Self::BigUint,
@@ -50,7 +50,7 @@ pub trait LendingPool:
 
     #[payable("*")]
     #[endpoint(withdraw)]
-    fn withdraw_endpoint(
+    fn withdraw(
         &self,
         #[payment_token] lend_token: TokenIdentifier,
         #[payment_nonce] token_nonce: u64,
@@ -74,7 +74,7 @@ pub trait LendingPool:
 
     #[payable("*")]
     #[endpoint(borrow)]
-    fn borrow_endpoint(
+    fn borrow(
         &self,
         #[payment_token] payment_lend_id: TokenIdentifier,
         #[payment_nonce] payment_nonce: u64,
@@ -122,7 +122,7 @@ pub trait LendingPool:
 
     #[payable("*")]
     #[endpoint(repay)]
-    fn repay_endpoint(
+    fn repay(
         &self,
         asset_to_repay: TokenIdentifier,
         #[var_args] caller: OptionalArg<Address>,
@@ -169,7 +169,7 @@ pub trait LendingPool:
 
     #[payable("*")]
     #[endpoint(liquidate)]
-    fn liquidate_endpoint(
+    fn liquidate(
         &self,
         #[payment_token] asset: TokenIdentifier,
         #[payment_amount] amount: Self::BigUint,
