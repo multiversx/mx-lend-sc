@@ -26,7 +26,7 @@ pub trait LendingPool:
     fn init(&self) {}
 
     #[payable("*")]
-    #[endpoint(deposit)]
+    #[endpoint]
     fn deposit(
         &self,
         #[payment_token] asset: TokenIdentifier,
@@ -49,7 +49,7 @@ pub trait LendingPool:
     }
 
     #[payable("*")]
-    #[endpoint(withdraw)]
+    #[endpoint]
     fn withdraw(
         &self,
         #[payment_token] lend_token: TokenIdentifier,
@@ -73,7 +73,7 @@ pub trait LendingPool:
     }
 
     #[payable("*")]
-    #[endpoint(borrow)]
+    #[endpoint]
     fn borrow(
         &self,
         #[payment_token] payment_lend_id: TokenIdentifier,
@@ -121,7 +121,7 @@ pub trait LendingPool:
     }
 
     #[payable("*")]
-    #[endpoint(repay)]
+    #[endpoint]
     fn repay(
         &self,
         asset_to_repay: TokenIdentifier,

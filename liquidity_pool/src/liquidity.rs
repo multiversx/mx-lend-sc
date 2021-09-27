@@ -57,7 +57,7 @@ pub trait LiquidityModule:
     }
 
     #[only_owner]
-    #[endpoint(borrow)]
+    #[endpoint]
     fn borrow(
         &self,
         initial_caller: Address,
