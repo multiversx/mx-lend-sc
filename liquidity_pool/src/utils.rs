@@ -36,14 +36,14 @@ pub trait UtilsModule:
         issue_data
     }
 
-    fn get_token_dollar_value(
+    fn get_token_price_data(
         &self,
         token_id: &TokenIdentifier,
     ) -> SCResult<AggregatorResult<Self::BigUint>> {
         let from_ticker = self.get_token_ticker(token_id);
-        let opt_price = self.get_full_result_for_pair(from_ticker, DOLLAR_TICKER.into());
+        let result = self.get_full_result_for_pair(from_ticker, DOLLAR_TICKER.into());
 
-        opt_price.ok_or("failed to get token price").into()
+        result.ok_or("failed to get token price").into()
     }
 
     fn get_token_ticker(&self, token_id: &TokenIdentifier) -> BoxedBytes {

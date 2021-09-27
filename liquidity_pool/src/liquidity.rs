@@ -72,17 +72,18 @@ pub trait LiquidityModule:
         let borrow_token_id = self.borrow_token().get();
         let pool_token_id = self.pool_asset().get();
 
-        let collateral_value = self.get_token_dollar_value(&collateral_token_id)?;
-        let pool_asset_value = self.get_token_dollar_value(&pool_token_id)?;
+        let collateral_data = self.get_token_price_data(&collateral_token_id)?;
+        let pool_asset_data = self.get_token_price_data(&pool_token_id)?;
 
         let borrowable_amount = self.compute_borrowable_amount(
             &collateral_amount,
-            &collateral_value.price,
+            &collateral_data.price,
             &ltv,
-            collateral_value.decimals,
+            collateral_data.decimals,
         );
 
-        let total_borrowable = &borrowable_amount / &pool_asset_value.price;
+        let pool_asset_dec_big = Self::BigUint::from(pool_asset_data.decimals as u64);
+        let total_borrowable = (&borrowable_amount / &pool_asset_data.price) / pool_asset_dec_big;
         let asset_reserve = self.reserves(&pool_token_id).get();
 
         require!(
@@ -95,14 +96,15 @@ pub trait LiquidityModule:
         self.debt_metadata(new_nonce).set(&DebtMetadata {
             timestamp: self.blockchain().get_block_timestamp(),
             collateral_amount: collateral_amount.clone(),
-            collateral_identifier: collateral_token_id.clone(),
+            collateral_identifier: collateral_token_id,
             collateral_timestamp: deposit_timestamp,
         });
 
         self.borrowed_amount()
             .update(|total| *total += &total_borrowable);
 
-        // self.reserves
+        self.reserves(&pool_token_id)
+            .update(|total| *total -= &borrowable_amount);
 
         self.send().direct(
             &initial_caller,
@@ -114,6 +116,44 @@ pub trait LiquidityModule:
 
         self.send()
             .direct(&initial_caller, &pool_token_id, 0, &borrowable_amount, &[]);
+
+        Ok(())
+    }
+
+    #[only_owner]
+    #[payable("*")]
+    #[endpoint]
+    fn withdraw(
+        &self,
+        initial_caller: Address,
+        #[payment_token] lend_token: TokenIdentifier,
+        #[payment_nonce] token_nonce: u64,
+        #[payment_amount] amount: Self::BigUint,
+    ) -> SCResult<()> {
+        require!(
+            lend_token == self.lend_token().get(),
+            "lend token not supported"
+        );
+
+        let pool_asset = self.pool_asset().get();
+        let metadata = self.interest_metadata(token_nonce).get();
+
+        let deposit_rate = self.get_deposit_rate();
+        let time_diff = self.get_timestamp_diff(metadata.timestamp)?;
+        let withdrawal_amount =
+            self.compute_withdrawal_amount(&amount, &time_diff.into(), &deposit_rate);
+
+        self.reserves(&pool_asset).update(|asset_reserve| {
+            require!(*asset_reserve >= withdrawal_amount, "insufficient funds");
+            *asset_reserve -= &withdrawal_amount;
+            Ok(())
+        })?;
+
+        self.send()
+            .esdt_local_burn(&lend_token, token_nonce, &amount);
+
+        self.send()
+            .direct(&initial_caller, &pool_asset, 0, &withdrawal_amount, &[]);
 
         Ok(())
     }
@@ -183,7 +223,7 @@ pub trait LiquidityModule:
         let extra_asset_paid = asset_amount - &total_owed;
         if extra_asset_paid > 0 {
             self.send()
-                .direct(&initial_caller, &asset_token_id, 0, &extra_asset_paid, &[]);
+                .direct(&initial_caller, asset_token_id, 0, &extra_asset_paid, &[]);
         }
 
         // TODO: Instead of borrow_token_amount (i.e. 1:1 ratio), calculate how much collateral amount was repaid
@@ -206,44 +246,6 @@ pub trait LiquidityModule:
             debt_position.timestamp,
         )
             .into())
-    }
-
-    #[only_owner]
-    #[payable("*")]
-    #[endpoint]
-    fn withdraw(
-        &self,
-        initial_caller: Address,
-        #[payment_token] lend_token: TokenIdentifier,
-        #[payment_nonce] token_nonce: u64,
-        #[payment_amount] amount: Self::BigUint,
-    ) -> SCResult<()> {
-        require!(
-            lend_token == self.lend_token().get(),
-            "lend token not supported"
-        );
-
-        let pool_asset = self.pool_asset().get();
-        let metadata = self.interest_metadata(token_nonce).get();
-
-        let deposit_rate = self.get_deposit_rate();
-        let time_diff = self.get_timestamp_diff(metadata.timestamp)?;
-        let withdrawal_amount =
-            self.compute_withdrawal_amount(&amount, &time_diff.into(), &deposit_rate);
-
-        self.reserves(&pool_asset).update(|asset_reserve| {
-            require!(*asset_reserve >= withdrawal_amount, "insufficient funds");
-            *asset_reserve -= &withdrawal_amount;
-            Ok(())
-        })?;
-
-        self.send()
-            .esdt_local_burn(&lend_token, token_nonce, &amount);
-
-        self.send()
-            .direct(&initial_caller, &pool_asset, 0, &withdrawal_amount, &[]);
-
-        Ok(())
     }
 
     #[only_owner]
