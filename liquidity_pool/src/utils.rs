@@ -1,7 +1,7 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use crate::{library, storage};
+use crate::{math, storage};
 use price_aggregator_proxy::AggregatorResult;
 
 use common_structs::*;
@@ -13,7 +13,7 @@ const DOLLAR_TICKER: &[u8] = b"USD";
 
 #[elrond_wasm::module]
 pub trait UtilsModule:
-    library::LibraryModule + storage::StorageModule + price_aggregator_proxy::PriceAggregatorModule
+    math::MathModule + storage::StorageModule + price_aggregator_proxy::PriceAggregatorModule
 {
     fn prepare_issue_data(&self, prefix: BoxedBytes, ticker: BoxedBytes) -> IssueData {
         let prefixed_ticker = [prefix.as_slice(), ticker.as_slice()].concat();

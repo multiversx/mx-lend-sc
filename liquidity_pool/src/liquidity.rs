@@ -3,7 +3,7 @@ elrond_wasm::derive_imports!();
 
 use common_structs::*;
 
-use super::library;
+use super::math;
 use super::multi_transfer;
 use super::storage;
 use super::tokens;
@@ -16,7 +16,7 @@ pub trait LiquidityModule:
     storage::StorageModule
     + tokens::TokensModule
     + utils::UtilsModule
-    + library::LibraryModule
+    + math::MathModule
     + price_aggregator_proxy::PriceAggregatorModule
     + multi_transfer::MultiTransferModule
     + common_checks::ChecksModule
@@ -57,7 +57,7 @@ pub trait LiquidityModule:
     }
 
     #[only_owner]
-    #[endpoint(borrow)]
+    #[endpoint]
     fn borrow(
         &self,
         initial_caller: Address,

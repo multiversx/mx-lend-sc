@@ -3,7 +3,7 @@ elrond_wasm::derive_imports!();
 
 use common_structs::{InterestMetadata, LEND_TOKEN_PREFIX};
 
-use super::library;
+use super::math;
 use super::storage;
 use super::utils;
 
@@ -11,7 +11,7 @@ use super::utils;
 pub trait TokensModule:
     storage::StorageModule
     + utils::UtilsModule
-    + library::LibraryModule
+    + math::MathModule
     + price_aggregator_proxy::PriceAggregatorModule
 {
     #[only_owner]

@@ -5,7 +5,7 @@ const BP: u32 = 1_000_000_000;
 const SECONDS_IN_YEAR: u32 = 31556926;
 
 #[elrond_wasm::module]
-pub trait LibraryModule {
+pub trait MathModule {
     fn compute_borrow_rate(
         &self,
         r_base: &Self::BigUint,
@@ -58,12 +58,7 @@ pub trait LibraryModule {
         let time_unit_percentage = (time_diff * &bp) / secs_year;
         let debt_percetange = &(&time_unit_percentage * borrow_rate) / &bp;
 
-        if debt_percetange <= bp {
-            let amount_diff = (&(&bp - &debt_percetange) * amount) / bp;
-            amount - &amount_diff
-        } else {
-            (&debt_percetange * amount) / bp
-        }
+        (&debt_percetange * amount) / bp
     }
 
     fn compute_withdrawal_amount(

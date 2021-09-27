@@ -4,8 +4,8 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-pub mod library;
-pub use library::*;
+pub mod math;
+pub use math::*;
 pub mod liquidity;
 pub mod multi_transfer;
 pub mod tokens;
@@ -18,7 +18,7 @@ mod utils;
 pub trait LiquidityPool:
     storage::StorageModule
     + tokens::TokensModule
-    + library::LibraryModule
+    + math::MathModule
     + liquidity::LiquidityModule
     + multi_transfer::MultiTransferModule
     + utils::UtilsModule
@@ -47,7 +47,7 @@ pub trait LiquidityPool:
 
     #[only_owner]
     #[endpoint(setHealthFactorThreshold)]
-    fn endpoint_health_factor_threshold(&self, health_factor_threashdol: u32) {
+    fn set_health_factor_threshold(&self, health_factor_threashdol: u32) {
         self.health_factor_threshold()
             .set(&health_factor_threashdol);
     }
