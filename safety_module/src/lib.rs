@@ -258,16 +258,15 @@ pub trait SafetyModule {
         deposit_metadata: &DepositPosition<Self::BigUint>,
         amount: Self::BigUint,
     ) {
-        self.send()
-            .esdt_nft_create::<DepositPosition<Self::BigUint>>(
-                &self.nft_token().get(),
-                &amount,
-                &BoxedBytes::empty(),
-                &Self::BigUint::zero(),
-                &BoxedBytes::empty(),
-                deposit_metadata,
-                &[BoxedBytes::empty()],
-            );
+        self.send().esdt_nft_create(
+            &self.nft_token().get(),
+            &amount,
+            &BoxedBytes::empty(),
+            &Self::BigUint::zero(),
+            &BoxedBytes::empty(),
+            deposit_metadata,
+            &[BoxedBytes::empty()],
+        );
     }
 
     fn convert_wegld(&self, _pool_token: TokenIdentifier, _amount: Self::BigUint) {

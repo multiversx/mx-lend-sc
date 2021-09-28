@@ -236,7 +236,7 @@ pub trait LiquidityModule:
             &initial_caller,
             borrow_position.lend_tokens.get_token_id_as_ref(),
             borrow_position.lend_tokens.get_token_nonce(),
-            &borrow_token_amount,
+            borrow_token_amount,
             &[],
         );
 

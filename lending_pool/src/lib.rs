@@ -97,7 +97,7 @@ pub trait LendingPool:
         let collateral_tokens = TokenAmountPair::new(collateral_token_uuid, payment_amount);
 
         self.liquidity_pool_proxy(borrow_token_pool_address)
-            .borrow(initial_caller.clone(), lend_tokens, collateral_tokens, ltv)
+            .borrow(initial_caller, lend_tokens, collateral_tokens, ltv)
             .execute_on_dest_context_ignore_result();
 
         Ok(())
