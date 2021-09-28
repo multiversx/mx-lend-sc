@@ -89,4 +89,17 @@ pub trait MathModule {
 
         ((&total_collateral * loan_to_value) / bp) / dec_big
     }
+
+    fn compute_health_factor(
+        &self,
+        collateral_value_in_dollars: &Self::BigUint,
+        borrowed_value_in_dollars: &Self::BigUint,
+        liquidation_threshold: &Self::BigUint,
+    ) -> Self::BigUint {
+        &(collateral_value_in_dollars * liquidation_threshold) / borrowed_value_in_dollars
+    }
+
+    fn get_base_precision(&self) -> Self::BigUint {
+        Self::BigUint::from(BP)
+    }
 }
