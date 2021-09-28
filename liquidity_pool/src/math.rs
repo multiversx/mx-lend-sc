@@ -79,7 +79,7 @@ pub trait MathModule {
         &self,
         amount: &Self::BigUint,
         price: &Self::BigUint,
-        ltv: &Self::BigUint,
+        loan_to_value: &Self::BigUint,
         decimals: u8,
     ) -> Self::BigUint {
         let bp = Self::BigUint::from(BP);
@@ -87,6 +87,6 @@ pub trait MathModule {
 
         let total_collateral = amount * price;
 
-        ((&total_collateral * ltv) / bp) / dec_big
+        ((&total_collateral * loan_to_value) / bp) / dec_big
     }
 }

@@ -63,7 +63,7 @@ pub trait LiquidityModule:
         initial_caller: Address,
         lend_tokens: TokenAmountPair<Self::BigUint>,
         collateral_tokens: TokenAmountPair<Self::BigUint>,
-        ltv: Self::BigUint,
+        loan_to_value: Self::BigUint,
     ) -> SCResult<()> {
         self.require_amount_greater_than_zero(collateral_tokens.get_amount_as_ref())?;
         self.require_non_zero_address(&initial_caller)?;
@@ -77,7 +77,7 @@ pub trait LiquidityModule:
         let borrow_amount_in_dollars = self.compute_borrowable_amount(
             collateral_tokens.get_amount_as_ref(),
             &collateral_data.price,
-            &ltv,
+            &loan_to_value,
             collateral_data.decimals,
         );
 
@@ -221,6 +221,7 @@ pub trait LiquidityModule:
                 .direct(&initial_caller, asset_token_id, 0, &extra_asset_paid, &[]);
         }
 
+        // TODO: Instead of borrow_token_amount (i.e. 1:1 ratio), calculate how much collateral amount was repaid
         borrow_position.lend_tokens.amount -= borrow_token_amount;
         if borrow_position.lend_tokens.amount == 0 {
             self.borrow_position(borrow_token_nonce).clear();
@@ -232,6 +233,7 @@ pub trait LiquidityModule:
         self.send()
             .esdt_local_burn(borrow_token_id, borrow_token_nonce, borrow_token_amount);
 
+        // Same here, use calculated amount of repaid collateral instead of borrow_token_amount
         self.send().direct(
             &initial_caller,
             borrow_position.lend_tokens.get_token_id_as_ref(),
@@ -262,7 +264,7 @@ pub trait LiquidityModule:
 
         require!(
             !self.borrow_position(borrow_position_nonce).is_empty(),
-            "Position is empty"
+            "position was repaid or already liquidated"
         );
         let borrow_position = self.borrow_position(borrow_position_nonce).get();
 

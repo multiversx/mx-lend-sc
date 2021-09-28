@@ -88,7 +88,7 @@ pub trait LendingPool:
         self.require_non_zero_address(&initial_caller)?;
 
         let borrow_token_pool_address = self.get_pool_address_non_zero(&asset_to_borrow)?;
-        let ltv = self.get_ltv_exists_and_non_zero(&collateral_token_id)?;
+        let loan_to_value = self.get_loan_to_value_exists_and_non_zero(&collateral_token_id)?;
 
         let lend_token_uuid = TokenUUID::new(payment_lend_id, payment_nonce);
         let lend_tokens = TokenAmountPair::new(lend_token_uuid, payment_amount.clone());
@@ -97,7 +97,12 @@ pub trait LendingPool:
         let collateral_tokens = TokenAmountPair::new(collateral_token_uuid, payment_amount);
 
         self.liquidity_pool_proxy(borrow_token_pool_address)
-            .borrow(initial_caller, lend_tokens, collateral_tokens, ltv)
+            .borrow(
+                initial_caller,
+                lend_tokens,
+                collateral_tokens,
+                loan_to_value,
+            )
             .execute_on_dest_context_ignore_result();
 
         Ok(())
