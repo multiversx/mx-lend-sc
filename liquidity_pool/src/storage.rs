@@ -1,7 +1,7 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use common_structs::{DebtMetadata, DebtPosition, InterestMetadata, PoolParams};
+use common_structs::{BorrowPosition, DepositPosition, PoolParams};
 
 #[elrond_wasm::module]
 pub trait StorageModule {
@@ -24,23 +24,23 @@ pub trait StorageModule {
         token_id: &TokenIdentifier,
     ) -> SingleValueMapper<Self::Storage, Self::BigUint>;
 
-    #[storage_mapper("interest_metadata")]
-    fn interest_metadata(&self, nonce: u64) -> SingleValueMapper<Self::Storage, InterestMetadata>;
-
-    #[storage_mapper("debt_metadata")]
-    fn debt_metadata(
+    #[view(getDepositPosition)]
+    #[storage_mapper("deposit_position")]
+    fn deposit_position(
         &self,
         nonce: u64,
-    ) -> SingleValueMapper<Self::Storage, DebtMetadata<Self::BigUint>>;
+    ) -> SingleValueMapper<Self::Storage, DepositPosition<Self::BigUint>>;
+
+    #[view(getBorrowMetadata)]
+    #[storage_mapper("borrow_position")]
+    fn borrow_position(
+        &self,
+        nonce: u64,
+    ) -> SingleValueMapper<Self::Storage, BorrowPosition<Self::BigUint>>;
 
     #[view(getLastError)]
     #[storage_mapper("last_error")]
     fn last_error(&self) -> SingleValueMapper<Self::Storage, BoxedBytes>;
-
-    #[storage_mapper("debt_positions")]
-    fn debt_positions(
-        &self,
-    ) -> SafeMapMapper<Self::Storage, BoxedBytes, DebtPosition<Self::BigUint>>;
 
     #[view(getPoolParams)]
     #[storage_mapper("pool_params")]

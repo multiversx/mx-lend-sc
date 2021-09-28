@@ -12,7 +12,6 @@ pub use common_structs::*;
 use liquidity_pool::multi_transfer;
 
 use liquidity_pool::liquidity::ProxyTrait as _;
-use liquidity_pool::tokens::ProxyTrait as _;
 
 #[elrond_wasm::contract]
 pub trait LendingPool:
@@ -89,32 +88,16 @@ pub trait LendingPool:
         self.require_non_zero_address(&initial_caller)?;
 
         let borrow_token_pool_address = self.get_pool_address_non_zero(&asset_to_borrow)?;
-        let lend_token_pool_address = self.get_pool_address_non_zero(&payment_lend_id)?;
-
-        let metadata = self
-            .liquidity_pool_proxy(lend_token_pool_address.clone())
-            .get_interest_metadata(payment_nonce)
-            .execute_on_dest_context();
-
         let ltv = self.get_ltv_exists_and_non_zero(&collateral_token_id)?;
 
-        self.liquidity_pool_proxy(borrow_token_pool_address)
-            .borrow(
-                initial_caller.clone(),
-                collateral_token_id,
-                payment_amount.clone(),
-                metadata.timestamp,
-                ltv,
-            )
-            .execute_on_dest_context_ignore_result();
+        let lend_token_uuid = TokenUUID::new(payment_lend_id, payment_nonce);
+        let lend_tokens = TokenAmountPair::new(lend_token_uuid, payment_amount.clone());
 
-        self.liquidity_pool_proxy(lend_token_pool_address)
-            .burn_l_tokens(
-                payment_lend_id,
-                payment_nonce,
-                payment_amount,
-                initial_caller,
-            )
+        let collateral_token_uuid = TokenUUID::new(collateral_token_id, 0);
+        let collateral_tokens = TokenAmountPair::new(collateral_token_uuid, payment_amount);
+
+        self.liquidity_pool_proxy(borrow_token_pool_address)
+            .borrow(initial_caller.clone(), lend_tokens, collateral_tokens, ltv)
             .execute_on_dest_context_ignore_result();
 
         Ok(())
@@ -138,31 +121,12 @@ pub trait LendingPool:
         // TODO: Use SC Proxy instead of manual call in 0.19.0
 
         let transfers = self.get_all_esdt_transfers();
-        let raw_results = self.multi_transfer_via_execute_on_dest_context(
+        self.multi_transfer_via_execute_on_dest_context(
             &asset_address,
             &transfers,
             &b"repay"[..].into(),
             &[initial_caller.as_bytes().into()],
         );
-
-        let collateral_id = TokenIdentifier::top_decode(raw_results[0].as_slice())?;
-        let collateral_amount_repaid = Self::BigUint::top_decode(raw_results[1].as_slice())?;
-        let borrow_timestamp = u64::top_decode(raw_results[2].as_slice())?;
-
-        let collateral_token_address = self.get_pool_address(&collateral_id);
-        require!(
-            !collateral_token_address.is_zero(),
-            "collateral not supported"
-        );
-
-        self.liquidity_pool_proxy(collateral_token_address)
-            .mint_l_tokens(
-                initial_caller,
-                collateral_id,
-                collateral_amount_repaid,
-                borrow_timestamp,
-            )
-            .execute_on_dest_context_ignore_result();
 
         Ok(())
     }
@@ -173,7 +137,7 @@ pub trait LendingPool:
         &self,
         #[payment_token] asset: TokenIdentifier,
         #[payment_amount] amount: Self::BigUint,
-        liquidate_unique_id: BoxedBytes,
+        borrow_position_nonce: u64,
         #[var_args] caller: OptionalArg<Address>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
@@ -184,22 +148,9 @@ pub trait LendingPool:
 
         let asset_address = self.get_pool_address(&asset);
 
-        let results = self
-            .liquidity_pool_proxy(asset_address)
-            .liquidate(liquidate_unique_id, asset, amount)
+        self.liquidity_pool_proxy(asset_address)
+            .liquidate(borrow_position_nonce, initial_caller, asset, amount)
             .execute_on_dest_context();
-
-        let collateral_token_address = self.get_pool_address(&results.collateral_token);
-        self.require_non_zero_address(&collateral_token_address)?;
-
-        self.liquidity_pool_proxy(collateral_token_address)
-            .mint_l_tokens(
-                initial_caller,
-                results.collateral_token,
-                results.amount,
-                self.blockchain().get_block_timestamp(),
-            )
-            .execute_on_dest_context_ignore_result();
 
         Ok(())
     }

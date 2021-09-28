@@ -39,9 +39,9 @@ pub trait LiquidityModule:
         let lend_token_id = self.lend_token().get();
         let new_nonce = self.mint_position_tokens(&lend_token_id, &amount);
 
-        self.interest_metadata(new_nonce).set(&InterestMetadata {
-            timestamp: self.blockchain().get_block_timestamp(),
-        });
+        let timestamp = self.blockchain().get_block_timestamp();
+        let deposit_position = DepositPosition::new(timestamp, amount.clone());
+        self.deposit_position(new_nonce).set(&deposit_position);
 
         self.reserves(&pool_asset).update(|x| *x += &amount);
 
@@ -61,29 +61,28 @@ pub trait LiquidityModule:
     fn borrow(
         &self,
         initial_caller: Address,
-        collateral_token_id: TokenIdentifier,
-        collateral_amount: Self::BigUint,
-        deposit_timestamp: u64,
+        lend_tokens: TokenAmountPair<Self::BigUint>,
+        collateral_tokens: TokenAmountPair<Self::BigUint>,
         ltv: Self::BigUint,
     ) -> SCResult<()> {
-        self.require_amount_greater_than_zero(&collateral_amount)?;
+        self.require_amount_greater_than_zero(collateral_tokens.get_amount_as_ref())?;
         self.require_non_zero_address(&initial_caller)?;
 
         let borrow_token_id = self.borrow_token().get();
         let pool_token_id = self.pool_asset().get();
 
-        let collateral_data = self.get_token_price_data(&collateral_token_id)?;
+        let collateral_data = self.get_token_price_data(collateral_tokens.get_token_id_as_ref())?;
         let pool_asset_data = self.get_token_price_data(&pool_token_id)?;
 
         let borrow_amount_in_dollars = self.compute_borrowable_amount(
-            &collateral_amount,
+            collateral_tokens.get_amount_as_ref(),
             &collateral_data.price,
             &ltv,
             collateral_data.decimals,
         );
 
         let pool_asset_dec_big = Self::BigUint::from(pool_asset_data.decimals as u64);
-        
+
         let borrow_amount_in_tokens =
             (&borrow_amount_in_dollars / &pool_asset_data.price) / pool_asset_dec_big;
 
@@ -94,14 +93,13 @@ pub trait LiquidityModule:
             "insufficient funds to perform loan"
         );
 
-        let new_nonce = self.mint_position_tokens(&borrow_token_id, &collateral_amount);
+        let new_nonce =
+            self.mint_position_tokens(&borrow_token_id, lend_tokens.get_amount_as_ref());
 
-        self.debt_metadata(new_nonce).set(&DebtMetadata {
-            timestamp: self.blockchain().get_block_timestamp(),
-            collateral_amount: collateral_amount.clone(),
-            collateral_identifier: collateral_token_id,
-            collateral_timestamp: deposit_timestamp,
-        });
+        let lend_tokens_amount = lend_tokens.get_amount();
+        let timestamp = self.blockchain().get_block_timestamp();
+        let borrow_position = BorrowPosition::new(timestamp, lend_tokens);
+        self.borrow_position(new_nonce).set(&borrow_position);
 
         self.borrowed_amount()
             .update(|total| *total += &borrow_amount_in_tokens);
@@ -113,7 +111,7 @@ pub trait LiquidityModule:
             &initial_caller,
             &borrow_token_id,
             new_nonce,
-            &collateral_amount,
+            &lend_tokens_amount,
             &[],
         );
 
@@ -144,7 +142,7 @@ pub trait LiquidityModule:
         );
 
         let pool_asset = self.pool_asset().get();
-        let metadata = self.interest_metadata(token_nonce).get();
+        let metadata = self.deposit_position(token_nonce).get();
 
         let deposit_rate = self.get_deposit_rate();
         let time_diff = self.get_timestamp_diff(metadata.timestamp)?;
@@ -170,10 +168,7 @@ pub trait LiquidityModule:
     #[only_owner]
     #[payable("*")]
     #[endpoint]
-    fn repay(
-        &self,
-        initial_caller: Address,
-    ) -> SCResult<MultiResult3<TokenIdentifier, Self::BigUint, u64>> {
+    fn repay(&self, initial_caller: Address) -> SCResult<()> {
         self.require_non_zero_address(&initial_caller)?;
 
         let transfers = self.get_all_esdt_transfers();
@@ -198,29 +193,14 @@ pub trait LiquidityModule:
         let asset_token_id = &transfers[1].token_name;
         let asset_amount = &transfers[1].amount;
 
-        let esdt_nft_data = self.blockchain().get_esdt_token_data(
-            &self.blockchain().get_sc_address(),
-            borrow_token_id,
-            borrow_token_nonce,
-        );
-
-        let debt_position_id = &esdt_nft_data.hash;
         require!(
-            self.debt_positions().contains_key(debt_position_id),
-            "invalid debt position"
+            !self.borrow_position(borrow_token_nonce).is_empty(),
+            "liquidated position"
         );
-
-        let mut debt_position = self
-            .debt_positions()
-            .get(debt_position_id)
-            .unwrap_or_default();
-
-        require!(!debt_position.is_liquidated, "position is liquidated");
-
-        let debt_metadata = esdt_nft_data.decode_attributes::<DebtMetadata<Self::BigUint>>()?;
+        let mut borrow_position = self.borrow_position(borrow_token_nonce).get();
 
         let accumulated_debt =
-            self.get_debt_interest(borrow_token_amount, debt_metadata.timestamp)?;
+            self.get_debt_interest(borrow_token_amount, borrow_position.timestamp)?;
         let total_owed = borrow_token_amount + &accumulated_debt;
 
         require!(
@@ -234,26 +214,26 @@ pub trait LiquidityModule:
                 .direct(&initial_caller, asset_token_id, 0, &extra_asset_paid, &[]);
         }
 
-        // TODO: Instead of borrow_token_amount (i.e. 1:1 ratio), calculate how much collateral amount was repaid
-        debt_position.collateral_amount -= borrow_token_amount;
-        if debt_position.collateral_amount == 0 {
-            self.debt_positions().remove(debt_position_id);
+        borrow_position.lend_tokens.amount -= borrow_token_amount;
+        if borrow_position.lend_tokens.amount == 0 {
+            self.borrow_position(borrow_token_nonce).clear();
         } else {
-            let _ = self
-                .debt_positions()
-                .insert(debt_position_id.clone(), debt_position.clone());
+            self.borrow_position(borrow_token_nonce)
+                .set(&borrow_position);
         }
 
         self.send()
             .esdt_local_burn(borrow_token_id, borrow_token_nonce, borrow_token_amount);
 
-        // Same here, use calculated amount of repaid collateral instead of borrow_token_amount
-        Ok((
-            debt_position.collateral_identifier,
-            borrow_token_amount.clone(),
-            debt_position.timestamp,
-        )
-            .into())
+        self.send().direct(
+            &initial_caller,
+            borrow_position.lend_tokens.get_token_id_as_ref(),
+            borrow_position.lend_tokens.get_token_nonce(),
+            &borrow_token_amount,
+            &[],
+        );
+
+        Ok(())
     }
 
     #[only_owner]
@@ -261,48 +241,39 @@ pub trait LiquidityModule:
     #[endpoint]
     fn liquidate(
         &self,
-        position_id: BoxedBytes,
+        borrow_position_nonce: u64,
+        initial_caller: Address,
         #[payment_token] token: TokenIdentifier,
         #[payment_amount] amount: Self::BigUint,
-    ) -> SCResult<LiquidateData<Self::BigUint>> {
+    ) -> SCResult<()> {
+        self.require_non_zero_address(&initial_caller)?;
         require!(amount > 0, "amount must be bigger then 0");
         require!(
             token == self.pool_asset().get(),
             "asset is not supported by this pool"
         );
 
-        let mut debt_position = self.debt_positions().get(&position_id).unwrap_or_default();
-
         require!(
-            debt_position != DebtPosition::default(),
-            "invalid debt position id"
+            !self.borrow_position(borrow_position_nonce).is_empty(),
+            "Position is empty"
         );
-        require!(
-            !debt_position.is_liquidated,
-            "position is already liquidated"
+        let borrow_position = self.borrow_position(borrow_position_nonce).get();
+
+        // TODO: do the actual computation here.
+        // require!(
+        //     debt_position.health_factor < self.health_factor_threshold().get(),
+        //     "the health factor is not low enough"
+        // );
+
+        //TODO: do the checks against Liquidation Threshold.
+        self.send().direct(
+            &initial_caller,
+            borrow_position.lend_tokens.get_token_id_as_ref(),
+            borrow_position.lend_tokens.get_token_nonce(),
+            borrow_position.lend_tokens.get_amount_as_ref(),
+            &[],
         );
-        require!(
-            debt_position.health_factor < self.health_factor_threshold().get(),
-            "the health factor is not low enough"
-        );
 
-        let interest = self.get_debt_interest(&debt_position.size, debt_position.timestamp)?;
-
-        require!(
-            debt_position.size.clone() + interest == amount,
-            "position can't be liquidated, not enough or to much tokens send"
-        );
-
-        debt_position.is_liquidated = true;
-
-        self.debt_positions()
-            .insert(position_id, debt_position.clone());
-
-        let liquidate_data = LiquidateData {
-            collateral_token: debt_position.collateral_identifier,
-            amount: debt_position.size,
-        };
-
-        Ok(liquidate_data)
+        Ok(())
     }
 }

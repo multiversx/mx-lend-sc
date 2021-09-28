@@ -103,17 +103,6 @@ pub trait UtilsModule:
         )
     }
 
-    #[view(debtPosition)]
-    fn view_debt_position(&self, position_id: BoxedBytes) -> Option<DebtPosition<Self::BigUint>> {
-        self.debt_positions().get(&position_id)
-    }
-
-    #[view(getPositionInterest)]
-    fn get_debt_position_interest(&self, position_id: BoxedBytes) -> SCResult<Self::BigUint> {
-        let debt_position = self.debt_positions().get(&position_id).unwrap_or_default();
-        self.get_debt_interest(&debt_position.size, debt_position.timestamp)
-    }
-
     fn get_timestamp_diff(&self, timestamp: u64) -> SCResult<u64> {
         let current_time = self.blockchain().get_block_timestamp();
         require!(current_time >= timestamp, "Invalid timestamp");
