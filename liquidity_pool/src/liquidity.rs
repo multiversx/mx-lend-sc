@@ -142,10 +142,10 @@ pub trait LiquidityModule:
         );
 
         let pool_asset = self.pool_asset().get();
-        let metadata = self.deposit_position(token_nonce).get();
+        let mut deposit = self.deposit_position(token_nonce).get();
 
         let deposit_rate = self.get_deposit_rate();
-        let time_diff = self.get_timestamp_diff(metadata.timestamp)?;
+        let time_diff = self.get_timestamp_diff(deposit.timestamp)?;
         let withdrawal_amount =
             self.compute_withdrawal_amount(&amount, &time_diff.into(), &deposit_rate);
 
@@ -154,6 +154,13 @@ pub trait LiquidityModule:
             *asset_reserve -= &withdrawal_amount;
             Ok(())
         })?;
+
+        deposit.amount -= &amount;
+        if deposit.amount == 0 {
+            self.deposit_position(token_nonce).clear();
+        } else {
+            self.deposit_position(token_nonce).set(&deposit);
+        }
 
         self.send()
             .esdt_local_burn(&lend_token, token_nonce, &amount);
