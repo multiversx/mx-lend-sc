@@ -65,17 +65,17 @@ pub trait LiquidityModule:
         collateral_tokens: TokenAmountPair<Self::BigUint>,
         loan_to_value: Self::BigUint,
     ) -> SCResult<()> {
-        self.require_amount_greater_than_zero(collateral_tokens.get_amount_as_ref())?;
+        self.require_amount_greater_than_zero(&collateral_tokens.amount)?;
         self.require_non_zero_address(&initial_caller)?;
 
         let borrow_token_id = self.borrow_token().get();
         let pool_token_id = self.pool_asset().get();
 
-        let collateral_data = self.get_token_price_data(collateral_tokens.get_token_id_as_ref())?;
+        let collateral_data = self.get_token_price_data(&collateral_tokens.token_id)?;
         let pool_asset_data = self.get_token_price_data(&pool_token_id)?;
 
         let borrow_amount_in_dollars = self.compute_borrowable_amount(
-            collateral_tokens.get_amount_as_ref(),
+            &collateral_tokens.amount,
             &collateral_data.price,
             &loan_to_value,
             collateral_data.decimals,
@@ -93,10 +93,9 @@ pub trait LiquidityModule:
             "insufficient funds to perform loan"
         );
 
-        let new_nonce =
-            self.mint_position_tokens(&borrow_token_id, lend_tokens.get_amount_as_ref());
+        let new_nonce = self.mint_position_tokens(&borrow_token_id, &lend_tokens.amount);
 
-        let lend_tokens_amount = lend_tokens.get_amount();
+        let lend_tokens_amount = lend_tokens.amount.clone();
         let timestamp = self.blockchain().get_block_timestamp();
         let borrow_position = BorrowPosition::new(timestamp, lend_tokens);
         self.borrow_position(new_nonce).set(&borrow_position);
@@ -236,8 +235,8 @@ pub trait LiquidityModule:
         // Same here, use calculated amount of repaid collateral instead of borrow_token_amount
         self.send().direct(
             &initial_caller,
-            borrow_position.lend_tokens.get_token_id_as_ref(),
-            borrow_position.lend_tokens.get_token_nonce(),
+            &borrow_position.lend_tokens.token_id,
+            borrow_position.lend_tokens.nonce,
             borrow_token_amount,
             &[],
         );
@@ -277,9 +276,9 @@ pub trait LiquidityModule:
         //TODO: do the checks against Liquidation Threshold.
         self.send().direct(
             &initial_caller,
-            borrow_position.lend_tokens.get_token_id_as_ref(),
-            borrow_position.lend_tokens.get_token_nonce(),
-            borrow_position.lend_tokens.get_amount_as_ref(),
+            &borrow_position.lend_tokens.token_id,
+            borrow_position.lend_tokens.nonce,
+            &borrow_position.lend_tokens.amount,
             &[],
         );
 

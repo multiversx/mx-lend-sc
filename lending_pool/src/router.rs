@@ -144,7 +144,7 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
     }
 
     #[only_owner]
-    #[endpoint(setAssetloan_to_value)]
+    #[endpoint(setAssetLoanToValue)]
     fn set_asset_loan_to_value(&self, asset: TokenIdentifier, loan_to_value: Self::BigUint) {
         self.asset_loan_to_value(&asset).set(&loan_to_value);
     }

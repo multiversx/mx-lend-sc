@@ -26,14 +26,9 @@ pub struct IssueData {
 }
 
 #[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, TypeAbi, PartialEq, Clone)]
-pub struct TokenUUID {
+pub struct TokenAmountPair<BigUint: BigUintApi> {
     pub token_id: TokenIdentifier,
     pub nonce: u64,
-}
-
-#[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, TypeAbi, PartialEq, Clone)]
-pub struct TokenAmountPair<BigUint: BigUintApi> {
-    pub token_uuid: TokenUUID,
     pub amount: BigUint,
 }
 
@@ -49,35 +44,13 @@ pub struct BorrowPosition<BigUint: BigUintApi> {
     pub lend_tokens: TokenAmountPair<BigUint>,
 }
 
-impl TokenUUID {
-    pub fn new(token_id: TokenIdentifier, nonce: u64) -> Self {
-        TokenUUID { token_id, nonce }
-    }
-}
-
 impl<BigUint: BigUintApi> TokenAmountPair<BigUint> {
-    pub fn new(token_uuid: TokenUUID, amount: BigUint) -> Self {
-        TokenAmountPair { token_uuid, amount }
-    }
-
-    pub fn get_token_id(&self) -> TokenIdentifier {
-        self.token_uuid.token_id.clone()
-    }
-
-    pub fn get_token_nonce(&self) -> u64 {
-        self.token_uuid.nonce
-    }
-
-    pub fn get_amount(&self) -> BigUint {
-        self.amount.clone()
-    }
-
-    pub fn get_token_id_as_ref(&self) -> &TokenIdentifier {
-        &self.token_uuid.token_id
-    }
-
-    pub fn get_amount_as_ref(&self) -> &BigUint {
-        &self.amount
+    pub fn new(token_id: TokenIdentifier, nonce: u64, amount: BigUint) -> Self {
+        TokenAmountPair {
+            token_id,
+            nonce,
+            amount,
+        }
     }
 }
 
