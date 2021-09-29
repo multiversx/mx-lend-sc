@@ -57,16 +57,24 @@ pub trait LiquidityModule:
     }
 
     #[only_owner]
+    #[payable("*")]
     #[endpoint]
     fn borrow(
         &self,
+        #[payment_token] payment_lend_token_id: TokenIdentifier,
+        #[payment_nonce] payment_lend_token_nonce: u64,
+        #[payment_amount] payment_lend_amount: Self::BigUint,
         initial_caller: Address,
-        lend_tokens: TokenAmountPair<Self::BigUint>,
         collateral_tokens: TokenAmountPair<Self::BigUint>,
         loan_to_value: Self::BigUint,
     ) -> SCResult<()> {
         self.require_amount_greater_than_zero(&collateral_tokens.amount)?;
         self.require_non_zero_address(&initial_caller)?;
+        let lend_tokens = TokenAmountPair::new(
+            payment_lend_token_id,
+            payment_lend_token_nonce,
+            payment_lend_amount,
+        );
 
         let borrow_token_id = self.borrow_token().get();
         let pool_token_id = self.pool_asset().get();
@@ -81,10 +89,8 @@ pub trait LiquidityModule:
             collateral_data.decimals,
         );
 
-        let pool_asset_dec_big = Self::BigUint::from(pool_asset_data.decimals as u64);
-
-        let borrow_amount_in_tokens =
-            (&borrow_amount_in_dollars / &pool_asset_data.price) / pool_asset_dec_big;
+        let borrow_amount_in_tokens = (&borrow_amount_in_dollars / &pool_asset_data.price)
+            * Self::BigUint::from(10u64).pow(pool_asset_data.decimals as u32);
 
         let asset_reserve = self.reserves(&pool_token_id).get();
 

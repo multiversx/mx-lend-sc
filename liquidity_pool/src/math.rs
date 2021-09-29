@@ -83,10 +83,8 @@ pub trait MathModule {
         decimals: u8,
     ) -> Self::BigUint {
         let bp = Self::BigUint::from(BP);
-        let dec_big = Self::BigUint::from(decimals as u64);
-
         let total_collateral = amount * price;
 
-        ((&total_collateral * loan_to_value) / bp) / dec_big
+        ((&total_collateral * loan_to_value) / bp) / Self::BigUint::from(10u64).pow(decimals as u32)
     }
 }

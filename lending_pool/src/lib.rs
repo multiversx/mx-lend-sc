@@ -90,14 +90,15 @@ pub trait LendingPool:
         let borrow_token_pool_address = self.get_pool_address_non_zero(&asset_to_borrow)?;
         let loan_to_value = self.get_loan_to_value_exists_and_non_zero(&collateral_token_id)?;
 
-        let lend_tokens =
-            TokenAmountPair::new(payment_lend_id, payment_nonce, payment_amount.clone());
-        let collateral_tokens = TokenAmountPair::new(collateral_token_id, 0, payment_amount);
-
+        //L tokens for a specific token X are 1:1 with deposited X tokens
+        let collateral_amount = payment_amount.clone();
+        let collateral_tokens = TokenAmountPair::new(collateral_token_id, 0, collateral_amount);
         self.liquidity_pool_proxy(borrow_token_pool_address)
             .borrow(
+                payment_lend_id,
+                payment_nonce,
+                payment_amount,
                 initial_caller,
-                lend_tokens,
                 collateral_tokens,
                 loan_to_value,
             )

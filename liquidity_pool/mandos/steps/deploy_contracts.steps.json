@@ -8,6 +8,11 @@
 					"creatorAddress": "address:owner",
 					"creatorNonce": "0",
 					"newAddress": "sc:liqpool"
+				},
+				{
+					"creatorAddress": "address:owner",
+					"creatorNonce": "1",
+					"newAddress": "sc:aggregator"
 				}
 			]
 		},
@@ -26,6 +31,24 @@
 					"800000000",
 					"100000000"
 				],
+				"gasLimit": "100,000,000",
+				"gasPrice": "0"
+			},
+			"expect": {
+				"status": "0",
+				"logs": [],
+				"gas": "*",
+				"refund": "*"
+			}
+		},
+		{
+			"step": "scDeploy",
+			"txId": "deploy",
+			"tx": {
+				"from": "address:owner",
+				"value": "0",
+				"contractCode": "file:../../../aggregator_mock/output/aggregator_mock.wasm",
+				"arguments": [],
 				"gasLimit": "100,000,000",
 				"gasPrice": "0"
 			},
