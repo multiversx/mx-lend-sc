@@ -96,7 +96,13 @@ pub trait MathModule {
         borrowed_value_in_dollars: &Self::BigUint,
         liquidation_threshold: &Self::BigUint,
     ) -> Self::BigUint {
-        &(collateral_value_in_dollars * liquidation_threshold) / borrowed_value_in_dollars
+        let bp = self.get_base_precision();
+
+        let allowed_collateral_in_dollars = collateral_value_in_dollars * liquidation_threshold;
+
+        let health_factor = &allowed_collateral_in_dollars / borrowed_value_in_dollars;
+
+        health_factor / bp
     }
 
     fn get_base_precision(&self) -> Self::BigUint {

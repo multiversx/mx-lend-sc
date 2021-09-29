@@ -152,7 +152,7 @@ pub trait LendingPool:
         let asset_address = self.get_pool_address(&asset);
 
         self.liquidity_pool_proxy(asset_address)
-            .liquidate(borrow_position_nonce, initial_caller, asset, amount)
+            .liquidate(asset, amount, borrow_position_nonce, initial_caller)
             .execute_on_dest_context();
 
         Ok(())
