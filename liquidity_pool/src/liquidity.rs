@@ -250,15 +250,16 @@ pub trait LiquidityModule:
     #[endpoint]
     fn liquidate(
         &self,
+        #[payment_token] payment_token_id: TokenIdentifier,
+        #[payment_amount] payment_amount: Self::BigUint,
         borrow_position_nonce: u64,
         initial_caller: Address,
-        #[payment_token] token: TokenIdentifier,
-        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
         self.require_non_zero_address(&initial_caller)?;
-        require!(amount > 0, "amount must be bigger then 0");
+        self.require_amount_greater_than_zero(&payment_amount)?;
+
         require!(
-            token == self.pool_asset().get(),
+            payment_token_id == self.pool_asset().get(),
             "asset is not supported by this pool"
         );
 
@@ -266,6 +267,7 @@ pub trait LiquidityModule:
             !self.borrow_position(borrow_position_nonce).is_empty(),
             "position was repaid or already liquidated"
         );
+
         let borrow_position = self.borrow_position(borrow_position_nonce).get();
 
         // TODO: do the actual computation here.
@@ -275,6 +277,7 @@ pub trait LiquidityModule:
         // );
 
         //TODO: do the checks against Liquidation Threshold.
+
         self.send().direct(
             &initial_caller,
             borrow_position.lend_tokens.get_token_id_as_ref(),
