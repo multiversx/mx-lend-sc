@@ -105,7 +105,7 @@ pub trait LiquidityModule:
             timestamp,
             lend_tokens,
             borrow_amount_in_tokens.clone(),
-            collateral_tokens.token_id.clone(),
+            collateral_tokens.token_id,
         );
 
         self.borrow_position(new_nonce).set(&borrow_position);
@@ -184,7 +184,7 @@ pub trait LiquidityModule:
     #[payable("*")]
     #[endpoint]
     fn repay(&self, initial_caller: Address) -> SCResult<()> {
-        let mut lend_token_amount_to_send_back = Self::BigUint::zero();
+        let lend_token_amount_to_send_back: Self::BigUint;
         self.require_non_zero_address(&initial_caller)?;
 
         let transfers = self.get_all_esdt_transfers();
@@ -229,17 +229,15 @@ pub trait LiquidityModule:
                 .direct(&initial_caller, asset_token_id, 0, &extra_asset_paid, &[]);
         }
 
-        if self.is_full_repay(&borrow_position, &borrow_token_amount) {
+        if self.is_full_repay(&borrow_position, borrow_token_amount) {
             lend_token_amount_to_send_back = borrow_position.lend_tokens.amount;
             self.borrow_position(borrow_token_nonce).clear();
         } else {
-            let lend_token_amount_to_send_back = self.rule_of_three(
+            lend_token_amount_to_send_back = self.rule_of_three(
                 &borrow_position.lend_tokens.amount,
                 borrow_token_amount,
                 &borrow_position.borrowed_amount,
             );
-
-            self.debug().set(&lend_token_amount_to_send_back);
 
             require!(
                 lend_token_amount_to_send_back > 0,
@@ -255,7 +253,7 @@ pub trait LiquidityModule:
         self.borrowed_amount()
             .update(|total| *total -= borrow_token_amount);
 
-        self.reserves(&asset_token_id)
+        self.reserves(asset_token_id)
             .update(|total| *total += &total_owed);
 
         self.send()
@@ -271,9 +269,6 @@ pub trait LiquidityModule:
 
         Ok(())
     }
-
-    #[storage_mapper("debug")]
-    fn debug(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
 
     #[only_owner]
     #[payable("*")]
@@ -325,7 +320,7 @@ pub trait LiquidityModule:
 
         require!(health_factor < 1, "health not low enough for liquidation");
         require!(
-            &asset_amount >= &borrow_position.borrowed_amount,
+            asset_amount >= borrow_position.borrowed_amount,
             "insufficient funds for liquidation"
         );
 
