@@ -184,7 +184,6 @@ pub trait LiquidityModule:
     #[payable("*")]
     #[endpoint]
     fn repay(&self, initial_caller: Address) -> SCResult<()> {
-        let lend_token_amount_to_send_back: Self::BigUint;
         self.require_non_zero_address(&initial_caller)?;
 
         let transfers = self.get_all_esdt_transfers();
@@ -215,8 +214,9 @@ pub trait LiquidityModule:
         );
         let mut borrow_position = self.borrow_position(borrow_token_nonce).get();
 
-        let accumulated_debt = self.get_debt_interest(asset_amount, borrow_position.timestamp)?;
-        let total_owed = asset_amount + &accumulated_debt;
+        let accumulated_debt =
+            self.get_debt_interest(borrow_token_amount, borrow_position.timestamp)?;
+        let total_owed = borrow_token_amount + &accumulated_debt;
 
         require!(
             asset_amount >= &total_owed,
@@ -229,6 +229,7 @@ pub trait LiquidityModule:
                 .direct(&initial_caller, asset_token_id, 0, &extra_asset_paid, &[]);
         }
 
+        let lend_token_amount_to_send_back: Self::BigUint;
         if self.is_full_repay(&borrow_position, borrow_token_amount) {
             lend_token_amount_to_send_back = borrow_position.lend_tokens.amount;
             self.borrow_position(borrow_token_nonce).clear();
