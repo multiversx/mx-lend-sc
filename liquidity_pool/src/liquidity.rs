@@ -278,8 +278,8 @@ pub trait LiquidityModule:
         &self,
         #[payment_token] asset_token_id: TokenIdentifier,
         #[payment_amount] asset_amount: Self::BigUint,
-        borrow_position_nonce: u64,
         initial_caller: Address,
+        borrow_position_nonce: u64,
     ) -> SCResult<()> {
         self.require_non_zero_address(&initial_caller)?;
         self.require_amount_greater_than_zero(&asset_amount)?;
@@ -312,7 +312,7 @@ pub trait LiquidityModule:
         let borrowed_value_in_dollars =
             (&asset_amount * &asset_price_data.price) / asset_price_decs;
 
-        let liquidation_threshold = Self::BigUint::from(0u64);
+        let liquidation_threshold = self.liquidation_threshold().get();
         let health_factor = self.compute_health_factor(
             &collateral_value_in_dollars,
             &borrowed_value_in_dollars,
@@ -324,6 +324,12 @@ pub trait LiquidityModule:
             asset_amount >= borrow_position.borrowed_amount,
             "insufficient funds for liquidation"
         );
+
+        self.borrowed_amount()
+            .update(|total| *total -= &borrow_position.borrowed_amount);
+
+        self.reserves(&asset_token_id)
+            .update(|total| *total += &asset_amount);
 
         self.borrow_position(borrow_position_nonce).clear();
 

@@ -46,11 +46,11 @@ pub trait StorageModule {
     #[storage_mapper("pool_params")]
     fn pool_params(&self) -> SingleValueMapper<Self::Storage, PoolParams<Self::BigUint>>;
 
-    #[view(getHealthFactorThreshold)]
-    #[storage_mapper("health_factor_threshold")]
-    fn health_factor_threshold(&self) -> SingleValueMapper<Self::Storage, u32>;
-
     #[view(getTotalBorrow)]
     #[storage_mapper("borrowed_amount")]
     fn borrowed_amount(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
+
+    #[view(getLiquidationThreshold)]
+    #[storage_mapper("liquidation_threshold")]
+    fn liquidation_threshold(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
 }
