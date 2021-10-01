@@ -29,7 +29,8 @@
 					"40000000",
 					"1000000000",
 					"800000000",
-					"100000000"
+					"100000000",
+					"500000000"
 				],
 				"gasLimit": "100,000,000",
 				"gasPrice": "0"
@@ -67,7 +68,8 @@
 					"balance": "0",
 					"storage": {
 						"str:pool_asset": "str:WBT-abcdef",
-						"str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000"
+						"str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000",
+						"str:liquidation_threshold": "500000000"
 					},
 					"code": "file:../../output/liquidity_pool.wasm",
 					"owner": "address:owner"

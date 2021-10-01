@@ -114,6 +114,7 @@
                         "str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000",
                         "str:lend_token": "str:LEND-abcdef",
                         "str:borrow_token": "str:BORROW-abcdef",
+                        "str:liquidation_threshold": "500000000",
                         "str:reserves|nested:str:WBT-abcdef": "150,000",
                         "str:borrowed_amount": "50,000",
                         "str:deposit_position|u64:1": "u64:0|biguint:100,000",

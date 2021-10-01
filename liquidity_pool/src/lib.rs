@@ -34,6 +34,7 @@ pub trait LiquidityPool:
         r_slope2: Self::BigUint,
         u_optimal: Self::BigUint,
         reserve_factor: Self::BigUint,
+        liquidation_threshold: Self::BigUint,
     ) {
         self.pool_asset().set(&asset);
         self.pool_params().set(&PoolParams {
@@ -43,12 +44,6 @@ pub trait LiquidityPool:
             u_optimal,
             reserve_factor,
         });
-    }
-
-    #[only_owner]
-    #[endpoint(setHealthFactorThreshold)]
-    fn set_health_factor_threshold(&self, health_factor_threashdol: u32) {
-        self.health_factor_threshold()
-            .set(&health_factor_threashdol);
+        self.liquidation_threshold().set(&liquidation_threshold);
     }
 }

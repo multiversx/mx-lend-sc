@@ -7,27 +7,18 @@
         },
         {
             "step": "scCall",
-            "txId": "repay",
+            "txId": "setLatestPriceFeed",
             "tx": {
                 "from": "address:owner",
-                "to": "sc:liqpool",
+                "to": "sc:aggregator",
                 "value": "0",
-                "esdt": [
-                    {
-                        "tokenIdentifier": "str:BORROW-abcdef",
-                        "value": "25,000",
-                        "nonce": "1"
-                    },
-                    {
-                        "tokenIdentifier": "str:WBT-abcdef",
-                        "value": "25,000"
-                    }
-                ],
-                "function": "repay",
+                "function": "setLatestPriceFeed",
                 "arguments": [
-                    "address:owner"
+                    "str:WBT",
+                    "str:USD",
+                    "10000"
                 ],
-                "gasLimit": "200,000,000",
+                "gasLimit": "100,000,000",
                 "gasPrice": "0"
             },
             "expect": {
@@ -46,24 +37,31 @@
                 "value": "0",
                 "esdt": [
                     {
-                        "tokenIdentifier": "str:BORROW-abcdef",
-                        "value": "25,000",
-                        "nonce": "1"
-                    },
-                    {
                         "tokenIdentifier": "str:WBT-abcdef",
-                        "value": "25,000"
+                        "value": "50,000"
                     }
                 ],
-                "function": "repay",
+                "function": "liquidate",
                 "arguments": [
-                    "address:owner"
+                    "address:owner",
+                    "1"
                 ],
-                "gasLimit": "200,000,000",
+                "gasLimit": "100,000,000",
                 "gasPrice": "0"
             },
             "expect": {
-                "out": [],
+                "out": [
+                    "1",
+                    "str:WBT",
+                    "str:USD",
+                    "10000",
+                    "2",
+                    "1",
+                    "str:SOME",
+                    "str:USD",
+                    "1000",
+                    "2"
+                ],
                 "status": "",
                 "gas": "*",
                 "refund": "*"
@@ -94,6 +92,10 @@
                                     "attributes": "*"
                                 }
                             ]
+                        },
+                        "str:BORROW-abcdef": {
+                            "nonce": "1",
+                            "balance": "50,000"
                         },
                         "str:SOMEL-abcdef": {
                             "nonce": "1",
@@ -131,9 +133,9 @@
                         "str:lend_token": "str:LEND-abcdef",
                         "str:borrow_token": "str:BORROW-abcdef",
                         "str:reserves|nested:str:WBT-abcdef": "200,000",
-                        "str:liquidation_threshold": "500000000",
                         "str:deposit_position|u64:1": "u64:0|biguint:100,000",
-                        "str:deposit_position|u64:2": "u64:0|biguint:100,000"
+                        "str:deposit_position|u64:2": "u64:0|biguint:100,000",
+                        "str:liquidation_threshold": "500000000"
                     },
                     "code": "file:../output/liquidity_pool.wasm",
                     "owner": "address:owner"
