@@ -3,8 +3,8 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-pub const SECONDS_PER_YEAR: u64 = 31536000;
 pub const BP: u64 = 1000000000;
+pub const SECONDS_PER_YEAR: u64 = 31536000;
 pub const ESDT_ISSUE_COST: u64 = 5000000000000000000;
 pub const LEND_TOKEN_PREFIX: &[u8] = b"L";
 pub const BORROW_TOKEN_PREFIX: &[u8] = b"B";
@@ -42,6 +42,8 @@ pub struct DepositPosition<BigUint: BigUintApi> {
 pub struct BorrowPosition<BigUint: BigUintApi> {
     pub timestamp: u64,
     pub lend_tokens: TokenAmountPair<BigUint>,
+    pub borrowed_amount: BigUint,
+    pub collateral_token_id: TokenIdentifier,
 }
 
 impl<BigUint: BigUintApi> TokenAmountPair<BigUint> {
@@ -61,10 +63,17 @@ impl<BigUint: BigUintApi> DepositPosition<BigUint> {
 }
 
 impl<BigUint: BigUintApi> BorrowPosition<BigUint> {
-    pub fn new(timestamp: u64, lend_tokens: TokenAmountPair<BigUint>) -> Self {
+    pub fn new(
+        timestamp: u64,
+        lend_tokens: TokenAmountPair<BigUint>,
+        borrowed_amount: BigUint,
+        collateral_token_id: TokenIdentifier,
+    ) -> Self {
         BorrowPosition {
             timestamp,
             lend_tokens,
+            borrowed_amount,
+            collateral_token_id,
         }
     }
 }

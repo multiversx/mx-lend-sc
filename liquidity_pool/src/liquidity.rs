@@ -103,7 +103,13 @@ pub trait LiquidityModule:
 
         let lend_tokens_amount = lend_tokens.amount.clone();
         let timestamp = self.blockchain().get_block_timestamp();
-        let borrow_position = BorrowPosition::new(timestamp, lend_tokens);
+        let borrow_position = BorrowPosition::new(
+            timestamp,
+            lend_tokens,
+            borrow_amount_in_tokens.clone(),
+            collateral_tokens.token_id.clone(),
+        );
+
         self.borrow_position(new_nonce).set(&borrow_position);
 
         self.borrowed_amount()
@@ -255,15 +261,16 @@ pub trait LiquidityModule:
     #[endpoint]
     fn liquidate(
         &self,
+        #[payment_token] asset_token_id: TokenIdentifier,
+        #[payment_amount] asset_amount: Self::BigUint,
         borrow_position_nonce: u64,
         initial_caller: Address,
-        #[payment_token] token: TokenIdentifier,
-        #[payment_amount] amount: Self::BigUint,
     ) -> SCResult<()> {
         self.require_non_zero_address(&initial_caller)?;
-        require!(amount > 0, "amount must be bigger then 0");
+        self.require_amount_greater_than_zero(&asset_amount)?;
+
         require!(
-            token == self.pool_asset().get(),
+            asset_token_id == self.pool_asset().get(),
             "asset is not supported by this pool"
         );
 
@@ -271,15 +278,40 @@ pub trait LiquidityModule:
             !self.borrow_position(borrow_position_nonce).is_empty(),
             "position was repaid or already liquidated"
         );
+
         let borrow_position = self.borrow_position(borrow_position_nonce).get();
+        let collateral_token_id = borrow_position.collateral_token_id.clone();
 
-        // TODO: do the actual computation here.
-        // require!(
-        //     debt_position.health_factor < self.health_factor_threshold().get(),
-        //     "the health factor is not low enough"
-        // );
+        let base_big = Self::BigUint::from(10u64);
 
-        //TODO: do the checks against Liquidation Threshold.
+        let asset_price_data = self.get_token_price_data(&asset_token_id)?;
+        let asset_price_decs = base_big.pow(asset_price_data.decimals as u32);
+
+        let collateral_price_data = self.get_token_price_data(&collateral_token_id)?;
+        let collateral_price_decs = base_big.pow(collateral_price_data.decimals as u32);
+
+        let collateral_amount = borrow_position.lend_tokens.amount.clone();
+        let collateral_value_in_dollars =
+            (collateral_amount * collateral_price_data.price) / collateral_price_decs;
+
+        let borrowed_value_in_dollars =
+            (&asset_amount * &asset_price_data.price) / asset_price_decs;
+
+        let liquidation_threshold = Self::BigUint::from(0u64);
+        let health_factor = self.compute_health_factor(
+            &collateral_value_in_dollars,
+            &borrowed_value_in_dollars,
+            &liquidation_threshold,
+        );
+
+        require!(health_factor < 1, "health not low enough for liquidation");
+        require!(
+            &asset_amount >= &borrow_position.borrowed_amount,
+            "insufficient funds for liquidation"
+        );
+
+        self.borrow_position(borrow_position_nonce).clear();
+
         self.send().direct(
             &initial_caller,
             &borrow_position.lend_tokens.token_id,
