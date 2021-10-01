@@ -99,9 +99,7 @@ pub trait LiquidityModule:
             "insufficient funds to perform loan"
         );
 
-        let new_nonce = self.mint_position_tokens(&borrow_token_id, &lend_tokens.amount);
-
-        let lend_tokens_amount = lend_tokens.amount.clone();
+        let new_nonce = self.mint_position_tokens(&borrow_token_id, &borrow_amount_in_tokens);
         let timestamp = self.blockchain().get_block_timestamp();
         let borrow_position = BorrowPosition::new(
             timestamp,
@@ -122,7 +120,7 @@ pub trait LiquidityModule:
             &initial_caller,
             &borrow_token_id,
             new_nonce,
-            &lend_tokens_amount,
+            &borrow_amount_in_tokens,
             &[],
         );
 
@@ -182,11 +180,11 @@ pub trait LiquidityModule:
         Ok(())
     }
 
-    // Returns the asset token ID, the amount of debt paid
     #[only_owner]
     #[payable("*")]
     #[endpoint]
     fn repay(&self, initial_caller: Address) -> SCResult<()> {
+        let mut lend_token_amount_to_send_back = Self::BigUint::zero();
         self.require_non_zero_address(&initial_caller)?;
 
         let transfers = self.get_all_esdt_transfers();
@@ -217,44 +215,65 @@ pub trait LiquidityModule:
         );
         let mut borrow_position = self.borrow_position(borrow_token_nonce).get();
 
-        let accumulated_debt =
-            self.get_debt_interest(borrow_token_amount, borrow_position.timestamp)?;
-        let total_owed = borrow_token_amount + &accumulated_debt;
+        let accumulated_debt = self.get_debt_interest(asset_amount, borrow_position.timestamp)?;
+        let total_owed = asset_amount + &accumulated_debt;
 
         require!(
             asset_amount >= &total_owed,
             "Not enough asset tokens deposited"
         );
 
-        let extra_asset_paid = asset_amount - &total_owed;
-        if extra_asset_paid > 0 {
+        if asset_amount > &total_owed {
+            let extra_asset_paid = asset_amount - &total_owed;
             self.send()
                 .direct(&initial_caller, asset_token_id, 0, &extra_asset_paid, &[]);
         }
 
-        // TODO: Instead of borrow_token_amount (i.e. 1:1 ratio), calculate how much collateral amount was repaid
-        borrow_position.lend_tokens.amount -= borrow_token_amount;
-        if borrow_position.lend_tokens.amount == 0 {
+        if self.is_full_repay(&borrow_position, &borrow_token_amount) {
+            lend_token_amount_to_send_back = borrow_position.lend_tokens.amount;
             self.borrow_position(borrow_token_nonce).clear();
         } else {
+            let lend_token_amount_to_send_back = self.rule_of_three(
+                &borrow_position.lend_tokens.amount,
+                borrow_token_amount,
+                &borrow_position.borrowed_amount,
+            );
+
+            self.debug().set(&lend_token_amount_to_send_back);
+
+            require!(
+                lend_token_amount_to_send_back > 0,
+                "repay too little. lend tokens amount is zero"
+            );
+
+            borrow_position.borrowed_amount -= borrow_token_amount;
+            borrow_position.lend_tokens.amount -= &lend_token_amount_to_send_back;
             self.borrow_position(borrow_token_nonce)
                 .set(&borrow_position);
         }
 
+        self.borrowed_amount()
+            .update(|total| *total -= borrow_token_amount);
+
+        self.reserves(&asset_token_id)
+            .update(|total| *total += &total_owed);
+
         self.send()
             .esdt_local_burn(borrow_token_id, borrow_token_nonce, borrow_token_amount);
 
-        // Same here, use calculated amount of repaid collateral instead of borrow_token_amount
         self.send().direct(
             &initial_caller,
             &borrow_position.lend_tokens.token_id,
             borrow_position.lend_tokens.nonce,
-            borrow_token_amount,
+            &lend_token_amount_to_send_back,
             &[],
         );
 
         Ok(())
     }
+
+    #[storage_mapper("debug")]
+    fn debug(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
 
     #[only_owner]
     #[payable("*")]

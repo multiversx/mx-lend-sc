@@ -1,0 +1,47 @@
+{
+    "name": "withdraw",
+    "steps": [
+        {
+            "step": "externalSteps",
+            "path": "borrow.scen.json"
+        },
+        {
+            "step": "dumpState"
+        },
+        {
+            "step": "scCall",
+            "txId": "repay",
+            "tx": {
+                "from": "address:owner",
+                "to": "sc:liqpool",
+                "value": "0",
+                "esdt": [
+                    {
+                        "tokenIdentifier": "str:BORROW-abcdef",
+                        "value": "25,000",
+                        "nonce": "1"
+                    },
+                    {
+                        "tokenIdentifier": "str:WBT-abcdef",
+                        "value": "25,000"
+                    }
+                ],
+                "function": "repay",
+                "arguments": [
+                    "address:owner"
+                ],
+                "gasLimit": "100,000,000",
+                "gasPrice": "0"
+            },
+            "expect": {
+                "out": [],
+                "status": "",
+                "gas": "*",
+                "refund": "*"
+            }
+        },
+        {
+            "step": "dumpState"
+        }
+    ]
+}
