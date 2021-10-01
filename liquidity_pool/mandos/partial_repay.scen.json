@@ -3,43 +3,67 @@
     "steps": [
         {
             "step": "externalSteps",
-            "path": "deposit.scen.json"
+            "path": "borrow.scen.json"
         },
         {
             "step": "scCall",
-            "txId": "withdraw",
+            "txId": "repay",
             "tx": {
                 "from": "address:owner",
                 "to": "sc:liqpool",
                 "value": "0",
-                "esdt": {
-                    "tokenIdentifier": "str:SOMEL-abcdef",
-                    "value": "100,000",
-                    "nonce": "1"
-                },
-                "function": "borrow",
-                "arguments": [
-                    "address:owner",
-                    "nested:str:SOME-abcdef|u64:0|biguint:100,000",
-                    "500,000,000"
+                "esdt": [
+                    {
+                        "tokenIdentifier": "str:BORROW-abcdef",
+                        "value": "25,000",
+                        "nonce": "1"
+                    },
+                    {
+                        "tokenIdentifier": "str:WBT-abcdef",
+                        "value": "25,000"
+                    }
                 ],
-                "gasLimit": "100,000,000",
+                "function": "repay",
+                "arguments": [
+                    "address:owner"
+                ],
+                "gasLimit": "200,000,000",
                 "gasPrice": "0"
             },
             "expect": {
-                "out": [
-                    "1",
-                    "str:SOME",
-                    "str:USD",
-                    "1,000",
-                    "2",
-                    "1",
-                    "str:WBT",
-                    "str:USD",
-                    "1,000",
-                    "2",
-                    "1"
+                "out": [],
+                "status": "",
+                "gas": "*",
+                "refund": "*"
+            }
+        },
+        {
+            "step": "scCall",
+            "txId": "repay",
+            "tx": {
+                "from": "address:owner",
+                "to": "sc:liqpool",
+                "value": "0",
+                "esdt": [
+                    {
+                        "tokenIdentifier": "str:BORROW-abcdef",
+                        "value": "25,000",
+                        "nonce": "1"
+                    },
+                    {
+                        "tokenIdentifier": "str:WBT-abcdef",
+                        "value": "25,000"
+                    }
                 ],
+                "function": "repay",
+                "arguments": [
+                    "address:owner"
+                ],
+                "gasLimit": "200,000,000",
+                "gasPrice": "0"
+            },
+            "expect": {
+                "out": [],
                 "status": "",
                 "gas": "*",
                 "refund": "*"
@@ -52,7 +76,7 @@
                     "nonce": "*",
                     "balance": "1,000,000,000,000",
                     "esdt": {
-                        "str:WBT-abcdef": "999,999,850,000",
+                        "str:WBT-abcdef": "999,999,800,000",
                         "str:LEND-abcdef": {
                             "instances": [
                                 {
@@ -73,11 +97,7 @@
                         },
                         "str:SOMEL-abcdef": {
                             "nonce": "1",
-                            "balance": "999,999,900,000"
-                        },
-                        "str:BORROW-abcdef": {
-                            "nonce": "1",
-                            "balance": "50,000"
+                            "balance": "1,000,000,000,000"
                         }
                     },
                     "storage": {}
@@ -95,18 +115,14 @@
                             ]
                         },
                         "str:BORROW-abcdef": {
+                            "lastNonce": "1",
                             "roles": [
                                 "ESDTRoleNFTCreate",
                                 "ESDTRoleNFTAddQuantity",
                                 "ESDTRoleNFTBurn"
-                            ],
-                            "lastNonce": "1"
+                            ]
                         },
-                        "str:SOMEL-abcdef": {
-                            "nonce": "1",
-                            "balance": "100,000"
-                        },
-                        "str:WBT-abcdef": "150,000"
+                        "str:WBT-abcdef": "200,000"
                     },
                     "storage": {
                         "str:priceAggregatorAddress": "sc:aggregator",
@@ -114,11 +130,9 @@
                         "str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000",
                         "str:lend_token": "str:LEND-abcdef",
                         "str:borrow_token": "str:BORROW-abcdef",
-                        "str:reserves|nested:str:WBT-abcdef": "150,000",
-                        "str:borrowed_amount": "50,000",
+                        "str:reserves|nested:str:WBT-abcdef": "200,000",
                         "str:deposit_position|u64:1": "u64:0|biguint:100,000",
-                        "str:deposit_position|u64:2": "u64:0|biguint:100,000",
-                        "str:borrow_position|u64:1": "u64:0|nested:str:SOMEL-abcdef|u64:1|biguint:100,000|biguint:50,000|nested:str:SOME-abcdef"
+                        "str:deposit_position|u64:2": "u64:0|biguint:100,000"
                     },
                     "code": "file:../output/liquidity_pool.wasm",
                     "owner": "address:owner"

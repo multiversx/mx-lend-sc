@@ -99,15 +99,13 @@ pub trait LiquidityModule:
             "insufficient funds to perform loan"
         );
 
-        let new_nonce = self.mint_position_tokens(&borrow_token_id, &lend_tokens.amount);
-
-        let lend_tokens_amount = lend_tokens.amount.clone();
+        let new_nonce = self.mint_position_tokens(&borrow_token_id, &borrow_amount_in_tokens);
         let timestamp = self.blockchain().get_block_timestamp();
         let borrow_position = BorrowPosition::new(
             timestamp,
             lend_tokens,
             borrow_amount_in_tokens.clone(),
-            collateral_tokens.token_id.clone(),
+            collateral_tokens.token_id,
         );
 
         self.borrow_position(new_nonce).set(&borrow_position);
@@ -122,7 +120,7 @@ pub trait LiquidityModule:
             &initial_caller,
             &borrow_token_id,
             new_nonce,
-            &lend_tokens_amount,
+            &borrow_amount_in_tokens,
             &[],
         );
 
@@ -182,7 +180,6 @@ pub trait LiquidityModule:
         Ok(())
     }
 
-    // Returns the asset token ID, the amount of debt paid
     #[only_owner]
     #[payable("*")]
     #[endpoint]
@@ -226,30 +223,48 @@ pub trait LiquidityModule:
             "Not enough asset tokens deposited"
         );
 
-        let extra_asset_paid = asset_amount - &total_owed;
-        if extra_asset_paid > 0 {
+        if asset_amount > &total_owed {
+            let extra_asset_paid = asset_amount - &total_owed;
             self.send()
                 .direct(&initial_caller, asset_token_id, 0, &extra_asset_paid, &[]);
         }
 
-        // TODO: Instead of borrow_token_amount (i.e. 1:1 ratio), calculate how much collateral amount was repaid
-        borrow_position.lend_tokens.amount -= borrow_token_amount;
-        if borrow_position.lend_tokens.amount == 0 {
+        let lend_token_amount_to_send_back: Self::BigUint;
+        if self.is_full_repay(&borrow_position, borrow_token_amount) {
+            lend_token_amount_to_send_back = borrow_position.lend_tokens.amount;
             self.borrow_position(borrow_token_nonce).clear();
         } else {
+            lend_token_amount_to_send_back = self.rule_of_three(
+                &borrow_position.lend_tokens.amount,
+                borrow_token_amount,
+                &borrow_position.borrowed_amount,
+            );
+
+            require!(
+                lend_token_amount_to_send_back > 0,
+                "repay too little. lend tokens amount is zero"
+            );
+
+            borrow_position.borrowed_amount -= borrow_token_amount;
+            borrow_position.lend_tokens.amount -= &lend_token_amount_to_send_back;
             self.borrow_position(borrow_token_nonce)
                 .set(&borrow_position);
         }
 
+        self.borrowed_amount()
+            .update(|total| *total -= borrow_token_amount);
+
+        self.reserves(asset_token_id)
+            .update(|total| *total += &total_owed);
+
         self.send()
             .esdt_local_burn(borrow_token_id, borrow_token_nonce, borrow_token_amount);
 
-        // Same here, use calculated amount of repaid collateral instead of borrow_token_amount
         self.send().direct(
             &initial_caller,
             &borrow_position.lend_tokens.token_id,
             borrow_position.lend_tokens.nonce,
-            borrow_token_amount,
+            &lend_token_amount_to_send_back,
             &[],
         );
 
@@ -306,7 +321,7 @@ pub trait LiquidityModule:
 
         require!(health_factor < 1, "health not low enough for liquidation");
         require!(
-            &asset_amount >= &borrow_position.borrowed_amount,
+            asset_amount >= borrow_position.borrowed_amount,
             "insufficient funds for liquidation"
         );
 

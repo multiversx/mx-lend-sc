@@ -106,4 +106,13 @@ pub trait MathModule {
     fn get_base_precision(&self) -> Self::BigUint {
         Self::BigUint::from(BP)
     }
+
+    fn rule_of_three(
+        &self,
+        value: &Self::BigUint,
+        part: &Self::BigUint,
+        total: &Self::BigUint,
+    ) -> Self::BigUint {
+        &(value * part) / total
+    }
 }

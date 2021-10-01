@@ -104,4 +104,12 @@ pub trait UtilsModule:
         require!(current_time >= timestamp, "Invalid timestamp");
         Ok(current_time - timestamp)
     }
+
+    fn is_full_repay(
+        &self,
+        borrow_position: &BorrowPosition<Self::BigUint>,
+        borrow_token_repaid: &Self::BigUint,
+    ) -> bool {
+        &borrow_position.borrowed_amount == borrow_token_repaid
+    }
 }
