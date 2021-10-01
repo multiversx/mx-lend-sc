@@ -1,7 +1,7 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use common_structs::{InterestMetadata, LEND_TOKEN_PREFIX};
+use common_structs::LEND_TOKEN_PREFIX;
 
 use super::math;
 use super::storage;
@@ -14,64 +14,6 @@ pub trait TokensModule:
     + math::MathModule
     + price_aggregator_proxy::PriceAggregatorModule
 {
-    #[only_owner]
-    #[payable("*")]
-    #[endpoint(mintLTokens)]
-    fn mint_l_tokens(
-        &self,
-        initial_caller: Address,
-        #[payment_token] lend_token: TokenIdentifier,
-        #[payment_amount] amount: Self::BigUint,
-        interest_timestamp: u64,
-    ) -> SCResult<()> {
-        require!(
-            lend_token == self.lend_token().get(),
-            "asset is not supported by this pool"
-        );
-        require!(amount > 0, "amount must be greater then 0");
-        require!(!initial_caller.is_zero(), "invalid address");
-
-        let new_nonce = self.mint_position_tokens(&lend_token, &amount);
-
-        self.interest_metadata(new_nonce).set(&InterestMetadata {
-            timestamp: interest_timestamp,
-        });
-
-        self.send()
-            .direct(&initial_caller, &lend_token, new_nonce, &amount, &[]);
-
-        Ok(())
-    }
-
-    #[only_owner]
-    #[payable("*")]
-    #[endpoint(burnLTokens)]
-    fn burn_l_tokens(
-        &self,
-        #[payment_token] lend_token: TokenIdentifier,
-        #[payment_nonce] token_nonce: u64,
-        #[payment_amount] amount: Self::BigUint,
-        initial_caller: Address,
-    ) -> SCResult<()> {
-        require!(
-            lend_token == self.lend_token().get(),
-            "asset is not supported by this pool"
-        );
-        require!(amount > 0, "amount must be greater then 0");
-        require!(!initial_caller.is_zero(), "invalid address");
-
-        self.send()
-            .esdt_local_burn(&lend_token, token_nonce, &amount);
-
-        Ok(())
-    }
-
-    #[only_owner]
-    #[endpoint(getInterestMetadata)]
-    fn get_interest_metadata(&self, nonce: u64) -> SCResult<InterestMetadata> {
-        Ok(self.interest_metadata(nonce).get())
-    }
-
     #[only_owner]
     #[payable("EGLD")]
     #[endpoint]

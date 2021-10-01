@@ -8,6 +8,11 @@
 					"creatorAddress": "address:owner",
 					"creatorNonce": "0",
 					"newAddress": "sc:liqpool"
+				},
+				{
+					"creatorAddress": "address:owner",
+					"creatorNonce": "1",
+					"newAddress": "sc:aggregator"
 				}
 			]
 		},
@@ -24,8 +29,27 @@
 					"40000000",
 					"1000000000",
 					"800000000",
-					"100000000"
+					"100000000",
+					"500000000"
 				],
+				"gasLimit": "100,000,000",
+				"gasPrice": "0"
+			},
+			"expect": {
+				"status": "0",
+				"logs": [],
+				"gas": "*",
+				"refund": "*"
+			}
+		},
+		{
+			"step": "scDeploy",
+			"txId": "deploy",
+			"tx": {
+				"from": "address:owner",
+				"value": "0",
+				"contractCode": "file:../../../aggregator_mock/output/aggregator_mock.wasm",
+				"arguments": [],
 				"gasLimit": "100,000,000",
 				"gasPrice": "0"
 			},
@@ -44,7 +68,8 @@
 					"balance": "0",
 					"storage": {
 						"str:pool_asset": "str:WBT-abcdef",
-						"str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000"
+						"str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000",
+						"str:liquidation_threshold": "500000000"
 					},
 					"code": "file:../../output/liquidity_pool.wasm",
 					"owner": "address:owner"

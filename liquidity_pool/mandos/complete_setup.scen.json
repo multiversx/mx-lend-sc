@@ -19,7 +19,11 @@
 		},
 		{
 			"step": "externalSteps",
-			"path": "steps/issue_lend_token.steps.json"
+			"path": "steps/issue_tokens.steps.json"
+		},
+		{
+			"step": "externalSteps",
+			"path": "steps/set_aggregator_address.steps.json"
 		}
 	]
 }

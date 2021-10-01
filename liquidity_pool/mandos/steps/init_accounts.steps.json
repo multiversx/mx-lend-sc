@@ -8,7 +8,11 @@
 					"nonce": "0",
 					"balance": "1,000,000,000,000",
 					"esdt": {
-						"str:WBT-abcdef": "1,000,000,000,000"
+						"str:WBT-abcdef": "1,000,000,000,000",
+						"str:SOMEL-abcdef": {
+							"nonce": "1",
+							"balance": "1,000,000,000,000"
+						}
 					},
 					"storage": {}
 				},
@@ -37,7 +41,11 @@
 					"nonce": "0",
 					"balance": "1,000,000,000,000",
 					"esdt": {
-						"str:WBT-abcdef": "1,000,000,000,000"
+						"str:WBT-abcdef": "1,000,000,000,000",
+						"str:SOMEL-abcdef": {
+							"nonce": "1",
+							"balance": "1,000,000,000,000"
+						}
 					},
 					"storage": {}
 				},

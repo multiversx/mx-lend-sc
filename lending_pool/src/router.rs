@@ -144,9 +144,9 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
     }
 
     #[only_owner]
-    #[endpoint(setAssetLTV)]
-    fn set_asset_ltv(&self, asset: TokenIdentifier, ltv: Self::BigUint) {
-        self.asset_ltv(&asset).set(&ltv);
+    #[endpoint(setAssetLoanToValue)]
+    fn set_asset_loan_to_value(&self, asset: TokenIdentifier, loan_to_value: Self::BigUint) {
+        self.asset_loan_to_value(&asset).set(&loan_to_value);
     }
 
     #[endpoint(setTickerAfterIssue)]
@@ -175,16 +175,19 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
         Ok(self.pools_map().get(asset).unwrap_or_else(Address::zero))
     }
 
-    fn get_ltv_exists_and_non_zero(&self, token_id: &TokenIdentifier) -> SCResult<Self::BigUint> {
+    fn get_loan_to_value_exists_and_non_zero(
+        &self,
+        token_id: &TokenIdentifier,
+    ) -> SCResult<Self::BigUint> {
         require!(
-            !self.asset_ltv(token_id).is_empty(),
-            "no LTV value present for asset"
+            !self.asset_loan_to_value(token_id).is_empty(),
+            "no loan_to_value value present for asset"
         );
 
-        let ltv = self.asset_ltv(token_id).get();
-        require!(ltv > 0, "LTV value can not be zero");
+        let loan_to_value = self.asset_loan_to_value(token_id).get();
+        require!(loan_to_value > 0, "loan_to_value value can not be zero");
 
-        Ok(ltv)
+        Ok(loan_to_value)
     }
 
     #[storage_mapper("pools_map")]
@@ -194,8 +197,10 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
     #[storage_mapper("pool_allowed")]
     fn pools_allowed(&self) -> SafeSetMapper<Self::Storage, Address>;
 
-    #[view(getAssetLTV)]
-    #[storage_mapper("asset_ltv")]
-    fn asset_ltv(&self, asset: &TokenIdentifier)
-        -> SingleValueMapper<Self::Storage, Self::BigUint>;
+    #[view(getAssetloan_to_value)]
+    #[storage_mapper("asset_loan_to_value")]
+    fn asset_loan_to_value(
+        &self,
+        asset: &TokenIdentifier,
+    ) -> SingleValueMapper<Self::Storage, Self::BigUint>;
 }

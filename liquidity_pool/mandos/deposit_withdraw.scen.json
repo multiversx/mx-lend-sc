@@ -35,7 +35,7 @@
             "step": "checkState",
             "accounts": {
                 "address:owner": {
-                    "nonce": "4",
+                    "nonce": "*",
                     "balance": "1,000,000,000,000",
                     "esdt": {
                         "str:WBT-abcdef": "999,999,900,000",
@@ -49,6 +49,10 @@
                                     "attributes": "*"
                                 }
                             ]
+                        },
+                        "str:SOMEL-abcdef": {
+                            "nonce": "1",
+                            "balance": "1,000,000,000,000"
                         }
                     },
                     "storage": {}
@@ -65,14 +69,24 @@
                                 "ESDTRoleNFTBurn"
                             ]
                         },
+                        "str:BORROW-abcdef": {
+                            "roles": [
+                                "ESDTRoleNFTCreate",
+                                "ESDTRoleNFTAddQuantity",
+                                "ESDTRoleNFTBurn"
+                            ]
+                        },
                         "str:WBT-abcdef": "100,000"
                     },
                     "storage": {
+                        "str:priceAggregatorAddress": "sc:aggregator",
                         "str:pool_asset": "str:WBT-abcdef",
                         "str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000",
                         "str:lend_token": "str:LEND-abcdef",
+                        "str:borrow_token": "str:BORROW-abcdef",
                         "str:reserves|nested:str:WBT-abcdef": "100,000",
-                        "+": ""
+                        "str:deposit_position|u64:1": "u64:0|biguint:100,000",
+                        "str:liquidation_threshold": "500000000"
                     },
                     "code": "file:../output/liquidity_pool.wasm",
                     "owner": "address:owner"
@@ -118,10 +132,14 @@
             "step": "checkState",
             "accounts": {
                 "address:owner": {
-                    "nonce": "5",
+                    "nonce": "*",
                     "balance": "1,000,000,000,000",
                     "esdt": {
-                        "str:WBT-abcdef": "1,000,000,000,000"
+                        "str:WBT-abcdef": "1,000,000,000,000",
+                        "str:SOMEL-abcdef": {
+                            "nonce": "1",
+                            "balance": "1,000,000,000,000"
+                        }
                     },
                     "storage": {}
                 },
@@ -136,13 +154,22 @@
                                 "ESDTRoleNFTAddQuantity",
                                 "ESDTRoleNFTBurn"
                             ]
+                        },
+                        "str:BORROW-abcdef": {
+                            "roles": [
+                                "ESDTRoleNFTCreate",
+                                "ESDTRoleNFTAddQuantity",
+                                "ESDTRoleNFTBurn"
+                            ]
                         }
                     },
                     "storage": {
+                        "str:priceAggregatorAddress": "sc:aggregator",
                         "str:pool_asset": "str:WBT-abcdef",
                         "str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000",
                         "str:lend_token": "str:LEND-abcdef",
-                        "+": ""
+                        "str:borrow_token": "str:BORROW-abcdef",
+                        "str:liquidation_threshold": "500000000"
                     },
                     "code": "file:../output/liquidity_pool.wasm",
                     "owner": "address:owner"

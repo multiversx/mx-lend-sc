@@ -79,14 +79,40 @@ pub trait MathModule {
         &self,
         amount: &Self::BigUint,
         price: &Self::BigUint,
-        ltv: &Self::BigUint,
+        loan_to_value: &Self::BigUint,
         decimals: u8,
     ) -> Self::BigUint {
         let bp = Self::BigUint::from(BP);
-        let dec_big = Self::BigUint::from(decimals as u64);
-
         let total_collateral = amount * price;
 
-        ((&total_collateral * ltv) / bp) / dec_big
+        ((&total_collateral * loan_to_value) / bp) / Self::BigUint::from(10u64).pow(decimals as u32)
+    }
+
+    fn compute_health_factor(
+        &self,
+        collateral_value_in_dollars: &Self::BigUint,
+        borrowed_value_in_dollars: &Self::BigUint,
+        liquidation_threshold: &Self::BigUint,
+    ) -> Self::BigUint {
+        let bp = self.get_base_precision();
+
+        let allowed_collateral_in_dollars = collateral_value_in_dollars * liquidation_threshold;
+
+        let health_factor = &allowed_collateral_in_dollars / borrowed_value_in_dollars;
+
+        health_factor / bp
+    }
+
+    fn get_base_precision(&self) -> Self::BigUint {
+        Self::BigUint::from(BP)
+    }
+
+    fn rule_of_three(
+        &self,
+        value: &Self::BigUint,
+        part: &Self::BigUint,
+        total: &Self::BigUint,
+    ) -> Self::BigUint {
+        &(value * part) / total
     }
 }

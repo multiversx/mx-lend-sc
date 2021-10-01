@@ -7,5 +7,6 @@ members = [
     "safety_module",
     "safety_module/abi",
     "common/structs",
-    "common/checks"
+    "common/checks",
+    "aggregator_mock"
 ]

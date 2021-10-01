@@ -9,7 +9,10 @@ publish = false
 path = "src/lib.rs"
 
 [features]
-wasm-output-mode = [ "elrond-wasm-node",]
+wasm-output-mode = [ 
+    "elrond-wasm-node", 
+    "price-aggregator-proxy/wasm-output-mode",
+]
 
 [dependencies.elrond-wasm]
 version = "0.18.2"

@@ -4,7 +4,7 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use common_structs::{DepositMetadata, BP, ESDT_ISSUE_COST, SECONDS_PER_YEAR};
+use common_structs::{DepositPosition, BP, ESDT_ISSUE_COST, SECONDS_PER_YEAR};
 
 #[elrond_wasm::contract]
 pub trait SafetyModule {
@@ -45,9 +45,8 @@ pub trait SafetyModule {
             .into_option()
             .unwrap_or_else(|| self.blockchain().get_caller());
 
-        let deposit_metadata = DepositMetadata {
-            timestamp: self.blockchain().get_block_timestamp(),
-        };
+        let timestamp = self.blockchain().get_block_timestamp();
+        let deposit_metadata = DepositPosition::new(timestamp, payment.clone());
 
         self.mint_deposit_nft(&deposit_metadata, payment.clone());
 
@@ -172,7 +171,7 @@ pub trait SafetyModule {
             nft_nonce,
         );
 
-        let nft_metadata = nft_info.decode_attributes::<DepositMetadata>()?;
+        let nft_metadata = nft_info.decode_attributes::<DepositPosition<Self::BigUint>>()?;
         let time_in_pool = self.blockchain().get_block_timestamp() - nft_metadata.timestamp;
 
         require!(time_in_pool > 0, "invalid timestamp");
@@ -254,8 +253,12 @@ pub trait SafetyModule {
             .esdt_local_burn(&token_identifier, nonce, &amount);
     }
 
-    fn mint_deposit_nft(self, deposit_metadata: &DepositMetadata, amount: Self::BigUint) {
-        self.send().esdt_nft_create::<DepositMetadata>(
+    fn mint_deposit_nft(
+        self,
+        deposit_metadata: &DepositPosition<Self::BigUint>,
+        amount: Self::BigUint,
+    ) {
+        self.send().esdt_nft_create(
             &self.nft_token().get(),
             &amount,
             &BoxedBytes::empty(),
