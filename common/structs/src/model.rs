@@ -10,44 +10,44 @@ pub const LEND_TOKEN_PREFIX: &[u8] = b"L";
 pub const BORROW_TOKEN_PREFIX: &[u8] = b"B";
 
 #[derive(TopEncode, TopDecode, TypeAbi)]
-pub struct PoolParams<BigUint: BigUintApi> {
-    pub r_base: BigUint,
-    pub r_slope1: BigUint,
-    pub r_slope2: BigUint,
-    pub u_optimal: BigUint,
-    pub reserve_factor: BigUint,
+pub struct PoolParams<M: ManagedTypeApi> {
+    pub r_base: BigUint<M>,
+    pub r_slope1: BigUint<M>,
+    pub r_slope2: BigUint<M>,
+    pub u_optimal: BigUint<M>,
+    pub reserve_factor: BigUint<M>,
 }
 
 #[derive(TopEncode, TopDecode, TypeAbi)]
-pub struct IssueData {
-    pub name: BoxedBytes,
-    pub ticker: TokenIdentifier,
+pub struct IssueData<M: ManagedTypeApi> {
+    pub name: ManagedBuffer<M>,
+    pub ticker: TokenIdentifier<M>,
     pub is_empty_ticker: bool,
 }
 
 #[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, TypeAbi, PartialEq, Clone)]
-pub struct TokenAmountPair<BigUint: BigUintApi> {
-    pub token_id: TokenIdentifier,
+pub struct TokenAmountPair<M: ManagedTypeApi> {
+    pub token_id: TokenIdentifier<M>,
     pub nonce: u64,
-    pub amount: BigUint,
+    pub amount: BigUint<M>,
 }
 
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi)]
-pub struct DepositPosition<BigUint: BigUintApi> {
+pub struct DepositPosition<M: ManagedTypeApi> {
     pub timestamp: u64,
-    pub amount: BigUint,
+    pub amount: BigUint<M>,
 }
 
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi, PartialEq, Clone)]
-pub struct BorrowPosition<BigUint: BigUintApi> {
+pub struct BorrowPosition<M: ManagedTypeApi> {
     pub timestamp: u64,
-    pub lend_tokens: TokenAmountPair<BigUint>,
-    pub borrowed_amount: BigUint,
-    pub collateral_token_id: TokenIdentifier,
+    pub lend_tokens: TokenAmountPair<M>,
+    pub borrowed_amount: BigUint<M>,
+    pub collateral_token_id: TokenIdentifier<M>,
 }
 
-impl<BigUint: BigUintApi> TokenAmountPair<BigUint> {
-    pub fn new(token_id: TokenIdentifier, nonce: u64, amount: BigUint) -> Self {
+impl<M: ManagedTypeApi> TokenAmountPair<M> {
+    pub fn new(token_id: TokenIdentifier<M>, nonce: u64, amount: BigUint<M>) -> Self {
         TokenAmountPair {
             token_id,
             nonce,
@@ -56,18 +56,18 @@ impl<BigUint: BigUintApi> TokenAmountPair<BigUint> {
     }
 }
 
-impl<BigUint: BigUintApi> DepositPosition<BigUint> {
-    pub fn new(timestamp: u64, amount: BigUint) -> Self {
+impl<M: ManagedTypeApi> DepositPosition<M> {
+    pub fn new(timestamp: u64, amount: BigUint<M>) -> Self {
         DepositPosition { timestamp, amount }
     }
 }
 
-impl<BigUint: BigUintApi> BorrowPosition<BigUint> {
+impl<M: ManagedTypeApi> BorrowPosition<M> {
     pub fn new(
         timestamp: u64,
-        lend_tokens: TokenAmountPair<BigUint>,
-        borrowed_amount: BigUint,
-        collateral_token_id: TokenIdentifier,
+        lend_tokens: TokenAmountPair<M>,
+        borrowed_amount: BigUint<M>,
+        collateral_token_id: TokenIdentifier<M>,
     ) -> Self {
         BorrowPosition {
             timestamp,
