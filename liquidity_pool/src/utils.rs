@@ -15,7 +15,7 @@ const DOLLAR_TICKER: &[u8] = b"USD";
 pub trait UtilsModule:
     math::MathModule + storage::StorageModule + price_aggregator_proxy::PriceAggregatorModule
 {
-    fn prepare_issue_data(&self, prefix: BoxedBytes, ticker: BoxedBytes) -> IssueData {
+    fn prepare_issue_data(&self, prefix: ManagedBuffer, ticker: ManagedBuffer) -> IssueData<Self::Api> {
         let prefixed_ticker = [prefix.as_slice(), ticker.as_slice()].concat();
         let mut issue_data = IssueData {
             name: BoxedBytes::zeros(0),
@@ -39,7 +39,7 @@ pub trait UtilsModule:
     fn get_token_price_data(
         &self,
         token_id: &TokenIdentifier,
-    ) -> SCResult<AggregatorResult<Self::BigUint>> {
+    ) -> SCResult<AggregatorResult<Self::Api>> {
         let from_ticker = self.get_token_ticker(token_id);
         let result = self.get_full_result_for_pair(from_ticker, DOLLAR_TICKER.into());
 
@@ -57,7 +57,7 @@ pub trait UtilsModule:
     }
 
     #[view(getCapitalUtilisation)]
-    fn get_capital_utilisation(&self) -> Self::BigUint {
+    fn get_capital_utilisation(&self) -> BigUint {
         let reserve_amount = self.reserves(&self.pool_asset().get()).get();
         let borrowed_amount = self.borrowed_amount().get();
 
@@ -65,7 +65,7 @@ pub trait UtilsModule:
     }
 
     #[view(getDebtInterest)]
-    fn get_debt_interest(&self, amount: &Self::BigUint, timestamp: u64) -> SCResult<Self::BigUint> {
+    fn get_debt_interest(&self, amount: &BigUint, timestamp: u64) -> SCResult<BigUint> {
         let time_diff = self.get_timestamp_diff(timestamp)?;
         let borrow_rate = self.get_borrow_rate();
 
@@ -73,7 +73,7 @@ pub trait UtilsModule:
     }
 
     #[view(getDepositRate)]
-    fn get_deposit_rate(&self) -> Self::BigUint {
+    fn get_deposit_rate(&self) -> BigUint {
         let pool_params = self.pool_params().get();
         let capital_utilisation = self.get_capital_utilisation();
         let borrow_rate = self.get_borrow_rate();
@@ -86,7 +86,7 @@ pub trait UtilsModule:
     }
 
     #[view(getBorrowRate)]
-    fn get_borrow_rate(&self) -> Self::BigUint {
+    fn get_borrow_rate(&self) -> BigUint {
         let pool_params = self.pool_params().get();
         let capital_utilisation = self.get_capital_utilisation();
 
@@ -107,8 +107,8 @@ pub trait UtilsModule:
 
     fn is_full_repay(
         &self,
-        borrow_position: &BorrowPosition<Self::BigUint>,
-        borrow_token_repaid: &Self::BigUint,
+        borrow_position: &BorrowPosition<Self::Api>,
+        borrow_token_repaid: &BigUint,
     ) -> bool {
         &borrow_position.borrowed_amount == borrow_token_repaid
     }

@@ -19,11 +19,11 @@ pub trait TokensModule:
     #[endpoint]
     fn issue(
         &self,
-        plain_ticker: BoxedBytes,
+        plain_ticker: ManagedBuffer,
         token_ticker: TokenIdentifier,
-        token_prefix: BoxedBytes,
-        #[payment_amount] issue_cost: Self::BigUint,
-    ) -> SCResult<AsyncCall<Self::SendApi>> {
+        token_prefix: ManagedBuffer,
+        #[payment_amount] issue_cost: BigUint,
+    ) -> SCResult<AsyncCall> {
         require!(
             token_ticker == self.pool_asset().get(),
             "wrong ESDT asset identifier"
@@ -31,7 +31,7 @@ pub trait TokensModule:
 
         let issue_data = self.prepare_issue_data(token_prefix.clone(), plain_ticker);
         require!(
-            issue_data.name != BoxedBytes::zeros(0),
+            issue_data.name != &self.types().managed_buffer_new(),
             "invalid input. could not prepare issue data"
         );
         require!(
@@ -39,7 +39,9 @@ pub trait TokensModule:
             "token already issued for this identifier"
         );
 
-        Ok(ESDTSystemSmartContractProxy::new_proxy_obj(self.send())
+        Ok(self
+            .send()
+            .esdt_system_sc_proxy()
             .issue_semi_fungible(
                 issue_cost,
                 &issue_data.name,
@@ -59,30 +61,21 @@ pub trait TokensModule:
 
     #[only_owner]
     #[endpoint(setLendTokensRoles)]
-    fn set_lend_token_roles(
-        &self,
-        roles: Vec<EsdtLocalRole>,
-    ) -> SCResult<AsyncCall<Self::SendApi>> {
+    fn set_lend_token_roles(&self, roles: Vec<EsdtLocalRole>) -> SCResult<AsyncCall> {
         require!(!self.lend_token().is_empty(), "token not issued yet");
         Ok(self.set_roles(self.lend_token().get(), roles))
     }
 
     #[only_owner]
     #[endpoint(setBorrowTokenRoles)]
-    fn set_borrow_token_roles(
-        &self,
-        roles: Vec<EsdtLocalRole>,
-    ) -> SCResult<AsyncCall<Self::SendApi>> {
+    fn set_borrow_token_roles(&self, roles: Vec<EsdtLocalRole>) -> SCResult<AsyncCall> {
         require!(!self.borrow_token().is_empty(), "token not issued yet");
         Ok(self.set_roles(self.borrow_token().get(), roles))
     }
 
-    fn set_roles(
-        &self,
-        token: TokenIdentifier,
-        roles: Vec<EsdtLocalRole>,
-    ) -> AsyncCall<Self::SendApi> {
-        ESDTSystemSmartContractProxy::new_proxy_obj(self.send())
+    fn set_roles(&self, token: TokenIdentifier, roles: Vec<EsdtLocalRole>) -> AsyncCall {
+        self.send()
+            .esdt_system_sc_proxy()
             .set_special_roles(
                 &self.blockchain().get_sc_address(),
                 &token,
@@ -92,26 +85,29 @@ pub trait TokensModule:
             .with_callback(self.callbacks().set_roles_callback())
     }
 
-    fn mint_position_tokens(&self, token_id: &TokenIdentifier, amount: &Self::BigUint) -> u64 {
+    fn mint_position_tokens(&self, token_id: &TokenIdentifier, amount: &BigUint) -> u64 {
+        let mut uris = ManagedVec::new(self.type_manager());
+        uris.push(self.types().managed_buffer_new());
+
         self.send().esdt_nft_create(
             token_id,
             amount,
-            &BoxedBytes::empty(),
-            &Self::BigUint::zero(),
-            &BoxedBytes::empty(),
+            &self.types().managed_buffer_new(),
+            &self.types().big_uint_zero(),
+            &self.types().managed_buffer_new(),
             &(),
-            &[BoxedBytes::empty()],
+            &uris,
         )
     }
 
     #[callback]
     fn issue_callback(
         &self,
-        prefix: &BoxedBytes,
-        #[call_result] result: AsyncCallResult<TokenIdentifier>,
+        prefix: &ManagedBuffer,
+        #[call_result] result: ManagedAsyncCallResult<TokenIdentifier>,
     ) {
         match result {
-            AsyncCallResult::Ok(ticker) => {
+            ManagedAsyncCallResult::Ok(ticker) => {
                 if prefix == &BoxedBytes::from(LEND_TOKEN_PREFIX) {
                     self.lend_token().set(&ticker);
                 } else {
@@ -120,7 +116,7 @@ pub trait TokensModule:
                 self.last_error().clear();
                 self.send_callback_result(ticker, b"setTickerAfterIssue");
             }
-            AsyncCallResult::Err(message) => {
+            ManagedAsyncCallResult::Err(message) => {
                 let caller = self.blockchain().get_owner_address();
                 let (returned_tokens, token_id) = self.call_value().payment_token_pair();
                 if token_id.is_egld() && returned_tokens > 0 {
@@ -133,12 +129,12 @@ pub trait TokensModule:
     }
 
     #[callback]
-    fn set_roles_callback(&self, #[call_result] result: AsyncCallResult<()>) {
+    fn set_roles_callback(&self, #[call_result] result: ManagedAsyncCallResult<()>) {
         match result {
-            AsyncCallResult::Ok(()) => {
+            ManagedAsyncCallResult::Ok(()) => {
                 self.last_error().clear();
             }
-            AsyncCallResult::Err(message) => {
+            ManagedAsyncCallResult::Err(message) => {
                 self.last_error().set(&message.err_msg);
             }
         }

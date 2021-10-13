@@ -29,11 +29,11 @@ extern "C" {
     ) -> i32;
 }
 
-pub struct EsdtTokenPayment<BigUint: BigUintApi> {
+pub struct EsdtTokenPayment<M: ManagedTypeApi> {
     pub token_type: EsdtTokenType,
-    pub token_name: TokenIdentifier,
+    pub token_name: TokenIdentifier<M>,
     pub token_nonce: u64,
-    pub amount: BigUint,
+    pub amount: BigUint<M>,
 }
 
 #[elrond_wasm::module]
@@ -42,7 +42,7 @@ pub trait MultiTransferModule {
         unsafe { getNumESDTTransfers() as usize }
     }
 
-    fn esdt_value_by_index(&self, index: usize) -> Self::BigUint {
+    fn esdt_value_by_index(&self, index: usize) -> BigUint {
         unsafe {
             let value_handle = bigIntNew(0);
             bigIntGetESDTCallValueByIndex(value_handle, index as i32);
@@ -51,7 +51,7 @@ pub trait MultiTransferModule {
             let value_byte_len = bigIntUnsignedByteLength(value_handle) as usize;
             bigIntGetUnsignedBytes(value_handle, value_buffer.as_mut_ptr());
 
-            Self::BigUint::from_bytes_be(&value_buffer[..value_byte_len])
+            BigUint::from_bytes_be(&value_buffer[..value_byte_len])
         }
     }
 
@@ -75,7 +75,7 @@ pub trait MultiTransferModule {
         unsafe { (getESDTTokenTypeByIndex(index as i32) as u8).into() }
     }
 
-    fn get_all_esdt_transfers(&self) -> Vec<EsdtTokenPayment<Self::BigUint>> {
+    fn get_all_esdt_transfers(&self) -> Vec<EsdtTokenPayment<Self::Api>> {
         let num_transfers = self.esdt_num_transfers();
         let mut transfers = Vec::with_capacity(num_transfers);
 
@@ -99,7 +99,7 @@ pub trait MultiTransferModule {
     fn direct_multi_esdt_transfer_execute(
         &self,
         to: &Address,
-        payments: &[EsdtTokenPayment<Self::BigUint>],
+        payments: &[EsdtTokenPayment<Self::Api>],
         gas_limit: u64,
         endpoint_name: &BoxedBytes,
         arg_buffer: &ArgBuffer,
@@ -144,7 +144,7 @@ pub trait MultiTransferModule {
     fn multi_transfer_via_execute_on_dest_context(
         &self,
         to: &Address,
-        transfers: &[EsdtTokenPayment<Self::BigUint>],
+        transfers: &[EsdtTokenPayment<Self::Api>],
         endpoint_name: &BoxedBytes,
         args: &[BoxedBytes],
     ) -> Vec<BoxedBytes> {
@@ -169,7 +169,7 @@ pub trait MultiTransferModule {
         self.send().execute_on_dest_context_raw(
             self.blockchain().get_gas_left(),
             &self.blockchain().get_sc_address(),
-            &Self::BigUint::zero(),
+            &BigUint::zero(),
             ESDT_MULTI_TRANSFER_STRING,
             &arg_buffer,
         )

@@ -7,50 +7,41 @@ use common_structs::{BorrowPosition, DepositPosition, PoolParams};
 pub trait StorageModule {
     #[view(getPoolAsset)]
     #[storage_mapper("pool_asset")]
-    fn pool_asset(&self) -> SingleValueMapper<Self::Storage, TokenIdentifier>;
+    fn pool_asset(&self) -> SingleValueMapper<TokenIdentifier>;
 
     #[view(getLendToken)]
     #[storage_mapper("lend_token")]
-    fn lend_token(&self) -> SingleValueMapper<Self::Storage, TokenIdentifier>;
+    fn lend_token(&self) -> SingleValueMapper<TokenIdentifier>;
 
     #[view(borrowToken)]
     #[storage_mapper("borrow_token")]
-    fn borrow_token(&self) -> SingleValueMapper<Self::Storage, TokenIdentifier>;
+    fn borrow_token(&self) -> SingleValueMapper<TokenIdentifier>;
 
     #[view(getReserves)]
     #[storage_mapper("reserves")]
-    fn reserves(
-        &self,
-        token_id: &TokenIdentifier,
-    ) -> SingleValueMapper<Self::Storage, Self::BigUint>;
+    fn reserves(&self, token_id: &TokenIdentifier) -> SingleValueMapper<BigUint>;
 
     #[view(getDepositPosition)]
     #[storage_mapper("deposit_position")]
-    fn deposit_position(
-        &self,
-        nonce: u64,
-    ) -> SingleValueMapper<Self::Storage, DepositPosition<Self::BigUint>>;
+    fn deposit_position(&self, nonce: u64) -> SingleValueMapper<DepositPosition<Self::Api>>;
 
     #[view(getBorrowMetadata)]
     #[storage_mapper("borrow_position")]
-    fn borrow_position(
-        &self,
-        nonce: u64,
-    ) -> SingleValueMapper<Self::Storage, BorrowPosition<Self::BigUint>>;
+    fn borrow_position(&self, nonce: u64) -> SingleValueMapper<BorrowPosition<Self::Api>>;
 
     #[view(getLastError)]
     #[storage_mapper("last_error")]
-    fn last_error(&self) -> SingleValueMapper<Self::Storage, BoxedBytes>;
+    fn last_error(&self) -> SingleValueMapper<ManagedBuffer>;
 
     #[view(getPoolParams)]
     #[storage_mapper("pool_params")]
-    fn pool_params(&self) -> SingleValueMapper<Self::Storage, PoolParams<Self::BigUint>>;
+    fn pool_params(&self) -> SingleValueMapper<PoolParams<Self::Api>>;
 
     #[view(getTotalBorrow)]
     #[storage_mapper("borrowed_amount")]
-    fn borrowed_amount(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
+    fn borrowed_amount(&self) -> SingleValueMapper<BigUint>;
 
     #[view(getLiquidationThreshold)]
     #[storage_mapper("liquidation_threshold")]
-    fn liquidation_threshold(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
+    fn liquidation_threshold(&self) -> SingleValueMapper<BigUint>;
 }

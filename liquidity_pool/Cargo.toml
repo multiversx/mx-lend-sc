@@ -15,18 +15,18 @@ wasm-output-mode = [
 ]
 
 [dependencies.elrond-wasm]
-version = "0.18.2"
+version = "0.20"
 features = ["derive"]
 
 [dependencies.elrond-wasm-node]
-version = "0.18.2"
+version = "0.20"
 optional = true
 
 [dev-dependencies.elrond-wasm-debug]
-version = "0.18.2"
+version = "0.20"
 
 [dependencies.elrond-wasm-output]
-version = "0.18.2"
+version = "0.20"
 features = ["wasm-output-mode", "panic-message"]
 
 [dependencies.common_structs]
@@ -37,4 +37,4 @@ path = "../common/checks"
 
 [dependencies.price-aggregator-proxy]
 git = "https://github.com/ElrondNetwork/sc-chainlink-rs"
-rev = "15dac38"
+rev = "8817a46"

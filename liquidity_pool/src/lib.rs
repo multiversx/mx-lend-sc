@@ -29,12 +29,12 @@ pub trait LiquidityPool:
     fn init(
         &self,
         asset: TokenIdentifier,
-        r_base: Self::BigUint,
-        r_slope1: Self::BigUint,
-        r_slope2: Self::BigUint,
-        u_optimal: Self::BigUint,
-        reserve_factor: Self::BigUint,
-        liquidation_threshold: Self::BigUint,
+        r_base: BigUint,
+        r_slope1: BigUint,
+        r_slope2: BigUint,
+        u_optimal: BigUint,
+        reserve_factor: BigUint,
+        liquidation_threshold: BigUint,
     ) {
         self.pool_asset().set(&asset);
         self.pool_params().set(&PoolParams {

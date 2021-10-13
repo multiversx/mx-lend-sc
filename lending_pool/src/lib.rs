@@ -29,8 +29,8 @@ pub trait LendingPool:
     fn deposit(
         &self,
         #[payment_token] asset: TokenIdentifier,
-        #[payment_amount] amount: Self::BigUint,
-        #[var_args] caller: OptionalArg<Address>,
+        #[payment_amount] amount: BigUint,
+        #[var_args] caller: OptionalArg<ManagedAddress>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -53,8 +53,8 @@ pub trait LendingPool:
         &self,
         #[payment_token] lend_token: TokenIdentifier,
         #[payment_nonce] token_nonce: u64,
-        #[payment_amount] amount: Self::BigUint,
-        #[var_args] caller: OptionalArg<Address>,
+        #[payment_amount] amount: BigUint,
+        #[var_args] caller: OptionalArg<ManagedAddress>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -77,10 +77,10 @@ pub trait LendingPool:
         &self,
         #[payment_token] payment_lend_id: TokenIdentifier,
         #[payment_nonce] payment_nonce: u64,
-        #[payment_amount] payment_amount: Self::BigUint,
+        #[payment_amount] payment_amount: BigUint,
         collateral_token_id: TokenIdentifier,
         asset_to_borrow: TokenIdentifier,
-        #[var_args] caller: OptionalArg<Address>,
+        #[var_args] caller: OptionalArg<ManagedAddress>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -112,7 +112,7 @@ pub trait LendingPool:
     fn repay(
         &self,
         asset_to_repay: TokenIdentifier,
-        #[var_args] caller: OptionalArg<Address>,
+        #[var_args] caller: OptionalArg<ManagedAddress>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -140,9 +140,9 @@ pub trait LendingPool:
     fn liquidate(
         &self,
         #[payment_token] asset: TokenIdentifier,
-        #[payment_amount] amount: Self::BigUint,
+        #[payment_amount] amount: BigUint,
         borrow_position_nonce: u64,
-        #[var_args] caller: OptionalArg<Address>,
+        #[var_args] caller: OptionalArg<ManagedAddress>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -159,7 +159,7 @@ pub trait LendingPool:
         Ok(())
     }
 
-    fn caller_from_option_or_sender(&self, caller: OptionalArg<Address>) -> Address {
+    fn caller_from_option_or_sender(&self, caller: OptionalArg<ManagedAddress>) -> ManagedAddress {
         caller
             .into_option()
             .unwrap_or_else(|| self.blockchain().get_caller())

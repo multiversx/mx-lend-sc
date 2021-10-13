@@ -7,16 +7,16 @@ pub trait FactoryModule {
     fn create_pool(
         &self,
         base_asset: &TokenIdentifier,
-        lending_pool_address: &Address,
-        r_base: Self::BigUint,
-        r_slope1: Self::BigUint,
-        r_slope2: Self::BigUint,
-        u_optimal: Self::BigUint,
-        reserve_factor: Self::BigUint,
-        bytecode: &BoxedBytes,
-    ) -> Address {
+        lending_pool_address: &ManagedAddress,
+        r_base: BigUint,
+        r_slope1: BigUint,
+        r_slope2: BigUint,
+        u_optimal: BigUint,
+        reserve_factor: BigUint,
+        bytecode: &ManagedBuffer,
+    ) -> ManagedAddress {
         let code_metadata = CodeMetadata::UPGRADEABLE;
-        let amount = Self::BigUint::from(0u32);
+        let amount = self.types().big_uint_zero();
 
         let mut arg_buffer = ArgBuffer::new();
         arg_buffer.push_argument_bytes(base_asset.as_esdt_identifier());
@@ -35,11 +35,11 @@ pub trait FactoryModule {
                 code_metadata,
                 &arg_buffer,
             )
-            .unwrap_or_else(Address::zero)
+            .unwrap_or_else(self.types().managed_address_zero())
     }
 
     // can be implemented when upgrade is available in elrond-wasm
-    fn upgrade_pool(&self, _pool_address: &Address, _new_bytecode: &BoxedBytes) -> bool {
+    fn upgrade_pool(&self, _pool_address: &Address, _new_bytecode: &ManagedBuffer) -> bool {
         true
     }
 }
