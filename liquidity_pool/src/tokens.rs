@@ -31,7 +31,7 @@ pub trait TokensModule:
 
         let issue_data = self.prepare_issue_data(token_prefix.clone(), plain_ticker);
         require!(
-            issue_data.name != &self.types().managed_buffer_new(),
+            !issue_data.name.is_empty(),
             "invalid input. could not prepare issue data"
         );
         require!(
@@ -45,7 +45,10 @@ pub trait TokensModule:
             .issue_semi_fungible(
                 issue_cost,
                 &issue_data.name,
-                &BoxedBytes::from(issue_data.ticker.as_esdt_identifier()),
+                &ManagedBuffer::new_from_bytes(
+                    self.type_manager(),
+                    issue_data.ticker.to_esdt_identifier().as_slice(),
+                ),
                 SemiFungibleTokenProperties {
                     can_freeze: true,
                     can_wipe: true,
@@ -79,7 +82,7 @@ pub trait TokensModule:
             .set_special_roles(
                 &self.blockchain().get_sc_address(),
                 &token,
-                roles.as_slice(),
+                (&roles[..]).into_iter().cloned(),
             )
             .async_call()
             .with_callback(self.callbacks().set_roles_callback())
@@ -108,7 +111,7 @@ pub trait TokensModule:
     ) {
         match result {
             ManagedAsyncCallResult::Ok(ticker) => {
-                if prefix == &BoxedBytes::from(LEND_TOKEN_PREFIX) {
+                if prefix.to_boxed_bytes() == BoxedBytes::from(LEND_TOKEN_PREFIX) {
                     self.lend_token().set(&ticker);
                 } else {
                     self.borrow_token().set(&ticker);
@@ -143,16 +146,16 @@ pub trait TokensModule:
     fn send_callback_result(&self, token: TokenIdentifier, endpoint: &[u8]) {
         let owner = self.blockchain().get_owner_address();
 
-        let mut args = ArgBuffer::new();
-        args.push_argument_bytes(token.as_esdt_identifier());
+        let mut args = ManagedArgBuffer::new_empty(self.type_manager());
+        args.push_arg(token);
 
         let expected_gas = self.blockchain().get_gas_left() / 2;
 
-        self.send().execute_on_dest_context_raw(
+        self.raw_vm_api().execute_on_dest_context_raw(
             expected_gas,
             &owner,
-            &Self::BigUint::zero(),
-            endpoint,
+            &self.types().big_uint_zero(),
+            &ManagedBuffer::new_from_bytes(self.type_manager(), endpoint),
             &args,
         );
     }

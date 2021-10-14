@@ -51,7 +51,7 @@ pub trait MultiTransferModule {
             let value_byte_len = bigIntUnsignedByteLength(value_handle) as usize;
             bigIntGetUnsignedBytes(value_handle, value_buffer.as_mut_ptr());
 
-            BigUint::from_bytes_be(&value_buffer[..value_byte_len])
+            BigUint::from_bytes_be(Self::Api, &value_buffer[..value_byte_len])
         }
     }
 
