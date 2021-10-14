@@ -4,7 +4,6 @@ elrond_wasm::derive_imports!();
 use common_structs::*;
 
 use super::math;
-use super::multi_transfer;
 use super::storage;
 use super::tokens;
 use super::utils;
@@ -18,7 +17,6 @@ pub trait LiquidityModule:
     + utils::UtilsModule
     + math::MathModule
     + price_aggregator_proxy::PriceAggregatorModule
-    + multi_transfer::MultiTransferModule
     + common_checks::ChecksModule
 {
     #[only_owner]
@@ -68,7 +66,7 @@ pub trait LiquidityModule:
         collateral_tokens: TokenAmountPair<Self::Api>,
         loan_to_value: BigUint,
     ) -> SCResult<()> {
-        self.require_amount_greater_than_zero(collateral_tokens.amount)?;
+        self.require_amount_greater_than_zero(&collateral_tokens.amount)?;
         self.require_non_zero_address(&initial_caller)?;
         let lend_tokens = TokenAmountPair::new(
             payment_lend_token_id,
@@ -156,7 +154,7 @@ pub trait LiquidityModule:
         let deposit_rate = self.get_deposit_rate();
         let time_diff = self.get_timestamp_diff(deposit.timestamp)?;
         let withdrawal_amount =
-            self.compute_withdrawal_amount(&amount, BigUint::from(time_diff), &deposit_rate);
+            self.compute_withdrawal_amount(&amount, &BigUint::from(time_diff), &deposit_rate);
 
         self.reserves(&pool_asset).update(|asset_reserve| {
             require!(*asset_reserve >= withdrawal_amount, "insufficient funds");
@@ -186,26 +184,26 @@ pub trait LiquidityModule:
     fn repay(&self, initial_caller: ManagedAddress) -> SCResult<()> {
         self.require_non_zero_address(&initial_caller)?;
 
-        let transfers = self.get_all_esdt_transfers();
+        let transfers = self.raw_vm_api().get_all_esdt_transfers().into_vec();
 
         require!(
             transfers.len() == REPAY_PAYMENTS_LEN,
             "Invalid number of payments"
         );
         require!(
-            transfers[0].token_name == self.borrow_token().get(),
+            transfers[0].token_identifier == self.borrow_token().get(),
             "First payment should be the borrow SFTs"
         );
         require!(
-            transfers[1].token_name == self.pool_asset().get(),
+            transfers[1].token_identifier == self.pool_asset().get(),
             "Second payment should be this pool's asset"
         );
 
-        let borrow_token_id = &transfers[0].token_name;
+        let borrow_token_id = &transfers[0].token_identifier;
         let borrow_token_nonce = transfers[0].token_nonce;
         let borrow_token_amount = &transfers[0].amount;
 
-        let asset_token_id = &transfers[1].token_name;
+        let asset_token_id = &transfers[1].token_identifier;
         let asset_amount = &transfers[1].amount;
 
         require!(
@@ -282,7 +280,7 @@ pub trait LiquidityModule:
         borrow_position_nonce: u64,
     ) -> SCResult<()> {
         self.require_non_zero_address(&initial_caller)?;
-        self.require_amount_greater_than_zero(asset_amount)?;
+        self.require_amount_greater_than_zero(&asset_amount)?;
 
         require!(
             asset_token_id == self.pool_asset().get(),

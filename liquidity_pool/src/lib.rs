@@ -7,7 +7,6 @@ elrond_wasm::derive_imports!();
 pub mod math;
 pub use math::*;
 pub mod liquidity;
-pub mod multi_transfer;
 pub mod tokens;
 pub use common_structs::*;
 
@@ -20,7 +19,6 @@ pub trait LiquidityPool:
     + tokens::TokensModule
     + math::MathModule
     + liquidity::LiquidityModule
-    + multi_transfer::MultiTransferModule
     + utils::UtilsModule
     + price_aggregator_proxy::PriceAggregatorModule
     + common_checks::ChecksModule

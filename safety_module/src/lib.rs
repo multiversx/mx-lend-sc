@@ -52,9 +52,10 @@ pub trait SafetyModule {
 
         let nft_token = self.nft_token().get();
 
-        let nonce = self
-            .blockchain()
-            .get_current_esdt_nft_nonce(&self.blockchain().get_sc_address(), &nft_token);
+        let nonce = self.blockchain().get_current_esdt_nft_nonce(
+            &self.blockchain().get_sc_address().to_address(),
+            &nft_token,
+        );
 
         self.send()
             .direct(&caller_address, &nft_token, nonce, &payment, &[]);
@@ -210,7 +211,7 @@ pub trait SafetyModule {
         require!(!self.nft_token().is_empty(), "No nft token issued");
 
         let token = self.nft_token().get();
-        Ok(self.set_local_roles(token, roles))
+        Ok(self.set_local_roles(token, roles.into_vec()))
     }
 
     #[callback]
@@ -228,14 +229,14 @@ pub trait SafetyModule {
     fn set_local_roles(
         &self,
         token: TokenIdentifier,
-        #[var_args] roles: VarArgs<EsdtLocalRole>,
+        roles: Vec<EsdtLocalRole>,
     ) -> AsyncCall {
         self.send()
             .esdt_system_sc_proxy()
             .set_special_roles(
                 &self.blockchain().get_sc_address(),
                 &token,
-                roles.as_slice(),
+                (&roles[..]).into_iter().cloned(),
             )
             .async_call()
             .with_callback(self.callbacks().change_roles_callback())
