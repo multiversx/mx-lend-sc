@@ -18,24 +18,24 @@ pub trait FactoryModule {
         let code_metadata = CodeMetadata::UPGRADEABLE;
         let amount = self.types().big_uint_zero();
 
-        let mut arg_buffer = ArgBuffer::new();
-        arg_buffer.push_argument_bytes(base_asset.as_esdt_identifier());
-        arg_buffer.push_argument_bytes(lending_pool_address.as_bytes());
-        arg_buffer.push_argument_bytes(r_base.to_bytes_be().as_slice());
-        arg_buffer.push_argument_bytes(r_slope1.to_bytes_be().as_slice());
-        arg_buffer.push_argument_bytes(r_slope2.to_bytes_be().as_slice());
-        arg_buffer.push_argument_bytes(u_optimal.to_bytes_be().as_slice());
-        arg_buffer.push_argument_bytes(reserve_factor.to_bytes_be().as_slice());
+        let mut arg_buffer = ManagedArgBuffer::new_empty(self.type_manager());
+        arg_buffer.push_arg(base_asset);
+        arg_buffer.push_arg(lending_pool_address);
+        arg_buffer.push_arg(r_base);
+        arg_buffer.push_arg(r_slope1);
+        arg_buffer.push_arg(r_slope2);
+        arg_buffer.push_arg(u_optimal);
+        arg_buffer.push_arg(reserve_factor);
 
-        self.send()
-            .deploy_contract(
-                self.blockchain().get_gas_left(),
-                &amount,
-                bytecode,
-                code_metadata,
-                &arg_buffer,
-            )
-            .unwrap_or_else(self.types().managed_address_zero())
+        let (address, _) = self.raw_vm_api().deploy_contract(
+            self.blockchain().get_gas_left(),
+            &amount,
+            bytecode,
+            code_metadata,
+            &arg_buffer,
+        );
+
+        address
     }
 
     // can be implemented when upgrade is available in elrond-wasm

@@ -9,17 +9,11 @@ mod router;
 
 pub use common_structs::*;
 
-use liquidity_pool::multi_transfer;
-
 use liquidity_pool::liquidity::ProxyTrait as _;
 
 #[elrond_wasm::contract]
 pub trait LendingPool:
-    factory::FactoryModule
-    + router::RouterModule
-    + multi_transfer::MultiTransferModule
-    + common_checks::ChecksModule
-    + proxy::ProxyModule
+    factory::FactoryModule + router::RouterModule + common_checks::ChecksModule + proxy::ProxyModule
 {
     #[init]
     fn init(&self) {}
@@ -122,15 +116,11 @@ pub trait LendingPool:
             "asset not supported"
         );
 
-        // TODO: Use SC Proxy instead of manual call in 0.19.0
-
-        let transfers = self.get_all_esdt_transfers();
-        self.multi_transfer_via_execute_on_dest_context(
-            &asset_address,
-            &transfers,
-            &b"repay"[..].into(),
-            &[initial_caller.as_bytes().into()],
-        );
+        let transfers = self.raw_vm_api().get_all_esdt_transfers();
+        self.liquidity_pool_proxy(asset_address)
+            .repay(initial_caller)
+            .with_multi_token_transfer(transfers)
+            .execute_on_dest_context();
 
         Ok(())
     }

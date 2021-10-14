@@ -184,8 +184,12 @@ pub trait LiquidityModule:
     fn repay(&self, initial_caller: ManagedAddress) -> SCResult<()> {
         self.require_non_zero_address(&initial_caller)?;
 
-        let transfers = self.raw_vm_api().get_all_esdt_transfers().into_vec();
-
+        let transfers = self
+            .raw_vm_api()
+            .get_all_esdt_transfers()
+            .into_iter()
+            .collect::<Vec<EsdtTokenPayment<Self::Api>>>();
+        
         require!(
             transfers.len() == REPAY_PAYMENTS_LEN,
             "Invalid number of payments"

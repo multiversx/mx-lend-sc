@@ -62,8 +62,12 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
             "no pool found for this asset"
         );
 
-        let pool_address = self.pools_map().get(&base_asset).unwrap();
-        let success = self.upgrade_pool(&pool_address, &new_bytecode);
+        let pool_address = self
+            .pools_map()
+            .get(&base_asset)
+            .unwrap_or_else(|| self.types().managed_address_zero());
+
+        let success = self.upgrade_pool(&pool_address.to_address(), &new_bytecode);
         require!(success, "pair upgrade failed");
 
         Ok(())
@@ -78,7 +82,11 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
         token_ticker: TokenIdentifier,
         #[payment_amount] amount: BigUint,
     ) -> SCResult<()> {
-        let pool_address = self.pools_map().get(&token_ticker).unwrap();
+        let pool_address = self
+            .pools_map()
+            .get(&token_ticker)
+            .unwrap_or_else(|| self.types().managed_address_zero());
+
         self.liquidity_pool_proxy(pool_address)
             .issue(
                 plain_ticker,
@@ -100,7 +108,11 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
         token_ticker: TokenIdentifier,
         #[payment_amount] amount: BigUint,
     ) -> SCResult<()> {
-        let pool_address = self.pools_map().get(&token_ticker).unwrap();
+        let pool_address = self
+            .pools_map()
+            .get(&token_ticker)
+            .unwrap_or_else(|| self.types().managed_address_zero());
+
         self.liquidity_pool_proxy(pool_address)
             .issue(
                 plain_ticker,
@@ -120,7 +132,11 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
         asset_ticker: TokenIdentifier,
         #[var_args] roles: VarArgs<EsdtLocalRole>,
     ) -> SCResult<()> {
-        let pool_address = self.pools_map().get(&asset_ticker).unwrap();
+        let pool_address = self
+            .pools_map()
+            .get(&asset_ticker)
+            .unwrap_or_else(|| self.types().managed_address_zero());
+
         self.liquidity_pool_proxy(pool_address)
             .set_lend_token_roles(roles.into_vec())
             .execute_on_dest_context();
@@ -135,7 +151,11 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
         asset_ticker: TokenIdentifier,
         #[var_args] roles: VarArgs<EsdtLocalRole>,
     ) -> SCResult<()> {
-        let pool_address = self.pools_map().get(&asset_ticker).unwrap();
+        let pool_address = self
+            .pools_map()
+            .get(&asset_ticker)
+            .unwrap_or_else(|| self.types().managed_address_zero());
+
         self.liquidity_pool_proxy(pool_address)
             .set_borrow_token_roles(roles.into_vec())
             .execute_on_dest_context();
@@ -164,7 +184,9 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
 
     #[view(getPoolAddress)]
     fn get_pool_address(&self, asset: &TokenIdentifier) -> ManagedAddress {
-        self.pools_map().get(asset).unwrap_or_else(self.types().managed_address_zero())
+        self.pools_map()
+            .get(asset)
+            .unwrap_or_else(|| self.types().managed_address_zero())
     }
 
     fn get_pool_address_non_zero(&self, asset: &TokenIdentifier) -> SCResult<ManagedAddress> {
@@ -172,7 +194,10 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
             self.pools_map().contains_key(asset),
             "no pool address for asset"
         );
-        Ok(self.pools_map().get(asset).unwrap_or_else(self.types().managed_address_zero()))
+        Ok(self
+            .pools_map()
+            .get(asset)
+            .unwrap_or_else(|| self.types().managed_address_zero()))
     }
 
     fn get_loan_to_value_exists_and_non_zero(
@@ -191,16 +216,13 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
     }
 
     #[storage_mapper("pools_map")]
-    fn pools_map(&self) -> SafeMapMapper<TokenIdentifier, ManagedAddress>;
+    fn pools_map(&self) -> MapMapper<TokenIdentifier, ManagedAddress>;
 
     #[view(getPoolAllowed)]
     #[storage_mapper("pool_allowed")]
-    fn pools_allowed(&self) -> SafeSetMapper<ManagedAddress>;
+    fn pools_allowed(&self) -> SetMapper<ManagedAddress>;
 
     #[view(getAssetloan_to_value)]
     #[storage_mapper("asset_loan_to_value")]
-    fn asset_loan_to_value(
-        &self,
-        asset: &TokenIdentifier,
-    ) -> SingleValueMapper<BigUint>;
+    fn asset_loan_to_value(&self, asset: &TokenIdentifier) -> SingleValueMapper<BigUint>;
 }

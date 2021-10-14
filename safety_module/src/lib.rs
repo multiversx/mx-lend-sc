@@ -226,11 +226,7 @@ pub trait SafetyModule {
         }
     }
 
-    fn set_local_roles(
-        &self,
-        token: TokenIdentifier,
-        roles: Vec<EsdtLocalRole>,
-    ) -> AsyncCall {
+    fn set_local_roles(&self, token: TokenIdentifier, roles: Vec<EsdtLocalRole>) -> AsyncCall {
         self.send()
             .esdt_system_sc_proxy()
             .set_special_roles(
