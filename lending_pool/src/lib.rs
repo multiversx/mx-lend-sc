@@ -9,17 +9,11 @@ mod router;
 
 pub use common_structs::*;
 
-use liquidity_pool::multi_transfer;
-
 use liquidity_pool::liquidity::ProxyTrait as _;
 
 #[elrond_wasm::contract]
 pub trait LendingPool:
-    factory::FactoryModule
-    + router::RouterModule
-    + multi_transfer::MultiTransferModule
-    + common_checks::ChecksModule
-    + proxy::ProxyModule
+    factory::FactoryModule + router::RouterModule + common_checks::ChecksModule + proxy::ProxyModule
 {
     #[init]
     fn init(&self) {}
@@ -29,8 +23,8 @@ pub trait LendingPool:
     fn deposit(
         &self,
         #[payment_token] asset: TokenIdentifier,
-        #[payment_amount] amount: Self::BigUint,
-        #[var_args] caller: OptionalArg<Address>,
+        #[payment_amount] amount: BigUint,
+        #[var_args] caller: OptionalArg<ManagedAddress>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -53,8 +47,8 @@ pub trait LendingPool:
         &self,
         #[payment_token] lend_token: TokenIdentifier,
         #[payment_nonce] token_nonce: u64,
-        #[payment_amount] amount: Self::BigUint,
-        #[var_args] caller: OptionalArg<Address>,
+        #[payment_amount] amount: BigUint,
+        #[var_args] caller: OptionalArg<ManagedAddress>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -77,10 +71,10 @@ pub trait LendingPool:
         &self,
         #[payment_token] payment_lend_id: TokenIdentifier,
         #[payment_nonce] payment_nonce: u64,
-        #[payment_amount] payment_amount: Self::BigUint,
+        #[payment_amount] payment_amount: BigUint,
         collateral_token_id: TokenIdentifier,
         asset_to_borrow: TokenIdentifier,
-        #[var_args] caller: OptionalArg<Address>,
+        #[var_args] caller: OptionalArg<ManagedAddress>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -112,7 +106,7 @@ pub trait LendingPool:
     fn repay(
         &self,
         asset_to_repay: TokenIdentifier,
-        #[var_args] caller: OptionalArg<Address>,
+        #[var_args] caller: OptionalArg<ManagedAddress>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -122,15 +116,11 @@ pub trait LendingPool:
             "asset not supported"
         );
 
-        // TODO: Use SC Proxy instead of manual call in 0.19.0
-
-        let transfers = self.get_all_esdt_transfers();
-        self.multi_transfer_via_execute_on_dest_context(
-            &asset_address,
-            &transfers,
-            &b"repay"[..].into(),
-            &[initial_caller.as_bytes().into()],
-        );
+        let transfers = self.raw_vm_api().get_all_esdt_transfers();
+        self.liquidity_pool_proxy(asset_address)
+            .repay(initial_caller)
+            .with_multi_token_transfer(transfers)
+            .execute_on_dest_context();
 
         Ok(())
     }
@@ -140,9 +130,9 @@ pub trait LendingPool:
     fn liquidate(
         &self,
         #[payment_token] asset: TokenIdentifier,
-        #[payment_amount] amount: Self::BigUint,
+        #[payment_amount] amount: BigUint,
         borrow_position_nonce: u64,
-        #[var_args] caller: OptionalArg<Address>,
+        #[var_args] caller: OptionalArg<ManagedAddress>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -159,7 +149,7 @@ pub trait LendingPool:
         Ok(())
     }
 
-    fn caller_from_option_or_sender(&self, caller: OptionalArg<Address>) -> Address {
+    fn caller_from_option_or_sender(&self, caller: OptionalArg<ManagedAddress>) -> ManagedAddress {
         caller
             .into_option()
             .unwrap_or_else(|| self.blockchain().get_caller())

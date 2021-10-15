@@ -3,19 +3,19 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-pub struct AggregatorResult<BigUint: BigUintApi> {
+pub struct AggregatorResult<M: ManagedTypeApi> {
     pub round_id: u32,
-    pub from_token_name: BoxedBytes,
-    pub to_token_name: BoxedBytes,
-    pub price: BigUint,
+    pub from_token_name: ManagedBuffer<M>,
+    pub to_token_name: ManagedBuffer<M>,
+    pub price: BigUint<M>,
     pub decimals: u8,
 }
 
-pub type AggregatorResultAsMultiResult<BigUint> =
-    MultiResult5<u32, BoxedBytes, BoxedBytes, BigUint, u8>;
+pub type AggregatorResultAsMultiResult<M> =
+    MultiResult5<u32, ManagedBuffer<M>, ManagedBuffer<M>, BigUint<M>, u8>;
 
-const DEFAULT_PRICE: u64 = 1_000u64;
-const DEFAULT_PRICE_DECIMALS: u8 = 2u8;
+const DEFAULT_PRICE: u64 = 1_000;
+const DEFAULT_PRICE_DECIMALS: u8 = 2;
 
 #[elrond_wasm::contract]
 pub trait PriceAggregatorMock {
@@ -25,9 +25,9 @@ pub trait PriceAggregatorMock {
     #[view(latestPriceFeedOptional)]
     fn latest_price_feed_optional(
         &self,
-        from: BoxedBytes,
-        to: BoxedBytes,
-    ) -> OptionalResult<AggregatorResultAsMultiResult<Self::BigUint>> {
+        from: ManagedBuffer,
+        to: ManagedBuffer,
+    ) -> OptionalResult<AggregatorResultAsMultiResult<Self::Api>> {
         OptionalArg::Some(MultiResult5::from((
             1u32,
             from.clone(),
@@ -37,23 +37,19 @@ pub trait PriceAggregatorMock {
         )))
     }
 
-    fn get_price_or_default(&self, from: &BoxedBytes, to: &BoxedBytes) -> Self::BigUint {
+    fn get_price_or_default(&self, from: &ManagedBuffer, to: &ManagedBuffer) -> BigUint {
         if self.latest_price_feed(from, to).is_empty() {
-            DEFAULT_PRICE.into()
+            BigUint::from(DEFAULT_PRICE)
         } else {
             self.latest_price_feed(from, to).get()
         }
     }
 
     #[endpoint(setLatestPriceFeed)]
-    fn set_latest_price_feed(&self, from: &BoxedBytes, to: &BoxedBytes, price: Self::BigUint) {
+    fn set_latest_price_feed(&self, from: &ManagedBuffer, to: &ManagedBuffer, price: BigUint) {
         self.latest_price_feed(from, to).set(&price)
     }
 
     #[storage_mapper("latest_price_feed")]
-    fn latest_price_feed(
-        &self,
-        from: &BoxedBytes,
-        to: &BoxedBytes,
-    ) -> SingleValueMapper<Self::Storage, Self::BigUint>;
+    fn latest_price_feed(&self, from: &ManagedBuffer, to: &ManagedBuffer) -> SingleValueMapper<BigUint>;
 }

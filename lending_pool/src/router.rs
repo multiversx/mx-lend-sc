@@ -17,14 +17,14 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
     fn create_liquidity_pool(
         &self,
         base_asset: TokenIdentifier,
-        lending_pool_address: Address,
-        r_base: Self::BigUint,
-        r_slope1: Self::BigUint,
-        r_slope2: Self::BigUint,
-        u_optimal: Self::BigUint,
-        reserve_factor: Self::BigUint,
-        pool_bytecode: BoxedBytes,
-    ) -> SCResult<Address> {
+        lending_pool_address: ManagedAddress,
+        r_base: BigUint,
+        r_slope1: BigUint,
+        r_slope2: BigUint,
+        u_optimal: BigUint,
+        reserve_factor: BigUint,
+        pool_bytecode: ManagedBuffer,
+    ) -> SCResult<ManagedAddress> {
         require!(
             !self.pools_map().contains_key(&base_asset),
             "asset already supported"
@@ -55,15 +55,19 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
     fn upgrade_liquidity_pool(
         &self,
         base_asset: TokenIdentifier,
-        new_bytecode: BoxedBytes,
+        new_bytecode: ManagedBuffer,
     ) -> SCResult<()> {
         require!(
             self.pools_map().contains_key(&base_asset),
             "no pool found for this asset"
         );
 
-        let pool_address = self.pools_map().get(&base_asset).unwrap();
-        let success = self.upgrade_pool(&pool_address, &new_bytecode);
+        let pool_address = self
+            .pools_map()
+            .get(&base_asset)
+            .unwrap_or_else(|| ManagedAddress::zero());
+
+        let success = self.upgrade_pool(&pool_address.to_address(), &new_bytecode);
         require!(success, "pair upgrade failed");
 
         Ok(())
@@ -74,16 +78,20 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
     #[endpoint(issueLendToken)]
     fn issue_lend_token(
         &self,
-        plain_ticker: BoxedBytes,
+        plain_ticker: ManagedBuffer,
         token_ticker: TokenIdentifier,
-        #[payment_amount] amount: Self::BigUint,
+        #[payment_amount] amount: BigUint,
     ) -> SCResult<()> {
-        let pool_address = self.pools_map().get(&token_ticker).unwrap();
+        let pool_address = self
+            .pools_map()
+            .get(&token_ticker)
+            .unwrap_or_else(|| ManagedAddress::zero());
+
         self.liquidity_pool_proxy(pool_address)
             .issue(
                 plain_ticker,
                 token_ticker,
-                BoxedBytes::from(LEND_TOKEN_PREFIX),
+                ManagedBuffer::from(LEND_TOKEN_PREFIX),
                 amount,
             )
             .execute_on_dest_context();
@@ -96,16 +104,20 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
     #[endpoint(issueBorrowToken)]
     fn issue_borrow_token(
         &self,
-        plain_ticker: BoxedBytes,
+        plain_ticker: ManagedBuffer,
         token_ticker: TokenIdentifier,
-        #[payment_amount] amount: Self::BigUint,
+        #[payment_amount] amount: BigUint,
     ) -> SCResult<()> {
-        let pool_address = self.pools_map().get(&token_ticker).unwrap();
+        let pool_address = self
+            .pools_map()
+            .get(&token_ticker)
+            .unwrap_or_else(|| ManagedAddress::zero());
+
         self.liquidity_pool_proxy(pool_address)
             .issue(
                 plain_ticker,
                 token_ticker,
-                BoxedBytes::from(BORROW_TOKEN_PREFIX),
+                ManagedBuffer::from(BORROW_TOKEN_PREFIX),
                 amount,
             )
             .execute_on_dest_context();
@@ -120,7 +132,11 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
         asset_ticker: TokenIdentifier,
         #[var_args] roles: VarArgs<EsdtLocalRole>,
     ) -> SCResult<()> {
-        let pool_address = self.pools_map().get(&asset_ticker).unwrap();
+        let pool_address = self
+            .pools_map()
+            .get(&asset_ticker)
+            .unwrap_or_else(|| ManagedAddress::zero());
+
         self.liquidity_pool_proxy(pool_address)
             .set_lend_token_roles(roles.into_vec())
             .execute_on_dest_context();
@@ -135,7 +151,11 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
         asset_ticker: TokenIdentifier,
         #[var_args] roles: VarArgs<EsdtLocalRole>,
     ) -> SCResult<()> {
-        let pool_address = self.pools_map().get(&asset_ticker).unwrap();
+        let pool_address = self
+            .pools_map()
+            .get(&asset_ticker)
+            .unwrap_or_else(|| ManagedAddress::zero());
+
         self.liquidity_pool_proxy(pool_address)
             .set_borrow_token_roles(roles.into_vec())
             .execute_on_dest_context();
@@ -145,7 +165,7 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
 
     #[only_owner]
     #[endpoint(setAssetLoanToValue)]
-    fn set_asset_loan_to_value(&self, asset: TokenIdentifier, loan_to_value: Self::BigUint) {
+    fn set_asset_loan_to_value(&self, asset: TokenIdentifier, loan_to_value: BigUint) {
         self.asset_loan_to_value(&asset).set(&loan_to_value);
     }
 
@@ -163,22 +183,27 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
     }
 
     #[view(getPoolAddress)]
-    fn get_pool_address(&self, asset: &TokenIdentifier) -> Address {
-        self.pools_map().get(asset).unwrap_or_else(Address::zero)
+    fn get_pool_address(&self, asset: &TokenIdentifier) -> ManagedAddress {
+        self.pools_map()
+            .get(asset)
+            .unwrap_or_else(|| ManagedAddress::zero())
     }
 
-    fn get_pool_address_non_zero(&self, asset: &TokenIdentifier) -> SCResult<Address> {
+    fn get_pool_address_non_zero(&self, asset: &TokenIdentifier) -> SCResult<ManagedAddress> {
         require!(
             self.pools_map().contains_key(asset),
             "no pool address for asset"
         );
-        Ok(self.pools_map().get(asset).unwrap_or_else(Address::zero))
+        Ok(self
+            .pools_map()
+            .get(asset)
+            .unwrap_or_else(|| ManagedAddress::zero()))
     }
 
     fn get_loan_to_value_exists_and_non_zero(
         &self,
         token_id: &TokenIdentifier,
-    ) -> SCResult<Self::BigUint> {
+    ) -> SCResult<BigUint> {
         require!(
             !self.asset_loan_to_value(token_id).is_empty(),
             "no loan_to_value value present for asset"
@@ -191,16 +216,13 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
     }
 
     #[storage_mapper("pools_map")]
-    fn pools_map(&self) -> SafeMapMapper<Self::Storage, TokenIdentifier, Address>;
+    fn pools_map(&self) -> MapMapper<TokenIdentifier, ManagedAddress>;
 
     #[view(getPoolAllowed)]
     #[storage_mapper("pool_allowed")]
-    fn pools_allowed(&self) -> SafeSetMapper<Self::Storage, Address>;
+    fn pools_allowed(&self) -> SetMapper<ManagedAddress>;
 
     #[view(getAssetloan_to_value)]
     #[storage_mapper("asset_loan_to_value")]
-    fn asset_loan_to_value(
-        &self,
-        asset: &TokenIdentifier,
-    ) -> SingleValueMapper<Self::Storage, Self::BigUint>;
+    fn asset_loan_to_value(&self, asset: &TokenIdentifier) -> SingleValueMapper<BigUint>;
 }
