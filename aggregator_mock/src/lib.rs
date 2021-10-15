@@ -14,8 +14,8 @@ pub struct AggregatorResult<M: ManagedTypeApi> {
 pub type AggregatorResultAsMultiResult<M> =
     MultiResult5<u32, ManagedBuffer<M>, ManagedBuffer<M>, BigUint<M>, u8>;
 
-const DEFAULT_PRICE: u64 = 1_000u64;
-const DEFAULT_PRICE_DECIMALS: u8 = 2u8;
+const DEFAULT_PRICE: u64 = 1_000;
+const DEFAULT_PRICE_DECIMALS: u8 = 2;
 
 #[elrond_wasm::contract]
 pub trait PriceAggregatorMock {

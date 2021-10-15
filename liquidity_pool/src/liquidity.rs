@@ -185,11 +185,11 @@ pub trait LiquidityModule:
         self.require_non_zero_address(&initial_caller)?;
 
         let transfers = self
-            .raw_vm_api()
-            .get_all_esdt_transfers()
+            .call_value()
+            .all_esdt_transfers()
             .into_iter()
             .collect::<Vec<EsdtTokenPayment<Self::Api>>>();
-        
+
         require!(
             transfers.len() == REPAY_PAYMENTS_LEN,
             "Invalid number of payments"

@@ -65,7 +65,7 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
         let pool_address = self
             .pools_map()
             .get(&base_asset)
-            .unwrap_or_else(|| self.types().managed_address_zero());
+            .unwrap_or_else(|| ManagedAddress::zero());
 
         let success = self.upgrade_pool(&pool_address.to_address(), &new_bytecode);
         require!(success, "pair upgrade failed");
@@ -85,7 +85,7 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
         let pool_address = self
             .pools_map()
             .get(&token_ticker)
-            .unwrap_or_else(|| self.types().managed_address_zero());
+            .unwrap_or_else(|| ManagedAddress::zero());
 
         self.liquidity_pool_proxy(pool_address)
             .issue(
@@ -111,7 +111,7 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
         let pool_address = self
             .pools_map()
             .get(&token_ticker)
-            .unwrap_or_else(|| self.types().managed_address_zero());
+            .unwrap_or_else(|| ManagedAddress::zero());
 
         self.liquidity_pool_proxy(pool_address)
             .issue(
@@ -135,7 +135,7 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
         let pool_address = self
             .pools_map()
             .get(&asset_ticker)
-            .unwrap_or_else(|| self.types().managed_address_zero());
+            .unwrap_or_else(|| ManagedAddress::zero());
 
         self.liquidity_pool_proxy(pool_address)
             .set_lend_token_roles(roles.into_vec())
@@ -154,7 +154,7 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
         let pool_address = self
             .pools_map()
             .get(&asset_ticker)
-            .unwrap_or_else(|| self.types().managed_address_zero());
+            .unwrap_or_else(|| ManagedAddress::zero());
 
         self.liquidity_pool_proxy(pool_address)
             .set_borrow_token_roles(roles.into_vec())
@@ -186,7 +186,7 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
     fn get_pool_address(&self, asset: &TokenIdentifier) -> ManagedAddress {
         self.pools_map()
             .get(asset)
-            .unwrap_or_else(|| self.types().managed_address_zero())
+            .unwrap_or_else(|| ManagedAddress::zero())
     }
 
     fn get_pool_address_non_zero(&self, asset: &TokenIdentifier) -> SCResult<ManagedAddress> {
@@ -197,7 +197,7 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
         Ok(self
             .pools_map()
             .get(asset)
-            .unwrap_or_else(|| self.types().managed_address_zero()))
+            .unwrap_or_else(|| ManagedAddress::zero()))
     }
 
     fn get_loan_to_value_exists_and_non_zero(
