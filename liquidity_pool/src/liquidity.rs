@@ -56,6 +56,37 @@ pub trait LiquidityModule:
 
     #[only_owner]
     #[payable("*")]
+    #[endpoint(reducePositionAfterLiquidation)]
+    fn reduce_position_after_liquidation(
+        &self,
+        #[payment_token] payment_token_id: TokenIdentifier,
+        #[payment_nonce] payment_token_nonce: u64,
+        #[payment_amount] payment_amount: BigUint,
+    ) -> SCResult<()> {
+        let lend_token_id = self.lend_token().get();
+        require!(
+            payment_token_id == lend_token_id,
+            "lend tokens not supported by this pool"
+        );
+
+        let mut deposit = self.deposit_position(payment_token_nonce).get();
+        require!(
+            &deposit.amount >= &payment_amount,
+            "payment tokens greater than position size"
+        );
+
+        deposit.amount -= &payment_amount;
+        if deposit.amount == 0 {
+            self.deposit_position(payment_token_nonce).clear();
+        } else {
+            self.deposit_position(payment_token_nonce).set(&deposit);
+        }
+
+        Ok(())
+    }
+
+    #[only_owner]
+    #[payable("*")]
     #[endpoint]
     fn borrow(
         &self,
@@ -283,7 +314,7 @@ pub trait LiquidityModule:
         initial_caller: ManagedAddress,
         borrow_position_nonce: u64,
         liquidation_bonus: BigUint,
-    ) -> SCResult<()> {
+    ) -> SCResult<TokenAmountPair<Self::Api>> {
         self.require_non_zero_address(&initial_caller)?;
         self.require_amount_greater_than_zero(&asset_amount)?;
 
@@ -337,16 +368,28 @@ pub trait LiquidityModule:
         self.borrow_position(borrow_position_nonce).clear();
 
         let bp = self.get_base_precision();
-        let total_lend_amount = (asset_amount * (&bp + &liquidation_bonus)) / bp;
+        let lend_amount_to_return = (asset_amount * (&bp + &liquidation_bonus)) / bp;
+        let lend_tokens = borrow_position.lend_tokens.clone();
+        require!(
+            lend_tokens.amount > lend_amount_to_return,
+            "total amount to return bigger than position"
+        );
 
         self.send().direct(
             &initial_caller,
             &borrow_position.lend_tokens.token_id,
             borrow_position.lend_tokens.nonce,
-            &total_lend_amount,
+            &lend_amount_to_return,
             &[],
         );
 
-        Ok(())
+        let remaining_amount = lend_tokens.amount - lend_amount_to_return;
+        let lend_token_pair = TokenAmountPair::new(
+            lend_tokens.token_id,
+            lend_tokens.nonce,
+            remaining_amount,
+        );
+
+        Ok(lend_token_pair)
     }
 }

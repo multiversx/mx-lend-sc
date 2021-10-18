@@ -9,7 +9,7 @@ mod router;
 
 pub use common_structs::*;
 
-use liquidity_pool::liquidity::{self, ProxyTrait as _};
+use liquidity_pool::liquidity::ProxyTrait as _;
 
 #[elrond_wasm::contract]
 pub trait LendingPool:
@@ -143,7 +143,8 @@ pub trait LendingPool:
         let asset_address = self.get_pool_address(&asset);
         let liq_bonus = self.get_liquidation_bonus_exists_and_non_zero(&asset)?;
 
-        self.liquidity_pool_proxy(asset_address)
+        let lend_tokens = self
+            .liquidity_pool_proxy(asset_address)
             .liquidate(
                 asset,
                 amount,
@@ -152,6 +153,16 @@ pub trait LendingPool:
                 liq_bonus,
             )
             .execute_on_dest_context();
+
+        let lend_tokens_pool = self.get_pool_address(&lend_tokens.token_id);
+
+        self.liquidity_pool_proxy(lend_tokens_pool)
+            .reduce_position_after_liquidation(
+                lend_tokens.token_id,
+                lend_tokens.nonce,
+                lend_tokens.amount,
+            )
+            .execute_on_dest_context_ignore_result();
 
         Ok(())
     }
