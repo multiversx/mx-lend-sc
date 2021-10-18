@@ -282,6 +282,7 @@ pub trait LiquidityModule:
         #[payment_amount] asset_amount: BigUint,
         initial_caller: ManagedAddress,
         borrow_position_nonce: u64,
+        liquidation_bonus: BigUint,
     ) -> SCResult<()> {
         self.require_non_zero_address(&initial_caller)?;
         self.require_amount_greater_than_zero(&asset_amount)?;
@@ -335,11 +336,14 @@ pub trait LiquidityModule:
 
         self.borrow_position(borrow_position_nonce).clear();
 
+        let bp = self.get_base_precision();
+        let total_lend_amount = (asset_amount * (&bp + &liquidation_bonus)) / bp;
+
         self.send().direct(
             &initial_caller,
             &borrow_position.lend_tokens.token_id,
             borrow_position.lend_tokens.nonce,
-            &borrow_position.lend_tokens.amount,
+            &total_lend_amount,
             &[],
         );
 
