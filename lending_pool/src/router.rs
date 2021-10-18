@@ -169,6 +169,12 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
         self.asset_loan_to_value(&asset).set(&loan_to_value);
     }
 
+    #[only_owner]
+    #[endpoint(setAssetLiquidationBonus)]
+    fn set_asset_liquidation_bonus(&self, asset: TokenIdentifier, liq_bonus: BigUint) {
+        self.asset_liquidation_bonus(&asset).set(&liq_bonus);
+    }
+
     #[endpoint(setTickerAfterIssue)]
     fn set_ticker_after_issue(&self, token_ticker: TokenIdentifier) -> SCResult<()> {
         let caller = self.blockchain().get_caller();
@@ -200,6 +206,21 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
             .unwrap_or_else(|| ManagedAddress::zero()))
     }
 
+    fn get_liquidation_bonus_exists_and_non_zero(
+        &self,
+        token_id: &TokenIdentifier,
+    ) -> SCResult<BigUint> {
+        require!(
+            !self.asset_liquidation_bonus(token_id).is_empty(),
+            "no liquidation_bonus present for asset"
+        );
+
+        let liq_bonus = self.asset_liquidation_bonus(token_id).get();
+        require!(liq_bonus > 0, "liquidation_bonus can not be zero");
+
+        Ok(liq_bonus)
+    }
+
     fn get_loan_to_value_exists_and_non_zero(
         &self,
         token_id: &TokenIdentifier,
@@ -222,7 +243,11 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
     #[storage_mapper("pool_allowed")]
     fn pools_allowed(&self) -> SetMapper<ManagedAddress>;
 
-    #[view(getAssetloan_to_value)]
+    #[view(getAssetLoanToValue)]
     #[storage_mapper("asset_loan_to_value")]
     fn asset_loan_to_value(&self, asset: &TokenIdentifier) -> SingleValueMapper<BigUint>;
+
+    #[view(getAssetLiquidationBonus)]
+    #[storage_mapper("asset_liquidation_bonus")]
+    fn asset_liquidation_bonus(&self, asset: &TokenIdentifier) -> SingleValueMapper<BigUint>;
 }
