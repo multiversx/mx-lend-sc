@@ -27,6 +27,7 @@ pub trait LiquidityModule:
         initial_caller: ManagedAddress,
         #[payment_token] asset: TokenIdentifier,
         #[payment_amount] amount: BigUint,
+        accept_funds_func: Option<ManagedBuffer>,
     ) -> SCResult<()> {
         let pool_asset = self.pool_asset().get();
         require!(
@@ -96,6 +97,7 @@ pub trait LiquidityModule:
         initial_caller: ManagedAddress,
         collateral_tokens: TokenAmountPair<Self::Api>,
         loan_to_value: BigUint,
+        accept_funds_func: Option<ManagedBuffer>,
     ) -> SCResult<()> {
         self.require_amount_greater_than_zero(&collateral_tokens.amount)?;
         self.require_non_zero_address(&initial_caller)?;
@@ -173,6 +175,7 @@ pub trait LiquidityModule:
         #[payment_token] lend_token: TokenIdentifier,
         #[payment_nonce] token_nonce: u64,
         #[payment_amount] amount: BigUint,
+        accept_funds_func: Option<ManagedBuffer>,
     ) -> SCResult<()> {
         require!(
             lend_token == self.lend_token().get(),
@@ -212,7 +215,11 @@ pub trait LiquidityModule:
     #[only_owner]
     #[payable("*")]
     #[endpoint]
-    fn repay(&self, initial_caller: ManagedAddress) -> SCResult<()> {
+    fn repay(
+        &self,
+        initial_caller: ManagedAddress,
+        accept_funds_func: Option<ManagedBuffer>,
+    ) -> SCResult<()> {
         self.require_non_zero_address(&initial_caller)?;
 
         let transfers = self
@@ -314,6 +321,7 @@ pub trait LiquidityModule:
         initial_caller: ManagedAddress,
         borrow_position_nonce: u64,
         liquidation_bonus: BigUint,
+        accept_funds_func: Option<ManagedBuffer>,
     ) -> SCResult<TokenAmountPair<Self::Api>> {
         self.require_non_zero_address(&initial_caller)?;
         self.require_amount_greater_than_zero(&asset_amount)?;

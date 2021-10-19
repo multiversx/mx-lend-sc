@@ -25,6 +25,7 @@ pub trait LendingPool:
         #[payment_token] asset: TokenIdentifier,
         #[payment_amount] amount: BigUint,
         #[var_args] caller: OptionalArg<ManagedAddress>,
+        #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -49,6 +50,7 @@ pub trait LendingPool:
         #[payment_nonce] token_nonce: u64,
         #[payment_amount] amount: BigUint,
         #[var_args] caller: OptionalArg<ManagedAddress>,
+        #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -75,6 +77,7 @@ pub trait LendingPool:
         collateral_token_id: TokenIdentifier,
         asset_to_borrow: TokenIdentifier,
         #[var_args] caller: OptionalArg<ManagedAddress>,
+        #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -107,6 +110,7 @@ pub trait LendingPool:
         &self,
         asset_to_repay: TokenIdentifier,
         #[var_args] caller: OptionalArg<ManagedAddress>,
+        #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -133,6 +137,7 @@ pub trait LendingPool:
         #[payment_amount] amount: BigUint,
         borrow_position_nonce: u64,
         #[var_args] caller: OptionalArg<ManagedAddress>,
+        #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
