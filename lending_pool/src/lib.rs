@@ -141,10 +141,28 @@ pub trait LendingPool:
         self.require_non_zero_address(&initial_caller)?;
 
         let asset_address = self.get_pool_address(&asset);
+        let liq_bonus = self.get_liquidation_bonus_non_zero(&asset)?;
 
-        self.liquidity_pool_proxy(asset_address)
-            .liquidate(asset, amount, initial_caller, borrow_position_nonce)
+        let lend_tokens = self
+            .liquidity_pool_proxy(asset_address)
+            .liquidate(
+                asset,
+                amount,
+                initial_caller,
+                borrow_position_nonce,
+                liq_bonus,
+            )
             .execute_on_dest_context();
+
+        let lend_tokens_pool = self.get_pool_address(&lend_tokens.token_id);
+
+        self.liquidity_pool_proxy(lend_tokens_pool)
+            .reduce_position_after_liquidation(
+                lend_tokens.token_id,
+                lend_tokens.nonce,
+                lend_tokens.amount,
+            )
+            .execute_on_dest_context_ignore_result();
 
         Ok(())
     }

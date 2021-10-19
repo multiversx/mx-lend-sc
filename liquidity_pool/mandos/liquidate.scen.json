@@ -30,7 +30,7 @@
         },
         {
             "step": "scCall",
-            "txId": "repay",
+            "txId": "liquidate endpoint",
             "tx": {
                 "from": "address:owner",
                 "to": "sc:liqpool",
@@ -44,7 +44,8 @@
                 "function": "liquidate",
                 "arguments": [
                     "address:owner",
-                    "1"
+                    "1",
+                    "50,000,0000"
                 ],
                 "gasLimit": "100,000,000",
                 "gasPrice": "0"
@@ -60,7 +61,8 @@
                     "str:SOME",
                     "str:USD",
                     "1000",
-                    "2"
+                    "2",
+                    "nested:str:SOMEL-abcdef|u64:1|biguint:25,000"
                 ],
                 "status": "",
                 "gas": "*",
@@ -99,7 +101,7 @@
                         },
                         "str:SOMEL-abcdef": {
                             "nonce": "1",
-                            "balance": "1,000,000,000,000"
+                            "balance": "999,999,975,000"
                         }
                     },
                     "storage": {}
@@ -124,7 +126,11 @@
                                 "ESDTRoleNFTBurn"
                             ]
                         },
-                        "str:WBT-abcdef": "200,000"
+                        "str:WBT-abcdef": "200,000",
+                        "str:SOMEL-abcdef": {
+                            "nonce": "1",
+                            "balance": "25,000"
+                        }
                     },
                     "storage": {
                         "str:priceAggregatorAddress": "sc:aggregator",

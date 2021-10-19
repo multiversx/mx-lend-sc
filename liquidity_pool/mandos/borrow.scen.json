@@ -7,7 +7,7 @@
         },
         {
             "step": "scCall",
-            "txId": "withdraw",
+            "txId": "borrow endpoint",
             "tx": {
                 "from": "address:owner",
                 "to": "sc:liqpool",
