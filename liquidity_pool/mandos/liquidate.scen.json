@@ -62,7 +62,7 @@
                     "str:USD",
                     "1000",
                     "2",
-                    "nested:str:SOMEL-abcdef|u64:1|biguint:75,000"
+                    "nested:str:SOMEL-abcdef|u64:1|biguint:25,000"
                 ],
                 "status": "",
                 "gas": "*",
