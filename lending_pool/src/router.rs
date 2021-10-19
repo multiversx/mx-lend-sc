@@ -206,17 +206,9 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
             .unwrap_or_else(|| ManagedAddress::zero()))
     }
 
-    fn get_liquidation_bonus_exists_and_non_zero(
-        &self,
-        token_id: &TokenIdentifier,
-    ) -> SCResult<BigUint> {
-        require!(
-            !self.asset_liquidation_bonus(token_id).is_empty(),
-            "no liquidation_bonus present for asset"
-        );
-
+    fn get_liquidation_bonus_non_zero(&self, token_id: &TokenIdentifier) -> SCResult<BigUint> {
         let liq_bonus = self.asset_liquidation_bonus(token_id).get();
-        require!(liq_bonus > 0, "liquidation_bonus can not be zero");
+        require!(liq_bonus > 0, "no liquidation_bonus present for asset");
 
         Ok(liq_bonus)
     }

@@ -141,7 +141,7 @@ pub trait LendingPool:
         self.require_non_zero_address(&initial_caller)?;
 
         let asset_address = self.get_pool_address(&asset);
-        let liq_bonus = self.get_liquidation_bonus_exists_and_non_zero(&asset)?;
+        let liq_bonus = self.get_liquidation_bonus_non_zero(&asset)?;
 
         let lend_tokens = self
             .liquidity_pool_proxy(asset_address)

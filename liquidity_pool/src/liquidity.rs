@@ -71,7 +71,7 @@ pub trait LiquidityModule:
 
         let mut deposit = self.deposit_position(payment_token_nonce).get();
         require!(
-            &deposit.amount >= &payment_amount,
+            deposit.amount >= payment_amount,
             "payment tokens greater than position size"
         );
 
@@ -384,11 +384,8 @@ pub trait LiquidityModule:
         );
 
         let remaining_amount = lend_tokens.amount - lend_amount_to_return;
-        let lend_token_pair = TokenAmountPair::new(
-            lend_tokens.token_id,
-            lend_tokens.nonce,
-            remaining_amount,
-        );
+        let lend_token_pair =
+            TokenAmountPair::new(lend_tokens.token_id, lend_tokens.nonce, remaining_amount);
 
         Ok(lend_token_pair)
     }
