@@ -22,6 +22,7 @@ pub trait LiquidityPool:
     + utils::UtilsModule
     + price_aggregator_proxy::PriceAggregatorModule
     + common_checks::ChecksModule
+    + token_send::TokenSendModule
 {
     #[init]
     fn init(

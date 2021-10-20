@@ -36,12 +36,7 @@ pub trait LendingPool:
         self.require_non_zero_address(&pool_address)?;
 
         self.liquidity_pool_proxy(pool_address)
-            .deposit_asset(
-                initial_caller,
-                asset,
-                amount,
-                accept_funds_func.into_option(),
-            )
+            .deposit_asset(initial_caller, asset, amount, accept_funds_func)
             .execute_on_dest_context();
 
         Ok(())
@@ -71,7 +66,7 @@ pub trait LendingPool:
                 lend_token,
                 token_nonce,
                 amount,
-                accept_funds_func.into_option(),
+                accept_funds_func,
             )
             .execute_on_dest_context();
 
@@ -109,7 +104,7 @@ pub trait LendingPool:
                 initial_caller,
                 collateral_tokens,
                 loan_to_value,
-                accept_funds_func.into_option(),
+                accept_funds_func,
             )
             .execute_on_dest_context_ignore_result();
 
@@ -134,7 +129,7 @@ pub trait LendingPool:
 
         let transfers = self.raw_vm_api().get_all_esdt_transfers();
         self.liquidity_pool_proxy(asset_address)
-            .repay(initial_caller, accept_funds_func.into_option())
+            .repay(initial_caller, accept_funds_func)
             .with_multi_token_transfer(transfers)
             .execute_on_dest_context();
 
@@ -168,7 +163,7 @@ pub trait LendingPool:
                 initial_caller,
                 borrow_position_nonce,
                 liq_bonus,
-                accept_funds_func.into_option(),
+                accept_funds_func,
             )
             .execute_on_dest_context();
 
