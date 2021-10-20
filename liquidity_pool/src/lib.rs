@@ -49,7 +49,7 @@ pub trait LiquidityPool:
     #[only_owner]
     #[endpoint(setTransferExecGasLimit)]
     fn set_transfer_exec_gas_limit(&self, gas_limit: u64) -> SCResult<()> {
-        self.transfer_exec_gas_limit().set(gas_limit);
+        self.transfer_exec_gas_limit().set(&gas_limit);
         Ok(())
     }
 }
