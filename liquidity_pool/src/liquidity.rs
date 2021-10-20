@@ -271,7 +271,7 @@ pub trait LiquidityModule:
             let extra_asset_paid = asset_amount - &total_owed;
             self.send_fft_tokens(
                 &initial_caller,
-                &asset_token_id,
+                asset_token_id,
                 &extra_asset_paid,
                 &accept_funds_func,
             )?;
