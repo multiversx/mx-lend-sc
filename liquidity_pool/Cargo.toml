@@ -35,6 +35,9 @@ path = "../common/structs"
 [dependencies.common_checks]
 path = "../common/checks"
 
+[dependencies.token_send]
+path = "../common/token_send"
+
 [dependencies.price-aggregator-proxy]
 git = "https://github.com/ElrondNetwork/sc-chainlink-rs"
 rev = "8817a46"

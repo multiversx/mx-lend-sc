@@ -25,6 +25,7 @@ pub trait LendingPool:
         #[payment_token] asset: TokenIdentifier,
         #[payment_amount] amount: BigUint,
         #[var_args] caller: OptionalArg<ManagedAddress>,
+        #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -35,7 +36,7 @@ pub trait LendingPool:
         self.require_non_zero_address(&pool_address)?;
 
         self.liquidity_pool_proxy(pool_address)
-            .deposit_asset(initial_caller, asset, amount)
+            .deposit_asset(initial_caller, asset, amount, accept_funds_func)
             .execute_on_dest_context();
 
         Ok(())
@@ -49,6 +50,7 @@ pub trait LendingPool:
         #[payment_nonce] token_nonce: u64,
         #[payment_amount] amount: BigUint,
         #[var_args] caller: OptionalArg<ManagedAddress>,
+        #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -59,7 +61,13 @@ pub trait LendingPool:
         self.require_non_zero_address(&pool_address)?;
 
         self.liquidity_pool_proxy(pool_address)
-            .withdraw(initial_caller, lend_token, token_nonce, amount)
+            .withdraw(
+                initial_caller,
+                lend_token,
+                token_nonce,
+                amount,
+                accept_funds_func,
+            )
             .execute_on_dest_context();
 
         Ok(())
@@ -75,6 +83,7 @@ pub trait LendingPool:
         collateral_token_id: TokenIdentifier,
         asset_to_borrow: TokenIdentifier,
         #[var_args] caller: OptionalArg<ManagedAddress>,
+        #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -95,6 +104,7 @@ pub trait LendingPool:
                 initial_caller,
                 collateral_tokens,
                 loan_to_value,
+                accept_funds_func,
             )
             .execute_on_dest_context_ignore_result();
 
@@ -107,6 +117,7 @@ pub trait LendingPool:
         &self,
         asset_to_repay: TokenIdentifier,
         #[var_args] caller: OptionalArg<ManagedAddress>,
+        #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -118,7 +129,7 @@ pub trait LendingPool:
 
         let transfers = self.raw_vm_api().get_all_esdt_transfers();
         self.liquidity_pool_proxy(asset_address)
-            .repay(initial_caller)
+            .repay(initial_caller, accept_funds_func)
             .with_multi_token_transfer(transfers)
             .execute_on_dest_context();
 
@@ -133,6 +144,7 @@ pub trait LendingPool:
         #[payment_amount] amount: BigUint,
         borrow_position_nonce: u64,
         #[var_args] caller: OptionalArg<ManagedAddress>,
+        #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
     ) -> SCResult<()> {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -151,6 +163,7 @@ pub trait LendingPool:
                 initial_caller,
                 borrow_position_nonce,
                 liq_bonus,
+                accept_funds_func,
             )
             .execute_on_dest_context();
 
