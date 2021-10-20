@@ -45,13 +45,13 @@ pub trait LiquidityModule:
 
         self.reserves(&pool_asset).update(|x| *x += &amount);
 
-        // self.send_nft_tokens(
-        //     &initial_caller,
-        //     &self.lend_token().get(),
-        //     new_nonce,
-        //     &amount,
-        //     &accept_funds_func,
-        // )?;
+        self.send_nft_tokens(
+            &initial_caller,
+            &self.lend_token().get(),
+            new_nonce,
+            &amount,
+            &accept_funds_func,
+        )?;
 
         Ok(())
     }
@@ -148,21 +148,20 @@ pub trait LiquidityModule:
         self.reserves(&pool_token_id)
             .update(|total| *total -= &borrow_amount_in_tokens);
 
-        self.send().direct(
+        self.send_nft_tokens(
             &initial_caller,
             &borrow_token_id,
             new_nonce,
             &borrow_amount_in_tokens,
-            &[],
-        );
+            &accept_funds_func,
+        )?;
 
-        self.send().direct(
+        self.send_fft_tokens(
             &initial_caller,
             &pool_token_id,
-            0,
             &borrow_amount_in_tokens,
-            &[],
-        );
+            &accept_funds_func,
+        )?;
 
         Ok(())
     }
@@ -207,8 +206,12 @@ pub trait LiquidityModule:
         self.send()
             .esdt_local_burn(&lend_token, token_nonce, &amount);
 
-        self.send()
-            .direct(&initial_caller, &pool_asset, 0, &withdrawal_amount, &[]);
+        self.send_fft_tokens(
+            &initial_caller,
+            &pool_asset,
+            &withdrawal_amount,
+            &accept_funds_func,
+        )?;
 
         Ok(())
     }
@@ -266,8 +269,12 @@ pub trait LiquidityModule:
 
         if asset_amount > &total_owed {
             let extra_asset_paid = asset_amount - &total_owed;
-            self.send()
-                .direct(&initial_caller, asset_token_id, 0, &extra_asset_paid, &[]);
+            self.send_fft_tokens(
+                &initial_caller,
+                &asset_token_id,
+                &extra_asset_paid,
+                &accept_funds_func,
+            )?;
         }
 
         let lend_token_amount_to_send_back: BigUint;
@@ -301,13 +308,13 @@ pub trait LiquidityModule:
         self.send()
             .esdt_local_burn(borrow_token_id, borrow_token_nonce, borrow_token_amount);
 
-        self.send().direct(
+        self.send_nft_tokens(
             &initial_caller,
             &borrow_position.lend_tokens.token_id,
             borrow_position.lend_tokens.nonce,
             &lend_token_amount_to_send_back,
-            &[],
-        );
+            &accept_funds_func,
+        )?;
 
         Ok(())
     }
@@ -384,13 +391,13 @@ pub trait LiquidityModule:
             "total amount to return bigger than position"
         );
 
-        self.send().direct(
+        self.send_nft_tokens(
             &initial_caller,
             &borrow_position.lend_tokens.token_id,
             borrow_position.lend_tokens.nonce,
             &lend_amount_to_return,
-            &[],
-        );
+            &accept_funds_func,
+        )?;
 
         let remaining_amount = lend_tokens.amount - lend_amount_to_return;
         let lend_token_pair =

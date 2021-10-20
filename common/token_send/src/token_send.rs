@@ -10,7 +10,7 @@ pub trait TokenSendModule {
         dest: &ManagedAddress,
         token_id: &TokenIdentifier,
         amount: &BigUint,
-        accept_funds_func: &Option<ManagedBuffer>,
+        accept_funds_func: &OptionalArg<ManagedBuffer>,
     ) -> SCResult<()> {
         let (function, gas_limit) = self.get_func_and_gas_limit_from_opt(accept_funds_func);
 
@@ -32,7 +32,7 @@ pub trait TokenSendModule {
         token_id: &TokenIdentifier,
         nonce: u64,
         amount: &BigUint,
-        accept_funds_func: &Option<ManagedBuffer>,
+        accept_funds_func: &OptionalArg<ManagedBuffer>,
     ) -> SCResult<()> {
         let (function, gas_limit) = self.get_func_and_gas_limit_from_opt(accept_funds_func);
 
@@ -51,18 +51,15 @@ pub trait TokenSendModule {
 
     fn get_func_and_gas_limit_from_opt(
         &self,
-        accept_funds_func: &Option<ManagedBuffer>,
+        accept_funds_func: &OptionalArg<ManagedBuffer>,
     ) -> (ManagedBuffer, u64) {
-        let mut gas_limit = 0u64;
-        let function = accept_funds_func
-            .clone()
-            .unwrap_or_else(|| ManagedBuffer::new());
-
-        if !function.is_empty() {
-            gas_limit = self.transfer_exec_gas_limit().get();
+        match accept_funds_func {
+            OptionalArg::Some(accept_funds_func) => (
+                accept_funds_func.clone(),
+                self.transfer_exec_gas_limit().get(),
+            ),
+            OptionalArg::None => (ManagedBuffer::new(), 0u64),
         }
-
-        (function, gas_limit)
     }
 
     #[view(getTransferExecGasLimit)]
