@@ -15,18 +15,20 @@ wasm-output-mode = [
 ]
 
 [dependencies.elrond-wasm]
-version = "0.20.0"
-features = ["derive"]
+version = "0.21.2"
+
+[dependencies.elrond-wasm-derive]
+version = "0.21.2"
 
 [dependencies.elrond-wasm-node]
-version = "0.20.0"
+version = "0.21.2"
 optional = true
 
 [dev-dependencies.elrond-wasm-debug]
-version = "0.20.0"
+version = "0.21.2"
 
 [dependencies.elrond-wasm-output]
-version = "0.20.0"
+version = "0.21.2"
 features = ["wasm-output-mode", "panic-message"]
 
 [dependencies.common_structs]
@@ -40,4 +42,4 @@ path = "../common/token_send"
 
 [dependencies.price-aggregator-proxy]
 git = "https://github.com/ElrondNetwork/sc-chainlink-rs"
-rev = "8817a46"
+rev = "470c9ab"

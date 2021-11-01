@@ -11,7 +11,9 @@ use common_structs::{BORROW_TOKEN_PREFIX, LEND_TOKEN_PREFIX};
 use liquidity_pool::tokens::ProxyTrait as _;
 
 #[elrond_wasm::module]
-pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
+pub trait RouterModule:
+    proxy::ProxyModule + factory::FactoryModule + common_checks::ChecksModule
+{
     #[only_owner]
     #[endpoint(createLiquidityPool)]
     fn create_liquidity_pool(
@@ -23,7 +25,6 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
         r_slope2: BigUint,
         u_optimal: BigUint,
         reserve_factor: BigUint,
-        pool_bytecode: ManagedBuffer,
     ) -> SCResult<ManagedAddress> {
         require!(
             !self.pools_map().contains_key(&base_asset),
@@ -39,13 +40,12 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
             r_slope2,
             u_optimal,
             reserve_factor,
-            &pool_bytecode,
-        );
+        )?;
 
-        if !address.is_zero() {
-            self.pools_map().insert(base_asset, address.clone());
-            self.pools_allowed().insert(address.clone());
-        }
+        self.require_non_zero_address(&address)?;
+
+        self.pools_map().insert(base_asset, address.clone());
+        self.pools_allowed().insert(address.clone());
 
         Ok(address)
     }
@@ -55,7 +55,12 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
     fn upgrade_liquidity_pool(
         &self,
         base_asset: TokenIdentifier,
-        new_bytecode: ManagedBuffer,
+        lending_pool_address: ManagedAddress,
+        r_base: BigUint,
+        r_slope1: BigUint,
+        r_slope2: BigUint,
+        u_optimal: BigUint,
+        reserve_factor: BigUint,
     ) -> SCResult<()> {
         require!(
             self.pools_map().contains_key(&base_asset),
@@ -67,8 +72,16 @@ pub trait RouterModule: proxy::ProxyModule + factory::FactoryModule {
             .get(&base_asset)
             .unwrap_or_else(|| ManagedAddress::zero());
 
-        let success = self.upgrade_pool(&pool_address.to_address(), &new_bytecode);
-        require!(success, "pair upgrade failed");
+        self.upgrade_pool(
+            pool_address,
+            &base_asset,
+            &lending_pool_address,
+            r_base,
+            r_slope1,
+            r_slope2,
+            u_optimal,
+            reserve_factor,
+        )?;
 
         Ok(())
     }
