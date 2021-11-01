@@ -14,6 +14,7 @@ pub trait FactoryModule {
         r_slope2: BigUint,
         u_optimal: BigUint,
         reserve_factor: BigUint,
+        liquidation_threshold: BigUint,
     ) -> SCResult<ManagedAddress> {
         require!(
             !self.liq_pool_template_address().is_empty(),
@@ -28,6 +29,7 @@ pub trait FactoryModule {
         arg_buffer.push_arg(r_slope2);
         arg_buffer.push_arg(u_optimal);
         arg_buffer.push_arg(reserve_factor);
+        arg_buffer.push_arg(liquidation_threshold);
 
         let (new_address, _) = self.raw_vm_api().deploy_from_source_contract(
             self.blockchain().get_gas_left(),
@@ -50,6 +52,7 @@ pub trait FactoryModule {
         r_slope2: BigUint,
         u_optimal: BigUint,
         reserve_factor: BigUint,
+        liquidation_threshold: BigUint,
     ) -> SCResult<()> {
         require!(
             !self.liq_pool_template_address().is_empty(),
@@ -64,6 +67,7 @@ pub trait FactoryModule {
         arg_buffer.push_arg(r_slope2);
         arg_buffer.push_arg(u_optimal);
         arg_buffer.push_arg(reserve_factor);
+        arg_buffer.push_arg(liquidation_threshold);
 
         self.raw_vm_api().upgrade_from_source_contract(
             &lp_address,

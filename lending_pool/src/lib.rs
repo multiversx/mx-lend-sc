@@ -16,7 +16,10 @@ pub trait LendingPool:
     factory::FactoryModule + router::RouterModule + common_checks::ChecksModule + proxy::ProxyModule
 {
     #[init]
-    fn init(&self) {}
+    fn init(&self, lp_template_address: ManagedAddress) {
+        self.liq_pool_template_address()
+            .set_if_empty(&lp_template_address);
+    }
 
     #[payable("*")]
     #[endpoint]

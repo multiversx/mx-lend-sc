@@ -25,6 +25,7 @@ pub trait RouterModule:
         r_slope2: BigUint,
         u_optimal: BigUint,
         reserve_factor: BigUint,
+        liquidation_threshold: BigUint,
     ) -> SCResult<ManagedAddress> {
         require!(
             !self.pools_map().contains_key(&base_asset),
@@ -40,6 +41,7 @@ pub trait RouterModule:
             r_slope2,
             u_optimal,
             reserve_factor,
+            liquidation_threshold,
         )?;
 
         self.require_non_zero_address(&address)?;
@@ -61,6 +63,7 @@ pub trait RouterModule:
         r_slope2: BigUint,
         u_optimal: BigUint,
         reserve_factor: BigUint,
+        liquidation_threshold: BigUint
     ) -> SCResult<()> {
         require!(
             self.pools_map().contains_key(&base_asset),
@@ -81,6 +84,7 @@ pub trait RouterModule:
             r_slope2,
             u_optimal,
             reserve_factor,
+            liquidation_threshold
         )?;
 
         Ok(())
