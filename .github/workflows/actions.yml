@@ -27,7 +27,7 @@ jobs:
         run: |
           source .github/workflows/env
           ./build-wasm.sh
-      - name: Run Arwen tests
+      - name: Run Vm tests
         run: |
           source .github/workflows/env
           cargo test --features elrond-wasm-debug/mandos-go-tests
