@@ -21,16 +21,16 @@ jobs:
           source .github/workflows/env
           pip3 install erdpy
           mkdir $HOME/elrondsdk
-          erdpy config set dependencies.vmtools.tag v1.4.23
+          erdpy config set dependencies.vmtools.tag v1.4.22
           erdpy deps install vmtools
       - name: Build the wasm contracts
         run: |
           source .github/workflows/env
           ./build-wasm.sh
-      - name: Run Arwen tests
+      - name: Run vm tests
         run: |
           source .github/workflows/env
-          cargo test --features elrond-wasm-debug/arwen-tests
+          cargo test --features elrond-wasm-debug/mandos-go-tests
   rust_test:
     name: Rust tests
     runs-on: ubuntu-latest
