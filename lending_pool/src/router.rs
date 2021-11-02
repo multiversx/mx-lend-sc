@@ -19,7 +19,6 @@ pub trait RouterModule:
     fn create_liquidity_pool(
         &self,
         base_asset: TokenIdentifier,
-        lending_pool_address: ManagedAddress,
         r_base: BigUint,
         r_slope1: BigUint,
         r_slope2: BigUint,
@@ -34,8 +33,7 @@ pub trait RouterModule:
         require!(base_asset.is_esdt(), "non-ESDT asset provided");
 
         let address = self.create_pool(
-            &base_asset,
-            &lending_pool_address,
+            base_asset.clone(),
             r_base,
             r_slope1,
             r_slope2,
@@ -57,13 +55,12 @@ pub trait RouterModule:
     fn upgrade_liquidity_pool(
         &self,
         base_asset: TokenIdentifier,
-        lending_pool_address: ManagedAddress,
         r_base: BigUint,
         r_slope1: BigUint,
         r_slope2: BigUint,
         u_optimal: BigUint,
         reserve_factor: BigUint,
-        liquidation_threshold: BigUint
+        liquidation_threshold: BigUint,
     ) -> SCResult<()> {
         require!(
             self.pools_map().contains_key(&base_asset),
@@ -77,14 +74,13 @@ pub trait RouterModule:
 
         self.upgrade_pool(
             pool_address,
-            &base_asset,
-            &lending_pool_address,
+            base_asset,
             r_base,
             r_slope1,
             r_slope2,
             u_optimal,
             reserve_factor,
-            liquidation_threshold
+            liquidation_threshold,
         )?;
 
         Ok(())
