@@ -50,7 +50,6 @@ pub trait FactoryModule {
                 reserve_factor,
                 liquidation_threshold,
             )
-            .with_gas_limit(self.blockchain().get_gas_left())
             .deploy_from_source(
                 &self.liq_pool_template_address().get(),
                 CodeMetadata::UPGRADEABLE,
@@ -85,8 +84,7 @@ pub trait FactoryModule {
                 reserve_factor,
                 liquidation_threshold,
             )
-            .with_gas_limit(self.blockchain().get_gas_left())
-            .deploy_from_source(
+            .upgrade_from_source(
                 &self.liq_pool_template_address().get(),
                 CodeMetadata::UPGRADEABLE,
             );
