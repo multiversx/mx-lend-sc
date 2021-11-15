@@ -1,25 +1,35 @@
-ALICE="$HOME/pems/dev.pem"
-ALICE_ADDRESS=0x9bc31161f8c0cad0af2beafe08168fc57108fc054338e8016ca5a173e0a0e3df
+PEM="$HOME/pems/dev.pem"
 
 ADDRESS=$(erdpy data load --key=address-testnet)
 DEPLOY_TRANSACTION=$(erdpy data load --key=deployTransaction-testnet)
 
-PROXY=https://devnet-api.elrond.com
+PROXY=https://devnet-gateway.elrond.com
 CHAIN_ID=D
 
 PROJECT="../../liquidity_pool"
 
-NFT_TICKER=0x57555344 # WUSD
-NFT_TICKER_FULL=0x575553442d666239313333 # WUSD-fb9133
-LEND_PREFIX=0x4c # L
-BORROW_PREFIX=0x42 # B
+# init params
+ASSET=0x544553542d333663616365
+R_BASE=0
+R_SLOPE1=40000000
+R_SLOPE2=1000000000
+U_OPTIMAL=800000000
+RESERVE_FACTOR=100000000
+LIQ_THRESOLD=700000000
 
-ISSUE_COST=5000000000000000000
+PLAIN_TICKER=0x54455354
+LEND_PREFIX=0x4c
+BORROW_PREFIX=0x42
+
+ISSUE_COST=50000000000000000
 
 GAS_LIMIT=250000000
 
 deploy() {
-    erdpy contract deploy --project=${PROJECT} --recall-nonce --pem=${ALICE} --gas-limit=${GAS_LIMIT} --outfile="deploy.json" --arguments ${NFT_TICKER_FULL} --proxy=${PROXY} --chain=${CHAIN_ID} --send || return
+    erdpy contract deploy --project=${PROJECT} \
+    --recall-nonce --pem=${PEM} --gas-limit=${GAS_LIMIT} --outfile="deploy.json" \
+    --arguments ${ASSET} ${R_BASE} ${R_SLOPE1} ${R_SLOPE2} ${U_OPTIMAL} ${RESERVE_FACTOR} ${LIQ_THRESOLD} \
+    --proxy=${PROXY} --chain=${CHAIN_ID} --send || return
 
     TRANSACTION=$(erdpy data parse --file="deploy.json" --expression="data['emitted_tx']['hash']")
     ADDRESS=$(erdpy data parse --file="deploy.json" --expression="data['emitted_tx']['address']")
@@ -31,30 +41,52 @@ deploy() {
     echo "Smart contract address: ${ADDRESS}"
 }
 
+deploy_dummy() {
+    erdpy contract deploy --project=${PROJECT} \
+    --recall-nonce --pem=${PEM} --gas-limit=${GAS_LIMIT} --outfile="deploy.json" \
+    --arguments 0x4142432d653233383030 10 10 10 80 5 50 \
+    --proxy=${PROXY} --chain=${CHAIN_ID} --send || return
+
+    TRANSACTION=$(erdpy data parse --file="deploy.json" --expression="data['emitted_tx']['hash']")
+    ADDRESS=$(erdpy data parse --file="deploy.json" --expression="data['emitted_tx']['address']")
+
+    erdpy data store --key=dummy_address --value=${ADDRESS}
+    erdpy data store --key=deployDummy-testnet --value=${TRANSACTION}
+
+    echo ""
+    echo "Smart contract address: ${ADDRESS}"
+}
+
 upgrade() {
-    erdpy contract upgrade ${ADDRESS} --project=${PROJECT} --recall-nonce --pem=${ALICE} --gas-limit=${GAS_LIMIT} --outfile="upgrade.json" --arguments ${NFT_TICKER_FULL} --proxy=${PROXY} --chain=${CHAIN_ID} --send || return
+    erdpy contract upgrade ${ADDRESS} \
+    --project=${PROJECT} --recall-nonce --pem=${PEM} \
+    --gas-limit=${GAS_LIMIT} --outfile="upgrade.json" \
+    --arguments ${ASSET} ${R_BASE} ${R_SLOPE1} ${R_SLOPE2} ${U_OPTIMAL} ${RESERVE_FACTOR} ${LIQ_THRESOLD} \
+    --proxy=${PROXY} --chain=${CHAIN_ID} --send || return
 }
 
 # SC calls
 
 issue_lend() {
-    erdpy contract call ${ADDRESS} --recall-nonce --pem=${ALICE} --gas-limit=${GAS_LIMIT} --function="issue" --arguments ${NFT_TICKER} ${NFT_TICKER_FULL} ${LEND_PREFIX} --value=${ISSUE_COST} --proxy=${PROXY} --chain=${CHAIN_ID} --send
+    erdpy contract call ${ADDRESS} \
+    --recall-nonce --pem=${PEM} --gas-limit=${GAS_LIMIT} \
+    --function="issue" --arguments ${PLAIN_TICKER} ${ASSET} ${LEND_PREFIX} \
+    --value=${ISSUE_COST} --proxy=${PROXY} --chain=${CHAIN_ID} --send
 }
 
 issue_borrow() {
-    erdpy contract call ${ADDRESS} --recall-nonce --pem=${ALICE} --gas-limit=${GAS_LIMIT} --function="issue" --arguments ${NFT_TICKER} ${NFT_TICKER_FULL} ${BORROW_PREFIX} --value=${ISSUE_COST} --proxy=${PROXY} --chain=${CHAIN_ID} --send
+    erdpy contract call ${ADDRESS} \
+    --recall-nonce --pem=${PEM} --gas-limit=${GAS_LIMIT} \
+    --function="issue" --arguments ${PLAIN_TICKER} ${ASSET} ${BORROW_PREFIX} \
+    --value=${ISSUE_COST} --proxy=${PROXY} --chain=${CHAIN_ID} --send
 }
 
 # Queries
 
-getPoolAsset() {
-    erdpy contract query ${ADDRESS} --function="poolAsset" --proxy=${PROXY}
-}
-
-getLendToken() {
+get_lend_token() {
     erdpy contract query ${ADDRESS} --function="lendToken" --proxy=${PROXY}
 }
 
-getBorrowToken() {
+get_borrow_token() {
     erdpy contract query ${ADDRESS} --function="borrowToken" --proxy=${PROXY}
 }

@@ -1,27 +1,43 @@
-ALICE="/home/boop/Elrond/wallet/testnet/wallet_key.pem"
-ALICE_ADDRESS=0x9bc31161f8c0cad0af2beafe08168fc57108fc054338e8016ca5a173e0a0e3df
+PEM="~/pems/dev.pem"
 
 ADDRESS=$(erdpy data load --key=address-testnet)
 DEPLOY_TRANSACTION=$(erdpy data load --key=deployTransaction-testnet)
 
-PROXY=https://devnet-api.elrond.com
+PROXY=https://devnet-gateway.elrond.com
 CHAIN_ID=D
 
 PROJECT="../../lending_pool"
 
-AMOUNT=1000000000000000000 # 1 token (18 decimals)
-LIQ_DEPOSIT_ENDPOINT=0x6465706f736974 # deposit_asset
-RECEIVER=${ALICE}
+# pool params
+ASSET=0x544553542d333663616365
+R_BASE=0
+R_SLOPE1=40000000
+R_SLOPE2=1000000000
+U_OPTIMAL=800000000
+RESERVE_FACTOR=100000000
+LIQ_THRESOLD=700000000
 
-# update manually
-LIQ_POOL_ADDRESS=0x
+LTV=500000000
+LIQ_BONUS=40000000
 
-# issue an esdt token first
-ESDT_TICKER=0x4543432d316237343533 # ECC-1b7453
-ESDT_NAME=0x4575726f7065616e436f6d6974746565 # EuropeanComittee
+LP_TEMPLATE_ADDRESS=0x00000000000000000500e232bab756e43f850ee3733e4b98aee764fa8420e3df
+
+# after createPool
+LIQ_POOL_ADDRESS=erd1qqqqqqqqqqqqqpgqn8xx3p50927tye5n49nzspvw7qqqayjfu00s2kvxvf
+
+PLAIN_TICKER=0x54455354
+
+LEND_ID=0x4c544553542d373661653563
+BORROW_ID=0x42544553542d666635326331
+
+ISSUE_COST=50000000000000000
+
+GAS_LIMIT=250000000
 
 deploy() {
-    erdpy contract deploy --project=${PROJECT} --recall-nonce --pem=${ALICE} --gas-limit=75000000 --outfile="deploy.json" --proxy=${PROXY} --chain=${CHAIN_ID} --send || return
+    erdpy contract deploy --project=${PROJECT} --recall-nonce --pem=${PEM} \
+    --gas-limit=${GAS_LIMIT} --outfile="deploy.json" --arguments ${LP_TEMPLATE_ADDRESS} \
+    --proxy=${PROXY} --chain=${CHAIN_ID} --send || return
 
     TRANSACTION=$(erdpy data parse --file="deploy.json" --expression="data['emitted_tx']['hash']")
     ADDRESS=$(erdpy data parse --file="deploy.json" --expression="data['emitted_tx']['address']")
@@ -34,22 +50,75 @@ deploy() {
 }
 
 upgrade() {
-    erdpy contract upgrade ${ADDRESS} --project==${PROJECT} --recall-nonce --pem=${ALICE} --gas-limit=75000000 --outfile="upgrade.json" --proxy=${PROXY} --chain=${CHAIN_ID} --send || return
+    erdpy contract upgrade ${ADDRESS} --project=${PROJECT} --recall-nonce \
+    --arguments ${LP_TEMPLATE_ADDRESS} --pem=${PEM} --gas-limit=${GAS_LIMIT} --outfile="upgrade.json" \
+    --proxy=${PROXY} --chain=${CHAIN_ID} --send || return
 }
 
 # SC calls
 
-deposit() {
-    erdpy contract call ${ADDRESS} --recall-nonce --pem=${ALICE} -gas-limit=80000000 --function="ESDTTransfer" --arguments ${ESDT_TICKER} ${AMOUNT} ${LIQ_DEPOSIT_ENDPOINT} ${RECEIVER} --proxy=${PROXY} --chain=${CHAIN_ID} --send
+create_pool() {
+    erdpy contract call ${ADDRESS} --recall-nonce --pem=${PEM} --gas-limit=${GAS_LIMIT} \
+    --function="createLiquidityPool" --arguments ${ASSET} ${R_BASE} ${R_SLOPE1} ${R_SLOPE2} ${U_OPTIMAL} ${RESERVE_FACTOR} ${LIQ_THRESOLD} \
+    --proxy=${PROXY} --chain=${CHAIN_ID} --send
 }
 
-setPoolAddress() {
-    erdpy contract call ${ADDRESS} --recall-nonce --pem=${ALICE} -gas-limit=80000000 --function="setPoolAddress" --arguments ${ESDT_TICKER} ${LIQ_POOL_ADDRESS} --proxy=${PROXY} --chain=${CHAIN_ID} --send
+issue_lend() {
+    erdpy contract call ${ADDRESS} --recall-nonce --pem=${PEM} --gas-limit=${GAS_LIMIT} \
+    --function="issueLendToken" --value=${ISSUE_COST} --arguments ${PLAIN_TICKER} ${ASSET} \
+    --proxy=${PROXY} --chain=${CHAIN_ID} --send
+}
+
+issue_borrow() {
+    erdpy contract call ${ADDRESS} --recall-nonce --pem=${PEM} --gas-limit=${GAS_LIMIT} \
+    --function="issueBorrowToken" --value=${ISSUE_COST} --arguments ${PLAIN_TICKER} ${ASSET} \
+    --proxy=${PROXY} --chain=${CHAIN_ID} --send
+}
+
+set_lend_roles() {
+    erdpy contract call ${ADDRESS} --recall-nonce --pem=${PEM} --gas-limit=${GAS_LIMIT} \
+    --function="setLendRoles" --arguments ${LEND_ID} 3 4 5 \
+    --proxy=${PROXY} --chain=${CHAIN_ID} --send
+}
+
+set_borrow_roles() {
+    erdpy contract call ${ADDRESS} --recall-nonce --pem=${PEM} --gas-limit=${GAS_LIMIT} \
+    --function="setBorrowRoles" --arguments ${BORROW_ID} 3 4 5 \
+    --proxy=${PROXY} --chain=${CHAIN_ID} --send
+}
+
+set_ltv() {
+    erdpy contract call ${ADDRESS} --recall-nonce --pem=${PEM} --gas-limit=${GAS_LIMIT} \
+    --function="setAssetLoanToValue" --arguments ${ASSET} ${LTV} \
+    --proxy=${PROXY} --chain=${CHAIN_ID} --send
+}
+
+set_liq_bonus() {
+    erdpy contract call ${ADDRESS} --recall-nonce --pem=${PEM} --gas-limit=${GAS_LIMIT} \
+    --function="setAssetLiquidationBonus" --arguments ${ASSET} ${LIQ_BONUS} \
+    --proxy=${PROXY} --chain=${CHAIN_ID} --send
+}
+
+deposit() {
+    erdpy contract call ${ADDRESS} --recall-nonce --pem=${PEM} --gas-limit=${GAS_LIMIT} \
+    --function="ESDTTransfer" --arguments ${ASSET} 100000 0x6465706f736974 \
+    --proxy=${PROXY} --chain=${CHAIN_ID} --send 
 }
 
 # Queries
 
-getPoolAddress() {
-    erdpy contract query ${ADDRESS} --function="getPoolAddress" --arguments ${ESDT_TICKER} --proxy=${PROXY}
+get_pool_address() {
+    erdpy contract query ${ADDRESS} --function="getPoolAddress" --arguments ${ASSET} --proxy=${PROXY}
 }
 
+get_pool_address_arg() {
+    erdpy contract query ${ADDRESS} --function="getPoolAddress" --arguments $1 --proxy=${PROXY}
+}
+
+get_ltv() {
+    erdpy contract query ${ADDRESS} --function="getAssetLoanToValue" --arguments ${ASSET} --proxy=${PROXY}
+}
+
+get_liq_bonus() {
+    erdpy contract query ${ADDRESS} --function="getAssetLiquidationBonus" --arguments ${ASSET} --proxy=${PROXY}
+}

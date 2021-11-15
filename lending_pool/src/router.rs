@@ -107,6 +107,7 @@ pub trait RouterModule:
                 ManagedBuffer::from(LEND_TOKEN_PREFIX),
                 amount,
             )
+            .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context();
 
         Ok(())
@@ -133,6 +134,7 @@ pub trait RouterModule:
                 ManagedBuffer::from(BORROW_TOKEN_PREFIX),
                 amount,
             )
+            .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context();
 
         Ok(())
@@ -152,6 +154,7 @@ pub trait RouterModule:
 
         self.liquidity_pool_proxy(pool_address)
             .set_lend_token_roles(roles.into_vec())
+            .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context();
 
         Ok(())
@@ -171,6 +174,7 @@ pub trait RouterModule:
 
         self.liquidity_pool_proxy(pool_address)
             .set_borrow_token_roles(roles.into_vec())
+            .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context();
 
         Ok(())
