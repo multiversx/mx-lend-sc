@@ -11,7 +11,7 @@ pub mod tokens;
 pub use common_structs::*;
 
 mod storage;
-mod utils;
+pub mod utils;
 
 #[elrond_wasm::contract]
 pub trait LiquidityPool:

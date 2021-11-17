@@ -21,6 +21,8 @@ PLAIN_TICKER=0x54455354
 LEND_PREFIX=0x4c
 BORROW_PREFIX=0x42
 
+DUMMY_ADDR=erd1qqqqqqqqqqqqqpgquget4d6kuslc2rhrwvlyhx9wuaj04ppqu00sgvsmd0
+
 ISSUE_COST=50000000000000000
 
 GAS_LIMIT=250000000
@@ -55,6 +57,13 @@ deploy_dummy() {
 
     echo ""
     echo "Smart contract address: ${ADDRESS}"
+}
+
+upgrade_dummy() {
+    erdpy contract upgrade ${DUMMY_ADDR} --project=${PROJECT} \
+    --recall-nonce --pem=${PEM} --gas-limit=${GAS_LIMIT} --outfile="upgrade.json" \
+    --arguments 0x4142432d653233383030 10 10 10 80 5 50 \
+    --proxy=${PROXY} --chain=${CHAIN_ID} --send || return
 }
 
 upgrade() {

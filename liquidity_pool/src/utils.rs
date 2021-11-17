@@ -72,6 +72,14 @@ pub trait UtilsModule:
         token_id.as_managed_buffer().clone()
     }
 
+    #[only_owner]
+    #[endpoint(setPriceAggregator)]
+    fn set_price_aggregator(&self, address: ManagedAddress) -> SCResult<()> {
+        self.set_price_aggregator_address(address)?;
+        
+        Ok(())
+    }
+
     #[view(getCapitalUtilisation)]
     fn get_capital_utilisation(&self) -> BigUint {
         let reserve_amount = self.reserves(&self.pool_asset().get()).get();

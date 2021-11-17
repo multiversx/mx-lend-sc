@@ -30,6 +30,8 @@ PLAIN_TICKER=0x54455354
 LEND_ID=0x4c544553542d373661653563
 BORROW_ID=0x42544553542d666635326331
 
+AGGREGATOR_ADDR=0x00000000000000000500042bf7bea5c489c19adf7f94ad0626bb4e40ece4e3df
+
 ISSUE_COST=50000000000000000
 
 GAS_LIMIT=250000000
@@ -60,6 +62,12 @@ upgrade() {
 create_pool() {
     erdpy contract call ${ADDRESS} --recall-nonce --pem=${PEM} --gas-limit=${GAS_LIMIT} \
     --function="createLiquidityPool" --arguments ${ASSET} ${R_BASE} ${R_SLOPE1} ${R_SLOPE2} ${U_OPTIMAL} ${RESERVE_FACTOR} ${LIQ_THRESOLD} \
+    --proxy=${PROXY} --chain=${CHAIN_ID} --send
+}
+
+upgrade_pool() {
+    erdpy contract call ${ADDRESS} --recall-nonce --pem=${PEM} --gas-limit=${GAS_LIMIT} \
+    --function="upgradeLiquidityPool" --arguments ${ASSET} ${R_BASE} ${R_SLOPE1} ${R_SLOPE2} ${U_OPTIMAL} ${RESERVE_FACTOR} ${LIQ_THRESOLD} \
     --proxy=${PROXY} --chain=${CHAIN_ID} --send
 }
 
@@ -96,6 +104,12 @@ set_ltv() {
 set_liq_bonus() {
     erdpy contract call ${ADDRESS} --recall-nonce --pem=${PEM} --gas-limit=${GAS_LIMIT} \
     --function="setAssetLiquidationBonus" --arguments ${ASSET} ${LIQ_BONUS} \
+    --proxy=${PROXY} --chain=${CHAIN_ID} --send
+}
+
+set_aggregator() {
+    erdpy contract call ${ADDRESS} --recall-nonce --pem=${PEM} --gas-limit=${GAS_LIMIT} \
+    --function="setAggregator" --arguments ${ASSET} ${AGGREGATOR_ADDR} \
     --proxy=${PROXY} --chain=${CHAIN_ID} --send
 }
 
