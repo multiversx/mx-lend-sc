@@ -1,4 +1,5 @@
 PEM="~/pems/dev.pem"
+ME=erd1n0p3zc0ccr9dptetatlqs950c4cs3lq9gvuwsqtv5ksh8c9qu00sd6lrl9
 
 ADDRESS=$(erdpy data load --key=address-testnet)
 DEPLOY_TRANSACTION=$(erdpy data load --key=deployTransaction-testnet)
@@ -113,9 +114,36 @@ set_aggregator() {
     --proxy=${PROXY} --chain=${CHAIN_ID} --send
 }
 
+DEPOSIT_AMOUNT=100000000000000000000000
+DEPOSIT_ENDPOINT=0x6465706f736974
+
 deposit() {
     erdpy contract call ${ADDRESS} --recall-nonce --pem=${PEM} --gas-limit=${GAS_LIMIT} \
-    --function="ESDTTransfer" --arguments ${ASSET} 100000 0x6465706f736974 \
+    --function="ESDTTransfer" --arguments ${ASSET} ${DEPOSIT_AMOUNT} ${DEPOSIT_ENDPOINT} \
+    --proxy=${PROXY} --chain=${CHAIN_ID} --send 
+}
+
+BORROW_AMOUNT=200000000000000000000000
+BORROW_NONCE=2
+BORROW_ENDPOINT=0x626f72726f77
+
+borrow() {
+    ADDR_HEX=0x$(erdpy wallet bech32 --decode ${ADDRESS})
+
+    erdpy contract call ${ME} --recall-nonce --pem=${PEM} --gas-limit=${GAS_LIMIT} --function="ESDTNFTTransfer" \
+    --arguments ${LEND_ID} ${BORROW_NONCE} ${BORROW_AMOUNT} ${ADDR_HEX} ${BORROW_ENDPOINT} ${ASSET} ${ASSET} \
+    --proxy=${PROXY} --chain=${CHAIN_ID} --send 
+}
+
+WITHDRAW_AMOUNT=50000
+WITHDRAW_NONCE=1
+WITHDRAW_ENDPOINT=0x7769746864726177
+
+withdraw() {
+    ADDR_HEX=0x$(erdpy wallet bech32 --decode ${ADDRESS})
+
+    erdpy contract call ${ME} --recall-nonce --pem=${PEM} --gas-limit=${GAS_LIMIT} --function="ESDTNFTTransfer" \
+    --arguments ${LEND_ID} ${WITHDRAW_NONCE} ${WITHDRAW_AMOUNT} ${ADDR_HEX} ${WITHDRAW_ENDPOINT} \
     --proxy=${PROXY} --chain=${CHAIN_ID} --send 
 }
 

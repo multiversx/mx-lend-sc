@@ -99,3 +99,17 @@ get_lend_token() {
 get_borrow_token() {
     erdpy contract query ${ADDRESS} --function="borrowToken" --proxy=${PROXY}
 }
+
+LP_ADDRESS=erd1qqqqqqqqqqqqqpgqn8xx3p50927tye5n49nzspvw7qqqayjfu00s2kvxvf
+
+get_deposit_rate() {
+    erdpy contract query ${LP_ADDRESS} --function="getDepositRate" --proxy=${PROXY}
+}
+
+get_borrow_rate() {
+    erdpy contract query ${LP_ADDRESS} --function="getBorrowRate" --proxy=${PROXY}
+}
+
+get_cap_utilisation() {
+    erdpy contract query ${LP_ADDRESS} --function="getCapitalUtilisation" --proxy=${PROXY}
+}
