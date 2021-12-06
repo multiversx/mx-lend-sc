@@ -9,6 +9,7 @@ use super::proxy;
 
 use common_structs::{BORROW_TOKEN_PREFIX, LEND_TOKEN_PREFIX};
 use liquidity_pool::tokens::ProxyTrait as _;
+use liquidity_pool::utils::ProxyTrait as _;
 
 #[elrond_wasm::module]
 pub trait RouterModule:
@@ -107,6 +108,7 @@ pub trait RouterModule:
                 ManagedBuffer::from(LEND_TOKEN_PREFIX),
                 amount,
             )
+            .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context();
 
         Ok(())
@@ -133,6 +135,7 @@ pub trait RouterModule:
                 ManagedBuffer::from(BORROW_TOKEN_PREFIX),
                 amount,
             )
+            .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context();
 
         Ok(())
@@ -152,6 +155,7 @@ pub trait RouterModule:
 
         self.liquidity_pool_proxy(pool_address)
             .set_lend_token_roles(roles.into_vec())
+            .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context();
 
         Ok(())
@@ -171,6 +175,27 @@ pub trait RouterModule:
 
         self.liquidity_pool_proxy(pool_address)
             .set_borrow_token_roles(roles.into_vec())
+            .with_gas_limit(self.blockchain().get_gas_left() / 2)
+            .execute_on_dest_context();
+
+        Ok(())
+    }
+
+    #[only_owner]
+    #[endpoint(setAggregator)]
+    fn set_aggregator(
+        &self,
+        asset_ticker: TokenIdentifier,
+        aggregator: ManagedAddress,
+    ) -> SCResult<()> {
+        let pool_address = self
+            .pools_map()
+            .get(&asset_ticker)
+            .unwrap_or_else(|| ManagedAddress::zero());
+
+        self.liquidity_pool_proxy(pool_address)
+            .set_price_aggregator(aggregator)
+            .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context();
 
         Ok(())
