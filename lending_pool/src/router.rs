@@ -96,10 +96,7 @@ pub trait RouterModule:
         token_ticker: TokenIdentifier,
         #[payment_amount] amount: BigUint,
     ) -> SCResult<()> {
-        let pool_address = self
-            .pools_map()
-            .get(&token_ticker)
-            .unwrap_or_else(|| ManagedAddress::zero());
+        let pool_address = self.get_pool_address_non_zero(&token_ticker)?;
 
         self.liquidity_pool_proxy(pool_address)
             .issue(
@@ -123,10 +120,7 @@ pub trait RouterModule:
         token_ticker: TokenIdentifier,
         #[payment_amount] amount: BigUint,
     ) -> SCResult<()> {
-        let pool_address = self
-            .pools_map()
-            .get(&token_ticker)
-            .unwrap_or_else(|| ManagedAddress::zero());
+        let pool_address = self.get_pool_address_non_zero(&token_ticker)?;
 
         self.liquidity_pool_proxy(pool_address)
             .issue(
@@ -148,10 +142,7 @@ pub trait RouterModule:
         asset_ticker: TokenIdentifier,
         #[var_args] roles: VarArgs<EsdtLocalRole>,
     ) -> SCResult<()> {
-        let pool_address = self
-            .pools_map()
-            .get(&asset_ticker)
-            .unwrap_or_else(|| ManagedAddress::zero());
+        let pool_address = self.get_pool_address_non_zero(&asset_ticker)?;
 
         self.liquidity_pool_proxy(pool_address)
             .set_lend_token_roles(roles.into_vec())
@@ -168,10 +159,7 @@ pub trait RouterModule:
         asset_ticker: TokenIdentifier,
         #[var_args] roles: VarArgs<EsdtLocalRole>,
     ) -> SCResult<()> {
-        let pool_address = self
-            .pools_map()
-            .get(&asset_ticker)
-            .unwrap_or_else(|| ManagedAddress::zero());
+        let pool_address = self.get_pool_address_non_zero(&asset_ticker)?;
 
         self.liquidity_pool_proxy(pool_address)
             .set_borrow_token_roles(roles.into_vec())
@@ -188,10 +176,7 @@ pub trait RouterModule:
         asset_ticker: TokenIdentifier,
         aggregator: ManagedAddress,
     ) -> SCResult<()> {
-        let pool_address = self
-            .pools_map()
-            .get(&asset_ticker)
-            .unwrap_or_else(|| ManagedAddress::zero());
+        let pool_address = self.get_pool_address_non_zero(&asset_ticker)?;
 
         self.liquidity_pool_proxy(pool_address)
             .set_price_aggregator(aggregator)
