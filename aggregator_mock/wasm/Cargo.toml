@@ -1,5 +1,5 @@
 [package]
-name = "aggregator_mock-wasm"
+name = "aggregator-mock-wasm"
 version = "0.0.0"
 authors = [ "you",]
 edition = "2018"
@@ -20,11 +20,12 @@ lto = true
 debug = false
 panic = "abort"
 
-[dependencies.aggregator_mock]
-features = [ "wasm-output-mode",]
-default-features = false
+[dependencies.aggregator-mock]
 path = ".."
 
+[dependencies.elrond-wasm-node]
+version = "0.27.4"
+
 [dependencies.elrond-wasm-output]
-version = "0.21.2"
-features = [ "wasm-output-mode",]
+version = "0.27.4"
+features = ["wasm-output-mode"]

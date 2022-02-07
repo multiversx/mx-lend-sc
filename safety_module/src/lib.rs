@@ -48,17 +48,11 @@ pub trait SafetyModule {
         let timestamp = self.blockchain().get_block_timestamp();
         let deposit_metadata = DepositPosition::new(timestamp, payment.clone());
 
-        self.mint_deposit_nft(&deposit_metadata, payment.clone());
-
         let nft_token = self.nft_token().get();
-
-        let nonce = self.blockchain().get_current_esdt_nft_nonce(
-            &self.blockchain().get_sc_address().to_address(),
-            &nft_token,
-        );
+        let nft_nonce = self.mint_deposit_nft(&deposit_metadata, payment.clone());
 
         self.send()
-            .direct(&caller_address, &nft_token, nonce, &payment, &[]);
+            .direct(&caller_address, &nft_token, nft_nonce, &payment, &[]);
 
         Ok(())
     }
@@ -249,19 +243,24 @@ pub trait SafetyModule {
             .esdt_local_burn(&token_identifier, nonce, &amount);
     }
 
-    fn mint_deposit_nft(self, deposit_metadata: &DepositPosition<Self::Api>, amount: BigUint) {
-        let mut uris = ManagedVec::new(self.type_manager());
-        uris.push(self.types().managed_buffer_new());
+    fn mint_deposit_nft(
+        self,
+        deposit_metadata: &DepositPosition<Self::Api>,
+        amount: BigUint,
+    ) -> u64 {
+        let big_zero = BigUint::zero();
+        let empty_buffer = ManagedBuffer::new();
+        let empty_vec = ManagedVec::from_raw_handle(empty_buffer.get_raw_handle());
 
         self.send().esdt_nft_create(
             &self.nft_token().get(),
             &amount,
-            &self.types().managed_buffer_new(),
-            &self.types().big_uint_zero(),
-            &self.types().managed_buffer_new(),
+            &empty_buffer,
+            &big_zero,
+            &empty_buffer,
             deposit_metadata,
-            &uris,
-        );
+            &empty_vec,
+        )
     }
 
     fn convert_wegld(&self, _pool_token: TokenIdentifier, _amount: BigUint) {

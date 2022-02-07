@@ -99,11 +99,11 @@
                         "str:lend_token": "str:LEND-abcdef",
                         "str:borrow_token": "str:BORROW-abcdef",
                         "str:liquidation_threshold": "500000000",
-                        "str:reserves|nested:str:WBT-abcdef": "200,000",
+                        "str:reserves": "200,000",
                         "str:deposit_position|u64:1": "u64:0|biguint:100,000",
                         "str:deposit_position|u64:2": "u64:0|biguint:100,000"
                     },
-                    "code": "file:../output/liquidity_pool.wasm",
+                    "code": "file:../output/liquidity-pool.wasm",
                     "owner": "address:owner"
                 },
                 "+": ""

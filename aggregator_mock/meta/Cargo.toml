@@ -1,16 +1,16 @@
 [package]
-name = "liquidity_pool-abi"
+name = "aggregator-mock-meta"
 
 version = "0.0.0"
 authors = [ "you",]
 edition = "2018"
 publish = false
 
-[dependencies.liquidity_pool]
+[dependencies.aggregator-mock]
 path = ".."
 
 [dependencies.elrond-wasm]
-version = "0.21.2"
+version = "0.27.4"
 
 [dependencies.elrond-wasm-debug]
-version = "0.21.2"
+version = "0.27.4"

@@ -1,5 +1,5 @@
 [package]
-name = "common_structs"
+name = "common-structs"
 version = "0.0.0"
 authors = [ "catalin-neagu <catalin.neagu@elrond.com>",]
 edition = "2018"
@@ -8,7 +8,4 @@ edition = "2018"
 path = "src/model.rs"
 
 [dependencies.elrond-wasm]
-version = "0.21.2"
-
-[dependencies.elrond-wasm-derive]
-version = "0.21.2"
+version = "0.27.4"

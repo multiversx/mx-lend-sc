@@ -20,28 +20,26 @@ pub trait UtilsModule:
         prefix: ManagedBuffer,
         ticker: ManagedBuffer,
     ) -> IssueData<Self::Api> {
-        let prefixed_ticker = [
-            prefix.to_boxed_bytes().as_slice(),
-            ticker.to_boxed_bytes().as_slice(),
-        ]
-        .concat();
+        let mut prefixed_ticker = prefix.clone();
+        prefixed_ticker.append(&ticker);
 
         let mut issue_data = IssueData {
-            name: self.types().managed_buffer_new(),
-            ticker: TokenIdentifier::from(ManagedBuffer::new_from_bytes(
-                self.type_manager(),
-                prefixed_ticker.as_slice(),
-            )),
+            name: ManagedBuffer::new(),
+            ticker: prefixed_ticker,
             is_empty_ticker: true,
         };
 
         if prefix == ManagedBuffer::from(LEND_TOKEN_PREFIX) {
-            let name = [LEND_TOKEN_NAME, ticker.to_boxed_bytes().as_slice()].concat();
-            issue_data.name = ManagedBuffer::from(name.as_slice());
+            let mut name = ManagedBuffer::new_from_bytes(LEND_TOKEN_NAME);
+            name.append(&ticker);
+
+            issue_data.name = name;
             issue_data.is_empty_ticker = self.lend_token().is_empty();
         } else if prefix == ManagedBuffer::from(BORROW_TOKEN_PREFIX) {
-            let name = [DEBT_TOKEN_NAME, ticker.to_boxed_bytes().as_slice()].concat();
-            issue_data.name = ManagedBuffer::from(name.as_slice());
+            let mut name = ManagedBuffer::new_from_bytes(DEBT_TOKEN_NAME);
+            name.append(&ticker);
+
+            issue_data.name = name;
             issue_data.is_empty_ticker = self.borrow_token().is_empty();
         }
 
@@ -53,36 +51,28 @@ pub trait UtilsModule:
         token_id: &TokenIdentifier,
     ) -> SCResult<AggregatorResult<Self::Api>> {
         let from_ticker = self.get_token_ticker(token_id);
-        let result = self.get_full_result_for_pair(
-            from_ticker,
-            ManagedBuffer::new_from_bytes(self.type_manager(), DOLLAR_TICKER),
-        );
+        let result = self
+            .get_full_result_for_pair(from_ticker, ManagedBuffer::new_from_bytes(DOLLAR_TICKER));
 
         result.ok_or("failed to get token price").into()
     }
 
+    // TODO: Get rid of this functon and store the ticker in storage
+    // maybe along with a token whitelist
     fn get_token_ticker(&self, token_id: &TokenIdentifier) -> ManagedBuffer {
         for (i, char) in token_id.to_esdt_identifier().as_slice().iter().enumerate() {
             if *char == TICKER_SEPARATOR {
                 let result = token_id.to_esdt_identifier();
-                return ManagedBuffer::new_from_bytes(self.type_manager(), &result.as_slice()[..i]);
+                return ManagedBuffer::new_from_bytes(&result.as_slice()[..i]);
             }
         }
 
         token_id.as_managed_buffer().clone()
     }
 
-    #[only_owner]
-    #[endpoint(setPriceAggregator)]
-    fn set_price_aggregator(&self, address: ManagedAddress) -> SCResult<()> {
-        self.set_price_aggregator_address(address)?;
-        
-        Ok(())
-    }
-
     #[view(getCapitalUtilisation)]
     fn get_capital_utilisation(&self) -> BigUint {
-        let reserve_amount = self.reserves(&self.pool_asset().get()).get();
+        let reserve_amount = self.reserves().get();
         let borrowed_amount = self.borrowed_amount().get();
 
         self.compute_capital_utilisation(&borrowed_amount, &reserve_amount)

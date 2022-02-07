@@ -6,7 +6,7 @@ elrond_wasm::derive_imports!();
 pub mod liq_pool_proxy {
     elrond_wasm::imports!();
 
-    #[elrond_wasm_derive::proxy]
+    #[elrond_wasm::proxy]
     pub trait LiqPoolProxy {
         #[init]
         fn init(

@@ -129,7 +129,7 @@ pub trait LendingPool:
             "asset not supported"
         );
 
-        let transfers = self.raw_vm_api().get_all_esdt_transfers();
+        let transfers = self.call_value().all_esdt_transfers();
         self.liquidity_pool_proxy(asset_address)
             .repay(initial_caller, accept_funds_func)
             .with_multi_token_transfer(transfers)

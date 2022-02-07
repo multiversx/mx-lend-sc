@@ -9,6 +9,10 @@ pub trait StorageModule {
     #[storage_mapper("pool_asset")]
     fn pool_asset(&self) -> SingleValueMapper<TokenIdentifier>;
 
+    #[view(getReserves)]
+    #[storage_mapper("reserves")]
+    fn reserves(&self) -> SingleValueMapper<BigUint>;
+
     #[view(getLendToken)]
     #[storage_mapper("lend_token")]
     fn lend_token(&self) -> SingleValueMapper<TokenIdentifier>;
@@ -17,10 +21,6 @@ pub trait StorageModule {
     #[storage_mapper("borrow_token")]
     fn borrow_token(&self) -> SingleValueMapper<TokenIdentifier>;
 
-    #[view(getReserves)]
-    #[storage_mapper("reserves")]
-    fn reserves(&self, token_id: &TokenIdentifier) -> SingleValueMapper<BigUint>;
-
     #[view(getDepositPosition)]
     #[storage_mapper("deposit_position")]
     fn deposit_position(&self, nonce: u64) -> SingleValueMapper<DepositPosition<Self::Api>>;
@@ -28,10 +28,6 @@ pub trait StorageModule {
     #[view(getBorrowMetadata)]
     #[storage_mapper("borrow_position")]
     fn borrow_position(&self, nonce: u64) -> SingleValueMapper<BorrowPosition<Self::Api>>;
-
-    #[view(getLastError)]
-    #[storage_mapper("last_error")]
-    fn last_error(&self) -> SingleValueMapper<ManagedBuffer>;
 
     #[view(getPoolParams)]
     #[storage_mapper("pool_params")]

@@ -22,7 +22,7 @@
 			"tx": {
 				"from": "address:owner",
 				"value": "0",
-				"contractCode": "file:../../output/liquidity_pool.wasm",
+				"contractCode": "file:../../output/liquidity-pool.wasm",
 				"arguments": [
 					"str:WBT-abcdef",
 					"0",
@@ -48,7 +48,7 @@
 			"tx": {
 				"from": "address:owner",
 				"value": "0",
-				"contractCode": "file:../../../aggregator_mock/output/aggregator_mock.wasm",
+				"contractCode": "file:../../../aggregator_mock/output/aggregator-mock.wasm",
 				"arguments": [],
 				"gasLimit": "100,000,000",
 				"gasPrice": "0"
@@ -71,7 +71,7 @@
 						"str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000",
 						"str:liquidation_threshold": "500000000"
 					},
-					"code": "file:../../output/liquidity_pool.wasm",
+					"code": "file:../../output/liquidity-pool.wasm",
 					"owner": "address:owner"
 				},
 				"+": ""

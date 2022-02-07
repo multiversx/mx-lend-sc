@@ -21,7 +21,7 @@ pub struct PoolParams<M: ManagedTypeApi> {
 #[derive(TopEncode, TopDecode, TypeAbi)]
 pub struct IssueData<M: ManagedTypeApi> {
     pub name: ManagedBuffer<M>,
-    pub ticker: TokenIdentifier<M>,
+    pub ticker: ManagedBuffer<M>,
     pub is_empty_ticker: bool,
 }
 

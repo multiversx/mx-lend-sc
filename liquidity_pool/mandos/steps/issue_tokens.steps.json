@@ -30,7 +30,7 @@
 						"str:borrow_token": "str:BORROW-abcdef",
 						"str:liquidation_threshold": "500000000"
 					},
-					"code": "file:../../output/liquidity_pool.wasm",
+					"code": "file:../../output/liquidity-pool.wasm",
 					"owner": "address:owner"
 				}
 			}

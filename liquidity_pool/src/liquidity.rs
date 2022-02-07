@@ -43,7 +43,7 @@ pub trait LiquidityModule:
         let deposit_position = DepositPosition::new(timestamp, amount.clone());
         self.deposit_position(new_nonce).set(&deposit_position);
 
-        self.reserves(&pool_asset).update(|x| *x += &amount);
+        self.reserves().update(|x| *x += &amount);
 
         self.send_nft_tokens(
             &initial_caller,
@@ -124,7 +124,7 @@ pub trait LiquidityModule:
         let borrow_amount_in_tokens = (&borrow_amount_in_dollars / &pool_asset_data.price)
             * BigUint::from(10u64).pow(pool_asset_data.decimals as u32);
 
-        let asset_reserve = self.reserves(&pool_token_id).get();
+        let asset_reserve = self.reserves().get();
 
         require!(
             asset_reserve > borrow_amount_in_tokens,
@@ -145,7 +145,7 @@ pub trait LiquidityModule:
         self.borrowed_amount()
             .update(|total| *total += &borrow_amount_in_tokens);
 
-        self.reserves(&pool_token_id)
+        self.reserves()
             .update(|total| *total -= &borrow_amount_in_tokens);
 
         self.send_nft_tokens(
@@ -190,11 +190,10 @@ pub trait LiquidityModule:
         let withdrawal_amount =
             self.compute_withdrawal_amount(&amount, &BigUint::from(time_diff), &deposit_rate);
 
-        self.reserves(&pool_asset).update(|asset_reserve| {
+        self.reserves().update(|asset_reserve| {
             require!(*asset_reserve >= withdrawal_amount, "insufficient funds");
             *asset_reserve -= &withdrawal_amount;
-            Ok(())
-        })?;
+        });
 
         deposit.amount -= &amount;
         if deposit.amount == 0 {
@@ -302,8 +301,7 @@ pub trait LiquidityModule:
         self.borrowed_amount()
             .update(|total| *total -= borrow_token_amount);
 
-        self.reserves(asset_token_id)
-            .update(|total| *total += &total_owed);
+        self.reserves().update(|total| *total += &total_owed);
 
         self.send()
             .esdt_local_burn(borrow_token_id, borrow_token_nonce, borrow_token_amount);
@@ -378,8 +376,7 @@ pub trait LiquidityModule:
         self.borrowed_amount()
             .update(|total| *total -= &borrow_position.borrowed_amount);
 
-        self.reserves(&asset_token_id)
-            .update(|total| *total += &asset_amount);
+        self.reserves().update(|total| *total += &asset_amount);
 
         self.borrow_position(borrow_position_nonce).clear();
 

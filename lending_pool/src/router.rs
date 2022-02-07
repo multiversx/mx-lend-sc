@@ -4,12 +4,11 @@ elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
 use super::factory;
-
 use super::proxy;
 
 use common_structs::{BORROW_TOKEN_PREFIX, LEND_TOKEN_PREFIX};
 use liquidity_pool::tokens::ProxyTrait as _;
-use liquidity_pool::utils::ProxyTrait as _;
+use price_aggregator_proxy::ProxyTrait as _;
 
 #[elrond_wasm::module]
 pub trait RouterModule:
@@ -179,7 +178,7 @@ pub trait RouterModule:
         let pool_address = self.get_pool_address_non_zero(&asset_ticker)?;
 
         self.liquidity_pool_proxy(pool_address)
-            .set_price_aggregator(aggregator)
+            .set_price_aggregator_address(aggregator)
             .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context();
 

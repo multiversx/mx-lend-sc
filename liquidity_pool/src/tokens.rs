@@ -45,10 +45,7 @@ pub trait TokensModule:
             .issue_semi_fungible(
                 issue_cost,
                 &issue_data.name,
-                &ManagedBuffer::new_from_bytes(
-                    self.type_manager(),
-                    issue_data.ticker.to_esdt_identifier().as_slice(),
-                ),
+                &issue_data.ticker,
                 SemiFungibleTokenProperties {
                     can_freeze: true,
                     can_wipe: true,
@@ -85,21 +82,21 @@ pub trait TokensModule:
                 (&roles[..]).into_iter().cloned(),
             )
             .async_call()
-            .with_callback(self.callbacks().set_roles_callback())
     }
 
     fn mint_position_tokens(&self, token_id: &TokenIdentifier, amount: &BigUint) -> u64 {
-        let mut uris = ManagedVec::new(self.type_manager());
-        uris.push(self.types().managed_buffer_new());
+        let big_zero = BigUint::zero();
+        let empty_buffer = ManagedBuffer::new();
+        let empty_vec = ManagedVec::from_raw_handle(empty_buffer.get_raw_handle());
 
         self.send().esdt_nft_create(
             token_id,
             amount,
-            &self.types().managed_buffer_new(),
-            &self.types().big_uint_zero(),
-            &self.types().managed_buffer_new(),
+            &empty_buffer,
+            &big_zero,
+            &empty_buffer,
             &(),
-            &uris,
+            &empty_vec,
         )
     }
 
@@ -116,47 +113,15 @@ pub trait TokensModule:
                 } else {
                     self.borrow_token().set(&ticker);
                 }
-                self.last_error().clear();
-                self.send_callback_result(ticker, b"setTickerAfterIssue");
             }
-            ManagedAsyncCallResult::Err(message) => {
+            ManagedAsyncCallResult::Err(_) => {
                 let caller = self.blockchain().get_owner_address();
                 let (returned_tokens, token_id) = self.call_value().payment_token_pair();
                 if token_id.is_egld() && returned_tokens > 0 {
                     self.send()
                         .direct(&caller, &token_id, 0, &returned_tokens, &[]);
                 }
-                self.last_error().set(&message.err_msg);
             }
         }
-    }
-
-    #[callback]
-    fn set_roles_callback(&self, #[call_result] result: ManagedAsyncCallResult<()>) {
-        match result {
-            ManagedAsyncCallResult::Ok(()) => {
-                self.last_error().clear();
-            }
-            ManagedAsyncCallResult::Err(message) => {
-                self.last_error().set(&message.err_msg);
-            }
-        }
-    }
-
-    fn send_callback_result(&self, token: TokenIdentifier, endpoint: &[u8]) {
-        let owner = self.blockchain().get_owner_address();
-
-        let mut args = ManagedArgBuffer::new_empty(self.type_manager());
-        args.push_arg(token);
-
-        let expected_gas = self.blockchain().get_gas_left() / 2;
-
-        self.raw_vm_api().execute_on_dest_context_raw(
-            expected_gas,
-            &owner,
-            &self.types().big_uint_zero(),
-            &ManagedBuffer::new_from_bytes(self.type_manager(), endpoint),
-            &args,
-        );
     }
 }

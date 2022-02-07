@@ -14,14 +14,14 @@ pub trait TokenSendModule {
     ) -> SCResult<()> {
         let (function, gas_limit) = self.get_func_and_gas_limit_from_opt(accept_funds_func);
 
-        self.raw_vm_api()
+        Self::Api::send_api_impl()
             .direct_esdt_execute(
                 dest,
                 token_id,
                 amount,
                 gas_limit,
                 &function,
-                &ManagedArgBuffer::new_empty(self.type_manager()),
+                &ManagedArgBuffer::new_empty(),
             )
             .into()
     }
@@ -36,7 +36,7 @@ pub trait TokenSendModule {
     ) -> SCResult<()> {
         let (function, gas_limit) = self.get_func_and_gas_limit_from_opt(accept_funds_func);
 
-        self.raw_vm_api()
+        Self::Api::send_api_impl()
             .direct_esdt_nft_execute(
                 dest,
                 token_id,
@@ -44,7 +44,7 @@ pub trait TokenSendModule {
                 amount,
                 gas_limit,
                 &function,
-                &ManagedArgBuffer::new_empty(self.type_manager()),
+                &ManagedArgBuffer::new_empty(),
             )
             .into()
     }

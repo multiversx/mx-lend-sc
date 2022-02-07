@@ -1,12 +1,13 @@
 [workspace]
 members = [
     "liquidity_pool",
-    "liquidity_pool/abi",
+    "liquidity_pool/meta",
     "lending_pool",
-    "lending_pool/abi",
+    "lending_pool/meta",
     "safety_module",
-    "safety_module/abi",
+    "safety_module/meta",
     "common/structs",
     "common/checks",
-    "aggregator_mock"
+    "aggregator_mock",
+    "aggregator_mock/meta"
 ]

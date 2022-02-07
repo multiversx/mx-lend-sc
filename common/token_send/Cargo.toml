@@ -1,5 +1,5 @@
 [package]
-name = "token_send"
+name = "token-send"
 version = "0.0.0"
 authors = [ "",]
 edition = "2018"
@@ -7,15 +7,5 @@ edition = "2018"
 [lib]
 path = "src/token_send.rs"
 
-[features]
-wasm-output-mode = [ "elrond-wasm-node",]
-
 [dependencies.elrond-wasm]
-version = "0.21.2"
-
-[dependencies.elrond-wasm-derive]
-version = "0.21.2"
-
-[dependencies.elrond-wasm-node]
-version = "0.21.2"
-optional = true
+version = "0.27.4"
