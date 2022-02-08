@@ -16,18 +16,14 @@ pub trait SafetyModule {
 
     #[only_owner]
     #[endpoint(addPool)]
-    fn add_pool(&self, token: TokenIdentifier, address: &ManagedAddress) -> SCResult<()> {
+    fn add_pool(&self, token: TokenIdentifier, address: &ManagedAddress) {
         self.pools(token).set(address);
-
-        Ok(())
     }
 
     #[only_owner]
     #[endpoint(removePool)]
-    fn remove_pool(&self, token: TokenIdentifier) -> SCResult<()> {
+    fn remove_pool(&self, token: TokenIdentifier) {
         self.pools(token).clear();
-
-        Ok(())
     }
 
     #[payable("*")]
@@ -37,7 +33,7 @@ pub trait SafetyModule {
         #[payment_token] token: TokenIdentifier,
         #[payment_amount] payment: BigUint,
         #[var_args] caller: OptionalArg<ManagedAddress>,
-    ) -> SCResult<()> {
+    ) {
         require!(payment > 0, "amount must be greater than 0");
         require!(token == self.wegld_token().get(), "invalid token");
 
@@ -53,8 +49,6 @@ pub trait SafetyModule {
 
         self.send()
             .direct(&caller_address, &nft_token, nft_nonce, &payment, &[]);
-
-        Ok(())
     }
 
     #[only_owner]
@@ -65,11 +59,10 @@ pub trait SafetyModule {
         #[payment_amount] issue_cost: BigUint,
         token_display_name: ManagedBuffer,
         token_ticker: ManagedBuffer,
-    ) -> SCResult<AsyncCall> {
+    ) -> AsyncCall {
         require!(issue_cost == ESDT_ISSUE_COST, "wrong ESDT asset identifier");
 
-        Ok(self
-            .send()
+        self.send()
             .esdt_system_sc_proxy()
             .issue_semi_fungible(
                 issue_cost,
@@ -88,7 +81,7 @@ pub trait SafetyModule {
             .with_callback(
                 self.callbacks()
                     .nft_issue_callback(self.blockchain().get_caller()),
-            ))
+            )
     }
 
     #[callback]
@@ -121,16 +114,14 @@ pub trait SafetyModule {
         &self,
         #[payment_token] token: TokenIdentifier,
         #[payment_amount] payment: BigUint,
-    ) -> SCResult<()> {
+    ) {
         require!(payment > 0, "amount must be greater than 0");
 
         self.convert_to_wegld(token, payment);
-
-        Ok(())
     }
 
     #[endpoint(takeFunds)]
-    fn take_funds(&self, pool_token: TokenIdentifier, amount: BigUint) -> SCResult<()> {
+    fn take_funds(&self, pool_token: TokenIdentifier, amount: BigUint) {
         require!(amount > 0, "amount must be greater than 0");
 
         let caller_address = self.blockchain().get_caller();
@@ -148,13 +139,11 @@ pub trait SafetyModule {
 
         self.send()
             .direct(&caller_address, &pool_token, 0, &amount, &[]);
-
-        Ok(())
     }
 
     #[payable("*")]
     #[endpoint(withdraw)]
-    fn withdraw(&self, #[payment_amount] amount: BigUint) -> SCResult<BigUint> {
+    fn withdraw(&self, #[payment_amount] amount: BigUint) -> BigUint {
         let caller_address = self.blockchain().get_caller();
         let token_id = self.call_value().token();
         let nft_nonce = self.call_value().esdt_token_nonce();
@@ -168,7 +157,7 @@ pub trait SafetyModule {
             nft_nonce,
         );
 
-        let nft_metadata = nft_info.decode_attributes::<DepositPosition<Self::Api>>()?;
+        let nft_metadata = nft_info.decode_attributes_or_exit::<DepositPosition<Self::Api>>();
         let time_in_pool = self.blockchain().get_block_timestamp() - nft_metadata.timestamp;
 
         require!(time_in_pool > 0, "invalid timestamp");
@@ -193,19 +182,16 @@ pub trait SafetyModule {
         self.send()
             .direct(&caller_address, wegld_token_id, 0, &withdraw_amount, &[]);
 
-        Ok(withdraw_amount)
+        withdraw_amount
     }
 
     #[only_owner]
     #[endpoint(setLocalRolesNftToken)]
-    fn set_local_roles_nft_token(
-        &self,
-        #[var_args] roles: VarArgs<EsdtLocalRole>,
-    ) -> SCResult<AsyncCall> {
+    fn set_local_roles_nft_token(&self, #[var_args] roles: VarArgs<EsdtLocalRole>) -> AsyncCall {
         require!(!self.nft_token().is_empty(), "No nft token issued");
 
         let token = self.nft_token().get();
-        Ok(self.set_local_roles(token, roles.into_vec()))
+        self.set_local_roles(token, roles.into_vec())
     }
 
     #[callback]

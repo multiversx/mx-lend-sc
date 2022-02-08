@@ -29,7 +29,7 @@ pub trait LiquidityModule:
         #[payment_amount] amount: BigUint,
         initial_caller: ManagedAddress,
         #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
-    ) -> SCResult<()> {
+    ) {
         let pool_asset = self.pool_asset().get();
         require!(
             asset == pool_asset,
@@ -51,9 +51,7 @@ pub trait LiquidityModule:
             new_nonce,
             &amount,
             &accept_funds_func,
-        )?;
-
-        Ok(())
+        );
     }
 
     #[only_owner]
@@ -64,7 +62,7 @@ pub trait LiquidityModule:
         #[payment_token] payment_token_id: TokenIdentifier,
         #[payment_nonce] payment_token_nonce: u64,
         #[payment_amount] payment_amount: BigUint,
-    ) -> SCResult<()> {
+    ) {
         let lend_token_id = self.lend_token().get();
         require!(
             payment_token_id == lend_token_id,
@@ -83,8 +81,6 @@ pub trait LiquidityModule:
         } else {
             self.deposit_position(payment_token_nonce).set(&deposit);
         }
-
-        Ok(())
     }
 
     #[only_owner]
@@ -99,9 +95,9 @@ pub trait LiquidityModule:
         collateral_tokens: TokenAmountPair<Self::Api>,
         loan_to_value: BigUint,
         #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
-    ) -> SCResult<()> {
-        self.require_amount_greater_than_zero(&collateral_tokens.amount)?;
-        self.require_non_zero_address(&initial_caller)?;
+    ) {
+        self.require_amount_greater_than_zero(&collateral_tokens.amount);
+        self.require_non_zero_address(&initial_caller);
         let lend_tokens = TokenAmountPair::new(
             payment_lend_token_id,
             payment_lend_token_nonce,
@@ -111,8 +107,8 @@ pub trait LiquidityModule:
         let borrow_token_id = self.borrow_token().get();
         let pool_token_id = self.pool_asset().get();
 
-        let collateral_data = self.get_token_price_data(&collateral_tokens.token_id)?;
-        let pool_asset_data = self.get_token_price_data(&pool_token_id)?;
+        let collateral_data = self.get_token_price_data(&collateral_tokens.token_id);
+        let pool_asset_data = self.get_token_price_data(&pool_token_id);
 
         let borrow_amount_in_dollars = self.compute_borrowable_amount(
             &collateral_tokens.amount,
@@ -154,16 +150,13 @@ pub trait LiquidityModule:
             new_nonce,
             &borrow_amount_in_tokens,
             &accept_funds_func,
-        )?;
-
+        );
         self.send_fft_tokens(
             &initial_caller,
             &pool_token_id,
             &borrow_amount_in_tokens,
             &accept_funds_func,
-        )?;
-
-        Ok(())
+        );
     }
 
     #[only_owner]
@@ -176,7 +169,7 @@ pub trait LiquidityModule:
         #[payment_nonce] token_nonce: u64,
         #[payment_amount] amount: BigUint,
         #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
-    ) -> SCResult<()> {
+    ) {
         require!(
             lend_token == self.lend_token().get(),
             "lend token not supported"
@@ -186,7 +179,7 @@ pub trait LiquidityModule:
         let mut deposit = self.deposit_position(token_nonce).get();
 
         let deposit_rate = self.get_deposit_rate();
-        let time_diff = self.get_timestamp_diff(deposit.timestamp)?;
+        let time_diff = self.get_timestamp_diff(deposit.timestamp);
         let withdrawal_amount =
             self.compute_withdrawal_amount(&amount, &BigUint::from(time_diff), &deposit_rate);
 
@@ -210,9 +203,7 @@ pub trait LiquidityModule:
             &pool_asset,
             &withdrawal_amount,
             &accept_funds_func,
-        )?;
-
-        Ok(())
+        );
     }
 
     #[only_owner]
@@ -222,8 +213,8 @@ pub trait LiquidityModule:
         &self,
         initial_caller: ManagedAddress,
         #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
-    ) -> SCResult<()> {
-        self.require_non_zero_address(&initial_caller)?;
+    ) {
+        self.require_non_zero_address(&initial_caller);
 
         let transfers = self
             .call_value()
@@ -258,7 +249,7 @@ pub trait LiquidityModule:
         let mut borrow_position = self.borrow_position(borrow_token_nonce).get();
 
         let accumulated_debt =
-            self.get_debt_interest(borrow_token_amount, borrow_position.timestamp)?;
+            self.get_debt_interest(borrow_token_amount, borrow_position.timestamp);
         let total_owed = borrow_token_amount + &accumulated_debt;
 
         require!(
@@ -273,7 +264,7 @@ pub trait LiquidityModule:
                 asset_token_id,
                 &extra_asset_paid,
                 &accept_funds_func,
-            )?;
+            );
         }
 
         let lend_token_amount_to_send_back: BigUint;
@@ -312,9 +303,7 @@ pub trait LiquidityModule:
             borrow_position.lend_tokens.nonce,
             &lend_token_amount_to_send_back,
             &accept_funds_func,
-        )?;
-
-        Ok(())
+        );
     }
 
     #[only_owner]
@@ -328,9 +317,9 @@ pub trait LiquidityModule:
         borrow_position_nonce: u64,
         liquidation_bonus: BigUint,
         #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
-    ) -> SCResult<TokenAmountPair<Self::Api>> {
-        self.require_non_zero_address(&initial_caller)?;
-        self.require_amount_greater_than_zero(&asset_amount)?;
+    ) -> TokenAmountPair<Self::Api> {
+        self.require_non_zero_address(&initial_caller);
+        self.require_amount_greater_than_zero(&asset_amount);
 
         require!(
             asset_token_id == self.pool_asset().get(),
@@ -347,10 +336,10 @@ pub trait LiquidityModule:
 
         let base_big = BigUint::from(10u64);
 
-        let asset_price_data = self.get_token_price_data(&asset_token_id)?;
+        let asset_price_data = self.get_token_price_data(&asset_token_id);
         let asset_price_decs = base_big.pow(asset_price_data.decimals as u32);
 
-        let collateral_price_data = self.get_token_price_data(&collateral_token_id)?;
+        let collateral_price_data = self.get_token_price_data(&collateral_token_id);
         let collateral_price_decs = base_big.pow(collateral_price_data.decimals as u32);
 
         let collateral_amount = borrow_position.lend_tokens.amount.clone();
@@ -394,12 +383,12 @@ pub trait LiquidityModule:
             borrow_position.lend_tokens.nonce,
             &lend_amount_to_return,
             &accept_funds_func,
-        )?;
+        );
 
         let remaining_amount = lend_tokens.amount - lend_amount_to_return;
         let lend_token_pair =
             TokenAmountPair::new(lend_tokens.token_id, lend_tokens.nonce, remaining_amount);
 
-        Ok(lend_token_pair)
+        lend_token_pair
     }
 }

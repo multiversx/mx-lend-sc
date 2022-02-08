@@ -11,19 +11,16 @@ pub trait TokenSendModule {
         token_id: &TokenIdentifier,
         amount: &BigUint,
         accept_funds_func: &OptionalArg<ManagedBuffer>,
-    ) -> SCResult<()> {
+    ) {
         let (function, gas_limit) = self.get_func_and_gas_limit_from_opt(accept_funds_func);
-
-        Self::Api::send_api_impl()
-            .direct_esdt_execute(
-                dest,
-                token_id,
-                amount,
-                gas_limit,
-                &function,
-                &ManagedArgBuffer::new_empty(),
-            )
-            .into()
+        let _ = Self::Api::send_api_impl().direct_esdt_execute(
+            dest,
+            token_id,
+            amount,
+            gas_limit,
+            &function,
+            &ManagedArgBuffer::new_empty(),
+        );
     }
 
     fn send_nft_tokens(
@@ -33,20 +30,17 @@ pub trait TokenSendModule {
         nonce: u64,
         amount: &BigUint,
         accept_funds_func: &OptionalArg<ManagedBuffer>,
-    ) -> SCResult<()> {
+    ) {
         let (function, gas_limit) = self.get_func_and_gas_limit_from_opt(accept_funds_func);
-
-        Self::Api::send_api_impl()
-            .direct_esdt_nft_execute(
-                dest,
-                token_id,
-                nonce,
-                amount,
-                gas_limit,
-                &function,
-                &ManagedArgBuffer::new_empty(),
-            )
-            .into()
+        let _ = Self::Api::send_api_impl().direct_esdt_nft_execute(
+            dest,
+            token_id,
+            nonce,
+            amount,
+            gas_limit,
+            &function,
+            &ManagedArgBuffer::new_empty(),
+        );
     }
 
     fn get_func_and_gas_limit_from_opt(

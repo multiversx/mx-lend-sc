@@ -46,15 +46,15 @@ pub trait UtilsModule:
         issue_data
     }
 
-    fn get_token_price_data(
-        &self,
-        token_id: &TokenIdentifier,
-    ) -> SCResult<AggregatorResult<Self::Api>> {
+    fn get_token_price_data(&self, token_id: &TokenIdentifier) -> AggregatorResult<Self::Api> {
         let from_ticker = self.get_token_ticker(token_id);
         let result = self
             .get_full_result_for_pair(from_ticker, ManagedBuffer::new_from_bytes(DOLLAR_TICKER));
 
-        result.ok_or("failed to get token price").into()
+        match result {
+            Some(r) => r,
+            None => sc_panic!("failed to get token price"),
+        }
     }
 
     // TODO: Get rid of this functon and store the ticker in storage
@@ -79,11 +79,11 @@ pub trait UtilsModule:
     }
 
     #[view(getDebtInterest)]
-    fn get_debt_interest(&self, amount: &BigUint, timestamp: u64) -> SCResult<BigUint> {
-        let time_diff = self.get_timestamp_diff(timestamp)?;
+    fn get_debt_interest(&self, amount: &BigUint, timestamp: u64) -> BigUint {
+        let time_diff = self.get_timestamp_diff(timestamp);
         let borrow_rate = self.get_borrow_rate();
 
-        Ok(self.compute_debt(amount, &BigUint::from(time_diff as u64), &borrow_rate))
+        self.compute_debt(amount, &BigUint::from(time_diff as u64), &borrow_rate)
     }
 
     #[view(getDepositRate)]
@@ -113,10 +113,11 @@ pub trait UtilsModule:
         )
     }
 
-    fn get_timestamp_diff(&self, timestamp: u64) -> SCResult<u64> {
+    fn get_timestamp_diff(&self, timestamp: u64) -> u64 {
         let current_time = self.blockchain().get_block_timestamp();
         require!(current_time >= timestamp, "Invalid timestamp");
-        Ok(current_time - timestamp)
+
+        current_time - timestamp
     }
 
     fn is_full_repay(

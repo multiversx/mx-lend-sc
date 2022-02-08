@@ -28,20 +28,18 @@ pub trait LendingPool:
         #[payment_amount] amount: BigUint,
         #[var_args] caller: OptionalArg<ManagedAddress>,
         #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
-    ) -> SCResult<()> {
+    ) {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
-        self.require_amount_greater_than_zero(&amount)?;
-        self.require_non_zero_address(&initial_caller)?;
+        self.require_amount_greater_than_zero(&amount);
+        self.require_non_zero_address(&initial_caller);
 
-        let pool_address = self.get_pool_address_non_zero(&asset)?;
-        self.require_non_zero_address(&pool_address)?;
+        let pool_address = self.get_pool_address_non_zero(&asset);
+        self.require_non_zero_address(&pool_address);
 
         self.liquidity_pool_proxy(pool_address)
             .deposit_asset(asset, amount, initial_caller, accept_funds_func)
             .execute_on_dest_context();
-
-        Ok(())
     }
 
     #[payable("*")]
@@ -53,14 +51,14 @@ pub trait LendingPool:
         #[payment_amount] amount: BigUint,
         #[var_args] caller: OptionalArg<ManagedAddress>,
         #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
-    ) -> SCResult<()> {
+    ) {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
-        self.require_amount_greater_than_zero(&amount)?;
-        self.require_non_zero_address(&initial_caller)?;
+        self.require_amount_greater_than_zero(&amount);
+        self.require_non_zero_address(&initial_caller);
 
         let pool_address = self.get_pool_address(&lend_token);
-        self.require_non_zero_address(&pool_address)?;
+        self.require_non_zero_address(&pool_address);
 
         self.liquidity_pool_proxy(pool_address)
             .withdraw(
@@ -71,8 +69,6 @@ pub trait LendingPool:
                 accept_funds_func,
             )
             .execute_on_dest_context();
-
-        Ok(())
     }
 
     #[payable("*")]
@@ -86,14 +82,14 @@ pub trait LendingPool:
         asset_to_borrow: TokenIdentifier,
         #[var_args] caller: OptionalArg<ManagedAddress>,
         #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
-    ) -> SCResult<()> {
+    ) {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
-        self.require_amount_greater_than_zero(&payment_amount)?;
-        self.require_non_zero_address(&initial_caller)?;
+        self.require_amount_greater_than_zero(&payment_amount);
+        self.require_non_zero_address(&initial_caller);
 
-        let borrow_token_pool_address = self.get_pool_address_non_zero(&asset_to_borrow)?;
-        let loan_to_value = self.get_loan_to_value_exists_and_non_zero(&collateral_token_id)?;
+        let borrow_token_pool_address = self.get_pool_address_non_zero(&asset_to_borrow);
+        let loan_to_value = self.get_loan_to_value_exists_and_non_zero(&collateral_token_id);
 
         //L tokens for a specific token X are 1:1 with deposited X tokens
         let collateral_amount = payment_amount.clone();
@@ -109,8 +105,6 @@ pub trait LendingPool:
                 accept_funds_func,
             )
             .execute_on_dest_context_ignore_result();
-
-        Ok(())
     }
 
     #[payable("*")]
@@ -120,7 +114,7 @@ pub trait LendingPool:
         asset_to_repay: TokenIdentifier,
         #[var_args] caller: OptionalArg<ManagedAddress>,
         #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
-    ) -> SCResult<()> {
+    ) {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
         let asset_address = self.get_pool_address(&asset_to_repay);
@@ -134,8 +128,6 @@ pub trait LendingPool:
             .repay(initial_caller, accept_funds_func)
             .with_multi_token_transfer(transfers)
             .execute_on_dest_context();
-
-        Ok(())
     }
 
     #[payable("*")]
@@ -147,15 +139,15 @@ pub trait LendingPool:
         borrow_position_nonce: u64,
         #[var_args] caller: OptionalArg<ManagedAddress>,
         #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
-    ) -> SCResult<()> {
+    ) {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
-        self.require_asset_supported(&asset)?;
-        self.require_amount_greater_than_zero(&amount)?;
-        self.require_non_zero_address(&initial_caller)?;
+        self.require_asset_supported(&asset);
+        self.require_amount_greater_than_zero(&amount);
+        self.require_non_zero_address(&initial_caller);
 
         let asset_address = self.get_pool_address(&asset);
-        let liq_bonus = self.get_liquidation_bonus_non_zero(&asset)?;
+        let liq_bonus = self.get_liquidation_bonus_non_zero(&asset);
 
         let lend_tokens = self
             .liquidity_pool_proxy(asset_address)
@@ -178,8 +170,6 @@ pub trait LendingPool:
                 lend_tokens.amount,
             )
             .execute_on_dest_context_ignore_result();
-
-        Ok(())
     }
 
     fn caller_from_option_or_sender(&self, caller: OptionalArg<ManagedAddress>) -> ManagedAddress {
@@ -188,9 +178,7 @@ pub trait LendingPool:
             .unwrap_or_else(|| self.blockchain().get_caller())
     }
 
-    fn require_asset_supported(&self, asset: &TokenIdentifier) -> SCResult<()> {
+    fn require_asset_supported(&self, asset: &TokenIdentifier) {
         require!(self.pools_map().contains_key(asset), "asset not supported");
-
-        Ok(())
     }
 }

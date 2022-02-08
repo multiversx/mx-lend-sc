@@ -23,7 +23,7 @@ pub trait TokensModule:
         token_ticker: TokenIdentifier,
         token_prefix: ManagedBuffer,
         #[payment_amount] issue_cost: BigUint,
-    ) -> SCResult<AsyncCall> {
+    ) -> AsyncCall {
         require!(
             token_ticker == self.pool_asset().get(),
             "wrong ESDT asset identifier"
@@ -39,8 +39,7 @@ pub trait TokensModule:
             "token already issued for this identifier"
         );
 
-        Ok(self
-            .send()
+        self.send()
             .esdt_system_sc_proxy()
             .issue_semi_fungible(
                 issue_cost,
@@ -56,21 +55,23 @@ pub trait TokensModule:
                 },
             )
             .async_call()
-            .with_callback(self.callbacks().issue_callback(&token_prefix)))
+            .with_callback(self.callbacks().issue_callback(&token_prefix))
     }
 
     #[only_owner]
     #[endpoint(setLendTokensRoles)]
-    fn set_lend_token_roles(&self, roles: Vec<EsdtLocalRole>) -> SCResult<AsyncCall> {
+    fn set_lend_token_roles(&self, roles: Vec<EsdtLocalRole>) -> AsyncCall {
         require!(!self.lend_token().is_empty(), "token not issued yet");
-        Ok(self.set_roles(self.lend_token().get(), roles))
+
+        self.set_roles(self.lend_token().get(), roles)
     }
 
     #[only_owner]
     #[endpoint(setBorrowTokenRoles)]
-    fn set_borrow_token_roles(&self, roles: Vec<EsdtLocalRole>) -> SCResult<AsyncCall> {
+    fn set_borrow_token_roles(&self, roles: Vec<EsdtLocalRole>) -> AsyncCall {
         require!(!self.borrow_token().is_empty(), "token not issued yet");
-        Ok(self.set_roles(self.borrow_token().get(), roles))
+
+        self.set_roles(self.borrow_token().get(), roles)
     }
 
     fn set_roles(&self, token: TokenIdentifier, roles: Vec<EsdtLocalRole>) -> AsyncCall {

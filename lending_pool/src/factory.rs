@@ -33,7 +33,7 @@ pub trait FactoryModule {
         u_optimal: BigUint,
         reserve_factor: BigUint,
         liquidation_threshold: BigUint,
-    ) -> SCResult<ManagedAddress> {
+    ) -> ManagedAddress {
         require!(
             !self.liq_pool_template_address().is_empty(),
             "liquidity pool contract template is empty"
@@ -55,7 +55,7 @@ pub trait FactoryModule {
                 CodeMetadata::UPGRADEABLE,
             );
 
-        Ok(new_address)
+        new_address
     }
 
     fn upgrade_pool(
@@ -68,7 +68,7 @@ pub trait FactoryModule {
         u_optimal: BigUint,
         reserve_factor: BigUint,
         liquidation_threshold: BigUint,
-    ) -> SCResult<()> {
+    ) {
         require!(
             !self.liq_pool_template_address().is_empty(),
             "liquidity pool contract template is empty"
@@ -88,8 +88,6 @@ pub trait FactoryModule {
                 &self.liq_pool_template_address().get(),
                 CodeMetadata::UPGRADEABLE,
             );
-
-        Ok(())
     }
 
     #[view(getLiqPoolTemplateAddress)]
