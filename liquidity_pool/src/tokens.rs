@@ -108,12 +108,14 @@ pub trait TokensModule:
         #[call_result] result: ManagedAsyncCallResult<TokenIdentifier>,
     ) {
         match result {
-            ManagedAsyncCallResult::Ok(ticker) => {
+            ManagedAsyncCallResult::Ok(token_id) => {
                 if prefix.to_boxed_bytes() == BoxedBytes::from(LEND_TOKEN_PREFIX) {
-                    self.lend_token().set(&ticker);
+                    self.lend_token().set(&token_id);
                 } else {
-                    self.borrow_token().set(&ticker);
+                    self.borrow_token().set(&token_id);
                 }
+
+                self.send_callback_result(token_id);
             }
             ManagedAsyncCallResult::Err(_) => {
                 let caller = self.blockchain().get_owner_address();
@@ -124,5 +126,29 @@ pub trait TokensModule:
                 }
             }
         }
+    }
+
+    fn send_callback_result(&self, token: TokenIdentifier) {
+        let owner = self.blockchain().get_owner_address();
+        self.lending_pool_proxy(owner)
+            .set_ticker_after_issue(token)
+            .execute_on_dest_context();
+    }
+
+    #[proxy]
+    fn lending_pool_proxy(
+        &self,
+        sc_address: ManagedAddress,
+    ) -> lending_pool_proxy_mod::Proxy<Self::Api>;
+}
+
+// can't simply import, we would have a circular dependency
+mod lending_pool_proxy_mod {
+    elrond_wasm::imports!();
+
+    #[elrond_wasm::proxy]
+    pub trait LendingPool {
+        #[endpoint(setTickerAfterIssue)]
+        fn set_ticker_after_issue(&self, token_ticker: TokenIdentifier);
     }
 }
