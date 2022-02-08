@@ -7,7 +7,7 @@ pub const GWEI_STRING: &[u8] = b"GWEI";
 pub type AggregatorResultAsMultiResult<M> =
     MultiResult5<u32, ManagedBuffer<M>, ManagedBuffer<M>, BigUint<M>, u8>;
 
-mod price_aggregator_proxy {
+mod price_aggregator_proxy_mod {
     elrond_wasm::imports!();
 
     #[elrond_wasm::proxy]
@@ -86,8 +86,10 @@ pub trait PriceAggregatorModule {
     }
 
     #[proxy]
-    fn aggregator_proxy(&self, address: ManagedAddress)
-        -> price_aggregator_proxy::Proxy<Self::Api>;
+    fn aggregator_proxy(
+        &self,
+        address: ManagedAddress,
+    ) -> price_aggregator_proxy_mod::Proxy<Self::Api>;
 
     #[view(getAggregatorAddress)]
     #[storage_mapper("priceAggregatorAddress")]

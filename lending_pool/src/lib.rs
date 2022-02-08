@@ -38,7 +38,7 @@ pub trait LendingPool:
         self.require_non_zero_address(&pool_address)?;
 
         self.liquidity_pool_proxy(pool_address)
-            .deposit_asset(initial_caller, asset, amount, accept_funds_func)
+            .deposit_asset(asset, amount, initial_caller, accept_funds_func)
             .execute_on_dest_context();
 
         Ok(())

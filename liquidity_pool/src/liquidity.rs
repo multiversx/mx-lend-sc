@@ -25,9 +25,9 @@ pub trait LiquidityModule:
     #[endpoint(depositAsset)]
     fn deposit_asset(
         &self,
-        initial_caller: ManagedAddress,
         #[payment_token] asset: TokenIdentifier,
         #[payment_amount] amount: BigUint,
+        initial_caller: ManagedAddress,
         #[var_args] accept_funds_func: OptionalArg<ManagedBuffer>,
     ) -> SCResult<()> {
         let pool_asset = self.pool_asset().get();
