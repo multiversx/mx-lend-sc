@@ -22,7 +22,6 @@ pub trait LiquidityPool:
     + utils::UtilsModule
     + price_aggregator_proxy::PriceAggregatorModule
     + common_checks::ChecksModule
-    + token_send::TokenSendModule
 {
     #[init]
     fn init(
@@ -44,11 +43,5 @@ pub trait LiquidityPool:
             reserve_factor,
         });
         self.liquidation_threshold().set(&liquidation_threshold);
-    }
-
-    #[only_owner]
-    #[endpoint(setTransferExecGasLimit)]
-    fn set_transfer_exec_gas_limit(&self, gas_limit: u64) {
-        self.transfer_exec_gas_limit().set(&gas_limit)
     }
 }

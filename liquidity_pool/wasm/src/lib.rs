@@ -24,7 +24,6 @@ elrond_wasm_node::wasm_endpoints! {
         getPoolParams
         getReserves
         getTotalBorrow
-        getTransferExecGasLimit
         issue
         liquidate
         reducePositionAfterLiquidation
@@ -32,7 +31,6 @@ elrond_wasm_node::wasm_endpoints! {
         setBorrowTokenRoles
         setLendTokensRoles
         setPriceAggregatorAddress
-        setTransferExecGasLimit
         withdraw
     )
 }
