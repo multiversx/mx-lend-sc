@@ -2,7 +2,7 @@ elrond_wasm::imports!();
 
 const BP: u32 = 1_000_000_000;
 
-const SECONDS_IN_YEAR: u32 = 31556926;
+const SECONDS_IN_YEAR: u32 = 31_556_926;
 
 #[elrond_wasm::module]
 pub trait MathModule {

@@ -3,9 +3,9 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-pub const BP: u64 = 1000000000;
-pub const SECONDS_PER_YEAR: u64 = 31536000;
-pub const ESDT_ISSUE_COST: u64 = 5000000000000000000;
+pub const BP: u64 = 1_000_000_000;
+pub const SECONDS_PER_YEAR: u64 = 31_536_000;
+pub const ESDT_ISSUE_COST: u64 = 50_000_000_000_000_000; // 0.05 EGLD
 pub const LEND_TOKEN_PREFIX: &[u8] = b"L";
 pub const BORROW_TOKEN_PREFIX: &[u8] = b"B";
 
