@@ -22,12 +22,9 @@ pub trait LiquidityModule:
     #[only_owner]
     #[payable("*")]
     #[endpoint(depositAsset)]
-    fn deposit_asset(
-        &self,
-        #[payment_token] asset: TokenIdentifier,
-        #[payment_amount] amount: BigUint,
-        initial_caller: ManagedAddress,
-    ) {
+    fn deposit_asset(&self, initial_caller: ManagedAddress) {
+        let (amount, asset) = self.call_value().payment_token_pair();
+
         let pool_asset = self.pool_asset().get();
         require!(
             asset == pool_asset,
@@ -55,12 +52,10 @@ pub trait LiquidityModule:
     #[only_owner]
     #[payable("*")]
     #[endpoint(reducePositionAfterLiquidation)]
-    fn reduce_position_after_liquidation(
-        &self,
-        #[payment_token] payment_token_id: TokenIdentifier,
-        #[payment_nonce] payment_token_nonce: u64,
-        #[payment_amount] payment_amount: BigUint,
-    ) {
+    fn reduce_position_after_liquidation(&self) {
+        let (payment_amount, payment_token_id) = self.call_value().payment_token_pair();
+        let payment_token_nonce = self.call_value().esdt_token_nonce();
+
         let lend_token_id = self.lend_token().get();
         require!(
             payment_token_id == lend_token_id,
@@ -86,13 +81,13 @@ pub trait LiquidityModule:
     #[endpoint]
     fn borrow(
         &self,
-        #[payment_token] payment_lend_token_id: TokenIdentifier,
-        #[payment_nonce] payment_lend_token_nonce: u64,
-        #[payment_amount] payment_lend_amount: BigUint,
         initial_caller: ManagedAddress,
         collateral_tokens: TokenAmountPair<Self::Api>,
         loan_to_value: BigUint,
     ) {
+        let (payment_lend_amount, payment_lend_token_id) = self.call_value().payment_token_pair();
+        let payment_lend_token_nonce = self.call_value().esdt_token_nonce();
+
         self.require_amount_greater_than_zero(&collateral_tokens.amount);
         self.require_non_zero_address(&initial_caller);
         let lend_tokens = TokenAmountPair::new(
@@ -160,13 +155,10 @@ pub trait LiquidityModule:
     #[only_owner]
     #[payable("*")]
     #[endpoint]
-    fn withdraw(
-        &self,
-        initial_caller: ManagedAddress,
-        #[payment_token] lend_token: TokenIdentifier,
-        #[payment_nonce] token_nonce: u64,
-        #[payment_amount] amount: BigUint,
-    ) {
+    fn withdraw(&self, initial_caller: ManagedAddress) {
+        let (amount, lend_token) = self.call_value().payment_token_pair();
+        let token_nonce = self.call_value().esdt_token_nonce();
+
         require!(
             lend_token == self.lend_token().get(),
             "lend token not supported"
@@ -296,12 +288,12 @@ pub trait LiquidityModule:
     #[endpoint]
     fn liquidate(
         &self,
-        #[payment_token] asset_token_id: TokenIdentifier,
-        #[payment_amount] asset_amount: BigUint,
         initial_caller: ManagedAddress,
         borrow_position_nonce: u64,
         liquidation_bonus: BigUint,
     ) -> TokenAmountPair<Self::Api> {
+        let (asset_amount, asset_token_id) = self.call_value().payment_token_pair();
+
         self.require_non_zero_address(&initial_caller);
         self.require_amount_greater_than_zero(&asset_amount);
 

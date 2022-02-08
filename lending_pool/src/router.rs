@@ -87,12 +87,8 @@ pub trait RouterModule:
     #[only_owner]
     #[payable("EGLD")]
     #[endpoint(issueLendToken)]
-    fn issue_lend_token(
-        &self,
-        plain_ticker: ManagedBuffer,
-        token_ticker: TokenIdentifier,
-        #[payment_amount] amount: BigUint,
-    ) {
+    fn issue_lend_token(&self, plain_ticker: ManagedBuffer, token_ticker: TokenIdentifier) {
+        let payment_amount = self.call_value().egld_value();
         let pool_address = self.get_pool_address_non_zero(&token_ticker);
 
         self.liquidity_pool_proxy(pool_address)
@@ -100,8 +96,8 @@ pub trait RouterModule:
                 plain_ticker,
                 token_ticker,
                 ManagedBuffer::from(LEND_TOKEN_PREFIX),
-                amount,
             )
+            .with_egld_transfer(payment_amount)
             .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context();
     }
@@ -109,12 +105,8 @@ pub trait RouterModule:
     #[only_owner]
     #[payable("EGLD")]
     #[endpoint(issueBorrowToken)]
-    fn issue_borrow_token(
-        &self,
-        plain_ticker: ManagedBuffer,
-        token_ticker: TokenIdentifier,
-        #[payment_amount] amount: BigUint,
-    ) {
+    fn issue_borrow_token(&self, plain_ticker: ManagedBuffer, token_ticker: TokenIdentifier) {
+        let payment_amount = self.call_value().egld_value();
         let pool_address = self.get_pool_address_non_zero(&token_ticker);
 
         self.liquidity_pool_proxy(pool_address)
@@ -122,8 +114,8 @@ pub trait RouterModule:
                 plain_ticker,
                 token_ticker,
                 ManagedBuffer::from(BORROW_TOKEN_PREFIX),
-                amount,
             )
+            .with_egld_transfer(payment_amount)
             .with_gas_limit(self.blockchain().get_gas_left() / 2)
             .execute_on_dest_context();
     }

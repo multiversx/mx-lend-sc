@@ -22,34 +22,26 @@ pub trait LendingPool:
 
     #[payable("*")]
     #[endpoint]
-    fn deposit(
-        &self,
-        #[payment_token] asset: TokenIdentifier,
-        #[payment_amount] amount: BigUint,
-        #[var_args] caller: OptionalArg<ManagedAddress>,
-    ) {
+    fn deposit(&self, #[var_args] caller: OptionalArg<ManagedAddress>) {
+        let (amount, asset) = self.call_value().payment_token_pair();
         let initial_caller = self.caller_from_option_or_sender(caller);
 
         self.require_amount_greater_than_zero(&amount);
         self.require_non_zero_address(&initial_caller);
 
         let pool_address = self.get_pool_address_non_zero(&asset);
-        self.require_non_zero_address(&pool_address);
 
         self.liquidity_pool_proxy(pool_address)
-            .deposit_asset(asset, amount, initial_caller)
+            .deposit_asset(initial_caller)
+            .add_token_transfer(asset, 0, amount)
             .execute_on_dest_context();
     }
 
     #[payable("*")]
     #[endpoint]
-    fn withdraw(
-        &self,
-        #[payment_token] lend_token: TokenIdentifier,
-        #[payment_nonce] token_nonce: u64,
-        #[payment_amount] amount: BigUint,
-        #[var_args] caller: OptionalArg<ManagedAddress>,
-    ) {
+    fn withdraw(&self, #[var_args] caller: OptionalArg<ManagedAddress>) {
+        let (amount, lend_token) = self.call_value().payment_token_pair();
+        let token_nonce = self.call_value().esdt_token_nonce();
         let initial_caller = self.caller_from_option_or_sender(caller);
 
         self.require_amount_greater_than_zero(&amount);
@@ -59,7 +51,8 @@ pub trait LendingPool:
         self.require_non_zero_address(&pool_address);
 
         self.liquidity_pool_proxy(pool_address)
-            .withdraw(initial_caller, lend_token, token_nonce, amount)
+            .withdraw(initial_caller)
+            .add_token_transfer(lend_token, token_nonce, amount)
             .execute_on_dest_context();
     }
 
@@ -67,13 +60,12 @@ pub trait LendingPool:
     #[endpoint]
     fn borrow(
         &self,
-        #[payment_token] payment_lend_id: TokenIdentifier,
-        #[payment_nonce] payment_nonce: u64,
-        #[payment_amount] payment_amount: BigUint,
         collateral_token_id: TokenIdentifier,
         asset_to_borrow: TokenIdentifier,
         #[var_args] caller: OptionalArg<ManagedAddress>,
     ) {
+        let (payment_amount, payment_lend_id) = self.call_value().payment_token_pair();
+        let payment_nonce = self.call_value().esdt_token_nonce();
         let initial_caller = self.caller_from_option_or_sender(caller);
 
         self.require_amount_greater_than_zero(&payment_amount);
@@ -86,14 +78,8 @@ pub trait LendingPool:
         let collateral_amount = payment_amount.clone();
         let collateral_tokens = TokenAmountPair::new(collateral_token_id, 0, collateral_amount);
         self.liquidity_pool_proxy(borrow_token_pool_address)
-            .borrow(
-                payment_lend_id,
-                payment_nonce,
-                payment_amount,
-                initial_caller,
-                collateral_tokens,
-                loan_to_value,
-            )
+            .borrow(initial_caller, collateral_tokens, loan_to_value)
+            .add_token_transfer(payment_lend_id, payment_nonce, payment_amount)
             .execute_on_dest_context_ignore_result();
     }
 
@@ -104,6 +90,7 @@ pub trait LendingPool:
         asset_to_repay: TokenIdentifier,
         #[var_args] caller: OptionalArg<ManagedAddress>,
     ) {
+        let transfers = self.call_value().all_esdt_transfers();
         let initial_caller = self.caller_from_option_or_sender(caller);
 
         let asset_address = self.get_pool_address(&asset_to_repay);
@@ -112,7 +99,6 @@ pub trait LendingPool:
             "asset not supported"
         );
 
-        let transfers = self.call_value().all_esdt_transfers();
         self.liquidity_pool_proxy(asset_address)
             .repay(initial_caller)
             .with_multi_token_transfer(transfers)
@@ -123,11 +109,10 @@ pub trait LendingPool:
     #[endpoint(liquidate)]
     fn liquidate(
         &self,
-        #[payment_token] asset: TokenIdentifier,
-        #[payment_amount] amount: BigUint,
         borrow_position_nonce: u64,
         #[var_args] caller: OptionalArg<ManagedAddress>,
     ) {
+        let (amount, asset) = self.call_value().payment_token_pair();
         let initial_caller = self.caller_from_option_or_sender(caller);
 
         self.require_asset_supported(&asset);
@@ -139,23 +124,15 @@ pub trait LendingPool:
 
         let lend_tokens = self
             .liquidity_pool_proxy(asset_address)
-            .liquidate(
-                asset,
-                amount,
-                initial_caller,
-                borrow_position_nonce,
-                liq_bonus,
-            )
+            .liquidate(initial_caller, borrow_position_nonce, liq_bonus)
+            .add_token_transfer(asset, 0, amount)
             .execute_on_dest_context();
 
         let lend_tokens_pool = self.get_pool_address(&lend_tokens.token_id);
 
         self.liquidity_pool_proxy(lend_tokens_pool)
-            .reduce_position_after_liquidation(
-                lend_tokens.token_id,
-                lend_tokens.nonce,
-                lend_tokens.amount,
-            )
+            .reduce_position_after_liquidation()
+            .add_token_transfer(lend_tokens.token_id, lend_tokens.nonce, lend_tokens.amount)
             .execute_on_dest_context_ignore_result();
     }
 

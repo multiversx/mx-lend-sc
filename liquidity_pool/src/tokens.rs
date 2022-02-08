@@ -22,8 +22,9 @@ pub trait TokensModule:
         plain_ticker: ManagedBuffer,
         token_ticker: TokenIdentifier,
         token_prefix: ManagedBuffer,
-        #[payment_amount] issue_cost: BigUint,
     ) -> AsyncCall {
+        let issue_cost = self.call_value().egld_value();
+
         require!(
             token_ticker == self.pool_asset().get(),
             "wrong ESDT asset identifier"

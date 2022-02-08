@@ -4,7 +4,7 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use common_structs::{DepositPosition, BP, ESDT_ISSUE_COST, SECONDS_PER_YEAR};
+use common_structs::{DepositPosition, BP, SECONDS_PER_YEAR};
 
 #[elrond_wasm::contract]
 pub trait SafetyModule {
@@ -28,12 +28,9 @@ pub trait SafetyModule {
 
     #[payable("*")]
     #[endpoint(fund)]
-    fn fund(
-        self,
-        #[payment_token] token: TokenIdentifier,
-        #[payment_amount] payment: BigUint,
-        #[var_args] caller: OptionalArg<ManagedAddress>,
-    ) {
+    fn fund(self, #[var_args] caller: OptionalArg<ManagedAddress>) {
+        let (payment, token) = self.call_value().payment_token_pair();
+
         require!(payment > 0, "amount must be greater than 0");
         require!(token == self.wegld_token().get(), "invalid token");
 
@@ -56,11 +53,10 @@ pub trait SafetyModule {
     #[endpoint(nftIssue)]
     fn nft_issue(
         &self,
-        #[payment_amount] issue_cost: BigUint,
         token_display_name: ManagedBuffer,
         token_ticker: ManagedBuffer,
     ) -> AsyncCall {
-        require!(issue_cost == ESDT_ISSUE_COST, "wrong ESDT asset identifier");
+        let issue_cost = self.call_value().egld_value();
 
         self.send()
             .esdt_system_sc_proxy()
@@ -110,11 +106,8 @@ pub trait SafetyModule {
 
     #[payable("*")]
     #[endpoint(fundFromPool)]
-    fn fund_from_pool(
-        &self,
-        #[payment_token] token: TokenIdentifier,
-        #[payment_amount] payment: BigUint,
-    ) {
+    fn fund_from_pool(&self) {
+        let (payment, token) = self.call_value().payment_token_pair();
         require!(payment > 0, "amount must be greater than 0");
 
         self.convert_to_wegld(token, payment);
@@ -143,10 +136,10 @@ pub trait SafetyModule {
 
     #[payable("*")]
     #[endpoint(withdraw)]
-    fn withdraw(&self, #[payment_amount] amount: BigUint) -> BigUint {
-        let caller_address = self.blockchain().get_caller();
-        let token_id = self.call_value().token();
+    fn withdraw(&self) -> BigUint {
+        let (amount, token_id) = self.call_value().payment_token_pair();
         let nft_nonce = self.call_value().esdt_token_nonce();
+        let caller_address = self.blockchain().get_caller();
 
         require!(amount > 0, "amount must be greater than 0");
         require!(token_id == self.nft_token().get(), "invalid token");
