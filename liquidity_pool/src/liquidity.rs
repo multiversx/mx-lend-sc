@@ -197,31 +197,30 @@ pub trait LiquidityModule:
     fn repay(&self, initial_caller: ManagedAddress) {
         self.require_non_zero_address(&initial_caller);
 
-        let transfers = self
-            .call_value()
-            .all_esdt_transfers()
-            .into_iter()
-            .collect::<Vec<EsdtTokenPayment<Self::Api>>>();
-
+        let payments = self.call_value().all_esdt_transfers();
         require!(
-            transfers.len() == REPAY_PAYMENTS_LEN,
+            payments.len() == REPAY_PAYMENTS_LEN,
             "Invalid number of payments"
         );
+
+        let first_payment = payments.get(0);
+        let second_payment = payments.get(1);
+
         require!(
-            transfers[0].token_identifier == self.borrow_token().get(),
+            first_payment.token_identifier == self.borrow_token().get(),
             "First payment should be the borrow SFTs"
         );
         require!(
-            transfers[1].token_identifier == self.pool_asset().get(),
+            second_payment.token_identifier == self.pool_asset().get(),
             "Second payment should be this pool's asset"
         );
 
-        let borrow_token_id = &transfers[0].token_identifier;
-        let borrow_token_nonce = transfers[0].token_nonce;
-        let borrow_token_amount = &transfers[0].amount;
+        let borrow_token_id = &first_payment.token_identifier;
+        let borrow_token_nonce = first_payment.token_nonce;
+        let borrow_token_amount = &first_payment.amount;
 
-        let asset_token_id = &transfers[1].token_identifier;
-        let asset_amount = &transfers[1].amount;
+        let asset_token_id = &second_payment.token_identifier;
+        let asset_amount = &second_payment.amount;
 
         require!(
             !self.borrow_position(borrow_token_nonce).is_empty(),
