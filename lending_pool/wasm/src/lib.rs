@@ -24,7 +24,7 @@ elrond_wasm_node::wasm_endpoints! {
         setAssetLoanToValue
         setBorrowRoles
         setLendRoles
-        setTickerAfterIssue
+        setTokenIdAfterIssue
         upgradeLiquidityPool
         withdraw
     )
