@@ -5,8 +5,8 @@ elrond_wasm::derive_imports!();
 
 pub const BP: u64 = 1_000_000_000;
 pub const SECONDS_PER_YEAR: u64 = 31_536_000;
-pub const LEND_TOKEN_PREFIX: &[u8] = b"L";
-pub const BORROW_TOKEN_PREFIX: &[u8] = b"B";
+pub const LEND_TOKEN_PREFIX: u8 = b'L';
+pub const BORROW_TOKEN_PREFIX: u8 = b'B';
 
 #[derive(TopEncode, TopDecode, TypeAbi)]
 pub struct PoolParams<M: ManagedTypeApi> {

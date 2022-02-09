@@ -29,7 +29,7 @@ pub trait LendingPool:
         self.require_amount_greater_than_zero(&amount);
         self.require_non_zero_address(&initial_caller);
 
-        let pool_address = self.get_pool_address_non_zero(&asset);
+        let pool_address = self.get_pool_address(&asset);
 
         self.liquidity_pool_proxy(pool_address)
             .deposit_asset(initial_caller)
@@ -48,8 +48,6 @@ pub trait LendingPool:
         self.require_non_zero_address(&initial_caller);
 
         let pool_address = self.get_pool_address(&lend_token);
-        self.require_non_zero_address(&pool_address);
-
         self.liquidity_pool_proxy(pool_address)
             .withdraw(initial_caller)
             .add_token_transfer(lend_token, token_nonce, amount)
@@ -71,7 +69,7 @@ pub trait LendingPool:
         self.require_amount_greater_than_zero(&payment_amount);
         self.require_non_zero_address(&initial_caller);
 
-        let borrow_token_pool_address = self.get_pool_address_non_zero(&asset_to_borrow);
+        let borrow_token_pool_address = self.get_pool_address(&asset_to_borrow);
         let loan_to_value = self.get_loan_to_value_exists_and_non_zero(&collateral_token_id);
 
         //L tokens for a specific token X are 1:1 with deposited X tokens

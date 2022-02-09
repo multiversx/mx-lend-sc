@@ -6,7 +6,7 @@ use price_aggregator_proxy::AggregatorResult;
 
 use common_structs::*;
 
-const TICKER_SEPARATOR: u8 = b'-';
+const TOKEN_ID_SUFFIX_LEN: usize = 7; // "dash" + 6 random bytes
 const LEND_TOKEN_NAME: &[u8] = b"IntBearing";
 const DEBT_TOKEN_NAME: &[u8] = b"DebtBearing";
 const DOLLAR_TICKER: &[u8] = b"USD";
@@ -15,12 +15,8 @@ const DOLLAR_TICKER: &[u8] = b"USD";
 pub trait UtilsModule:
     math::MathModule + storage::StorageModule + price_aggregator_proxy::PriceAggregatorModule
 {
-    fn prepare_issue_data(
-        &self,
-        prefix: ManagedBuffer,
-        ticker: ManagedBuffer,
-    ) -> IssueData<Self::Api> {
-        let mut prefixed_ticker = prefix.clone();
+    fn prepare_issue_data(&self, prefix: u8, ticker: ManagedBuffer) -> IssueData<Self::Api> {
+        let mut prefixed_ticker = ManagedBuffer::new_from_bytes(&[prefix]);
         prefixed_ticker.append(&ticker);
 
         let mut issue_data = IssueData {
@@ -29,13 +25,13 @@ pub trait UtilsModule:
             is_empty_ticker: true,
         };
 
-        if prefix == ManagedBuffer::from(LEND_TOKEN_PREFIX) {
+        if prefix == LEND_TOKEN_PREFIX {
             let mut name = ManagedBuffer::new_from_bytes(LEND_TOKEN_NAME);
             name.append(&ticker);
 
             issue_data.name = name;
             issue_data.is_empty_ticker = self.lend_token().is_empty();
-        } else if prefix == ManagedBuffer::from(BORROW_TOKEN_PREFIX) {
+        } else if prefix == BORROW_TOKEN_PREFIX {
             let mut name = ManagedBuffer::new_from_bytes(DEBT_TOKEN_NAME);
             name.append(&ticker);
 
@@ -57,17 +53,14 @@ pub trait UtilsModule:
         }
     }
 
-    // TODO: Get rid of this functon and store the ticker in storage
-    // maybe along with a token whitelist
     fn get_token_ticker(&self, token_id: &TokenIdentifier) -> ManagedBuffer {
-        for (i, char) in token_id.to_esdt_identifier().as_slice().iter().enumerate() {
-            if *char == TICKER_SEPARATOR {
-                let result = token_id.to_esdt_identifier();
-                return ManagedBuffer::new_from_bytes(&result.as_slice()[..i]);
-            }
-        }
+        let as_buffer = token_id.as_managed_buffer();
+        let ticker_start_index = 0;
+        let ticker_end_index = as_buffer.len() - TOKEN_ID_SUFFIX_LEN;
 
-        token_id.as_managed_buffer().clone()
+        as_buffer
+            .copy_slice(ticker_start_index, ticker_end_index)
+            .unwrap()
     }
 
     #[view(getCapitalUtilisation)]
@@ -120,6 +113,7 @@ pub trait UtilsModule:
         current_time - timestamp
     }
 
+    #[inline]
     fn is_full_repay(
         &self,
         borrow_position: &BorrowPosition<Self::Api>,
