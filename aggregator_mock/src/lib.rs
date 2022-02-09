@@ -46,10 +46,14 @@ pub trait PriceAggregatorMock {
     }
 
     #[endpoint(setLatestPriceFeed)]
-    fn set_latest_price_feed(&self, from: &ManagedBuffer, to: &ManagedBuffer, price: BigUint) {
-        self.latest_price_feed(from, to).set(&price)
+    fn set_latest_price_feed(&self, from: ManagedBuffer, to: ManagedBuffer, price: BigUint) {
+        self.latest_price_feed(&from, &to).set(&price)
     }
 
     #[storage_mapper("latest_price_feed")]
-    fn latest_price_feed(&self, from: &ManagedBuffer, to: &ManagedBuffer) -> SingleValueMapper<BigUint>;
+    fn latest_price_feed(
+        &self,
+        from: &ManagedBuffer,
+        to: &ManagedBuffer,
+    ) -> SingleValueMapper<BigUint>;
 }
