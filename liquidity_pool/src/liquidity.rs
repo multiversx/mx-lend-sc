@@ -361,9 +361,7 @@ pub trait LiquidityModule:
         );
 
         let remaining_amount = lend_tokens.amount - lend_amount_to_return;
-        let lend_token_pair =
-            TokenAmountPair::new(lend_tokens.token_id, lend_tokens.nonce, remaining_amount);
 
-        lend_token_pair
+        TokenAmountPair::new(lend_tokens.token_id, lend_tokens.nonce, remaining_amount)
     }
 }

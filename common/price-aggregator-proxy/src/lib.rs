@@ -80,9 +80,7 @@ pub trait PriceAggregatorModule {
             .latest_price_feed_optional(from_ticker, to_ticker)
             .execute_on_dest_context();
 
-        result
-            .into_option()
-            .map(|multi_result| AggregatorResult::from(multi_result))
+        result.into_option().map(AggregatorResult::from)
     }
 
     #[proxy]

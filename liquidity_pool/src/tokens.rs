@@ -90,7 +90,7 @@ pub trait TokensModule:
             .set_special_roles(
                 &self.blockchain().get_sc_address(),
                 &token,
-                (&REQUIRED_LOCAL_ROLES[..]).into_iter().cloned(),
+                (&REQUIRED_LOCAL_ROLES[..]).iter().cloned(),
             )
             .async_call()
     }

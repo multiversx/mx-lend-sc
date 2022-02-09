@@ -67,11 +67,7 @@ pub trait RouterModule:
             "no pool found for this asset"
         );
 
-        let pool_address = self
-            .pools_map()
-            .get(&base_asset)
-            .unwrap_or_else(|| ManagedAddress::zero());
-
+        let pool_address = self.get_pool_address(&base_asset);
         self.upgrade_pool(
             pool_address,
             base_asset,
