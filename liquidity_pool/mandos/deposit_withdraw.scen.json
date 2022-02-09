@@ -84,11 +84,11 @@
                         "str:pool_params": "biguint:0|biguint:40000000|biguint:1000000000|biguint:800000000|biguint:100000000",
                         "str:lend_token": "str:LEND-abcdef",
                         "str:borrow_token": "str:BORROW-abcdef",
-                        "str:reserves|nested:str:WBT-abcdef": "100,000",
+                        "str:reserves": "100,000",
                         "str:deposit_position|u64:1": "u64:0|biguint:100,000",
                         "str:liquidation_threshold": "500000000"
                     },
-                    "code": "file:../output/liquidity_pool.wasm",
+                    "code": "file:../output/liquidity-pool.wasm",
                     "owner": "address:owner"
                 },
                 "+": ""
@@ -171,7 +171,7 @@
                         "str:borrow_token": "str:BORROW-abcdef",
                         "str:liquidation_threshold": "500000000"
                     },
-                    "code": "file:../output/liquidity_pool.wasm",
+                    "code": "file:../output/liquidity-pool.wasm",
                     "owner": "address:owner"
                 },
                 "+": ""

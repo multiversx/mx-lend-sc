@@ -3,11 +3,10 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-pub const BP: u64 = 1000000000;
-pub const SECONDS_PER_YEAR: u64 = 31536000;
-pub const ESDT_ISSUE_COST: u64 = 5000000000000000000;
-pub const LEND_TOKEN_PREFIX: &[u8] = b"L";
-pub const BORROW_TOKEN_PREFIX: &[u8] = b"B";
+pub const BP: u64 = 1_000_000_000;
+pub const SECONDS_PER_YEAR: u64 = 31_536_000;
+pub const LEND_TOKEN_PREFIX: u8 = b'L';
+pub const BORROW_TOKEN_PREFIX: u8 = b'B';
 
 #[derive(TopEncode, TopDecode, TypeAbi)]
 pub struct PoolParams<M: ManagedTypeApi> {
@@ -21,7 +20,7 @@ pub struct PoolParams<M: ManagedTypeApi> {
 #[derive(TopEncode, TopDecode, TypeAbi)]
 pub struct IssueData<M: ManagedTypeApi> {
     pub name: ManagedBuffer<M>,
-    pub ticker: TokenIdentifier<M>,
+    pub ticker: ManagedBuffer<M>,
     pub is_empty_ticker: bool,
 }
 

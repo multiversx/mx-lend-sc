@@ -1,4 +1,15 @@
+////////////////////////////////////////////////////
+////////////////// AUTO-GENERATED //////////////////
+////////////////////////////////////////////////////
+
 #![no_std]
 
-pub use aggregator_mock::*;
-pub use elrond_wasm_output::*;
+elrond_wasm_node::wasm_endpoints! {
+    aggregator_mock
+    (
+        latestPriceFeedOptional
+        setLatestPriceFeed
+    )
+}
+
+elrond_wasm_node::wasm_empty_callback! {}

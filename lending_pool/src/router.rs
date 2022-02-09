@@ -4,12 +4,11 @@ elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
 use super::factory;
-
 use super::proxy;
 
 use common_structs::{BORROW_TOKEN_PREFIX, LEND_TOKEN_PREFIX};
 use liquidity_pool::tokens::ProxyTrait as _;
-use liquidity_pool::utils::ProxyTrait as _;
+use price_aggregator_proxy::ProxyTrait as _;
 
 #[elrond_wasm::module]
 pub trait RouterModule:
@@ -26,7 +25,7 @@ pub trait RouterModule:
         u_optimal: BigUint,
         reserve_factor: BigUint,
         liquidation_threshold: BigUint,
-    ) -> SCResult<ManagedAddress> {
+    ) -> ManagedAddress {
         require!(
             !self.pools_map().contains_key(&base_asset),
             "asset already supported"
@@ -41,14 +40,14 @@ pub trait RouterModule:
             u_optimal,
             reserve_factor,
             liquidation_threshold,
-        )?;
+        );
 
-        self.require_non_zero_address(&address)?;
+        self.require_non_zero_address(&address);
 
         self.pools_map().insert(base_asset, address.clone());
         self.pools_allowed().insert(address.clone());
 
-        Ok(address)
+        address
     }
 
     #[only_owner]
@@ -62,17 +61,13 @@ pub trait RouterModule:
         u_optimal: BigUint,
         reserve_factor: BigUint,
         liquidation_threshold: BigUint,
-    ) -> SCResult<()> {
+    ) {
         require!(
             self.pools_map().contains_key(&base_asset),
             "no pool found for this asset"
         );
 
-        let pool_address = self
-            .pools_map()
-            .get(&base_asset)
-            .unwrap_or_else(|| ManagedAddress::zero());
-
+        let pool_address = self.get_pool_address(&base_asset);
         self.upgrade_pool(
             pool_address,
             base_asset,
@@ -82,108 +77,72 @@ pub trait RouterModule:
             u_optimal,
             reserve_factor,
             liquidation_threshold,
-        )?;
-
-        Ok(())
+        );
     }
 
     #[only_owner]
     #[payable("EGLD")]
     #[endpoint(issueLendToken)]
-    fn issue_lend_token(
-        &self,
-        plain_ticker: ManagedBuffer,
-        token_ticker: TokenIdentifier,
-        #[payment_amount] amount: BigUint,
-    ) -> SCResult<()> {
-        let pool_address = self.get_pool_address_non_zero(&token_ticker)?;
-
-        self.liquidity_pool_proxy(pool_address)
-            .issue(
-                plain_ticker,
-                token_ticker,
-                ManagedBuffer::from(LEND_TOKEN_PREFIX),
-                amount,
-            )
-            .with_gas_limit(self.blockchain().get_gas_left() / 2)
-            .execute_on_dest_context();
-
-        Ok(())
+    fn issue_lend_token(&self, pool_asset_id: TokenIdentifier, token_ticker: ManagedBuffer) {
+        self.issue_common(pool_asset_id, LEND_TOKEN_PREFIX, token_ticker);
     }
 
     #[only_owner]
     #[payable("EGLD")]
     #[endpoint(issueBorrowToken)]
-    fn issue_borrow_token(
+    fn issue_borrow_token(&self, pool_asset_id: TokenIdentifier, token_ticker: ManagedBuffer) {
+        self.issue_common(pool_asset_id, BORROW_TOKEN_PREFIX, token_ticker);
+    }
+
+    fn issue_common(
         &self,
-        plain_ticker: ManagedBuffer,
-        token_ticker: TokenIdentifier,
-        #[payment_amount] amount: BigUint,
-    ) -> SCResult<()> {
-        let pool_address = self.get_pool_address_non_zero(&token_ticker)?;
+        pool_asset_id: TokenIdentifier,
+        token_prefix: u8,
+        token_ticker: ManagedBuffer,
+    ) {
+        let payment_amount = self.call_value().egld_value();
+        let pool_address = self.get_pool_address(&pool_asset_id);
+        let gas_limit = self.resolve_nested_async_gas_limit();
 
         self.liquidity_pool_proxy(pool_address)
-            .issue(
-                plain_ticker,
-                token_ticker,
-                ManagedBuffer::from(BORROW_TOKEN_PREFIX),
-                amount,
-            )
-            .with_gas_limit(self.blockchain().get_gas_left() / 2)
+            .issue(pool_asset_id, token_prefix, token_ticker)
+            .with_egld_transfer(payment_amount)
+            .with_gas_limit(gas_limit)
             .execute_on_dest_context();
-
-        Ok(())
     }
 
     #[only_owner]
     #[endpoint(setLendRoles)]
-    fn set_lend_roles(
-        &self,
-        asset_ticker: TokenIdentifier,
-        #[var_args] roles: VarArgs<EsdtLocalRole>,
-    ) -> SCResult<()> {
-        let pool_address = self.get_pool_address_non_zero(&asset_ticker)?;
+    fn set_lend_roles(&self, pool_asset_id: TokenIdentifier) {
+        let pool_address = self.get_pool_address(&pool_asset_id);
+        let gas_limit = self.resolve_nested_async_gas_limit();
 
         self.liquidity_pool_proxy(pool_address)
-            .set_lend_token_roles(roles.into_vec())
-            .with_gas_limit(self.blockchain().get_gas_left() / 2)
+            .set_lend_token_roles()
+            .with_gas_limit(gas_limit)
             .execute_on_dest_context();
-
-        Ok(())
     }
 
     #[only_owner]
     #[endpoint(setBorrowRoles)]
-    fn set_borrow_roles(
-        &self,
-        asset_ticker: TokenIdentifier,
-        #[var_args] roles: VarArgs<EsdtLocalRole>,
-    ) -> SCResult<()> {
-        let pool_address = self.get_pool_address_non_zero(&asset_ticker)?;
+    fn set_borrow_roles(&self, pool_asset_id: TokenIdentifier) {
+        let pool_address = self.get_pool_address(&pool_asset_id);
+        let gas_limit = self.resolve_nested_async_gas_limit();
 
         self.liquidity_pool_proxy(pool_address)
-            .set_borrow_token_roles(roles.into_vec())
-            .with_gas_limit(self.blockchain().get_gas_left() / 2)
+            .set_borrow_token_roles()
+            .with_gas_limit(gas_limit)
             .execute_on_dest_context();
-
-        Ok(())
     }
 
     #[only_owner]
     #[endpoint(setAggregator)]
-    fn set_aggregator(
-        &self,
-        asset_ticker: TokenIdentifier,
-        aggregator: ManagedAddress,
-    ) -> SCResult<()> {
-        let pool_address = self.get_pool_address_non_zero(&asset_ticker)?;
+    fn set_aggregator(&self, pool_asset_id: TokenIdentifier, aggregator: ManagedAddress) {
+        let pool_address = self.get_pool_address(&pool_asset_id);
 
         self.liquidity_pool_proxy(pool_address)
-            .set_price_aggregator(aggregator)
-            .with_gas_limit(self.blockchain().get_gas_left() / 2)
+            .set_price_aggregator_address(aggregator)
             .execute_on_dest_context();
-
-        Ok(())
     }
 
     #[only_owner]
@@ -198,48 +157,34 @@ pub trait RouterModule:
         self.asset_liquidation_bonus(&asset).set(&liq_bonus);
     }
 
-    #[endpoint(setTickerAfterIssue)]
-    fn set_ticker_after_issue(&self, token_ticker: TokenIdentifier) -> SCResult<()> {
+    #[endpoint(setTokenIdAfterIssue)]
+    fn set_token_id_after_issue(&self, token_id: TokenIdentifier) {
         let caller = self.blockchain().get_caller();
         let is_pool_allowed = self.pools_allowed().contains(&caller);
         require!(is_pool_allowed, "access restricted: unknown caller address");
         require!(
-            token_ticker.is_valid_esdt_identifier(),
+            token_id.is_valid_esdt_identifier(),
             "invalid ticker provided"
         );
-        self.pools_map().insert(token_ticker, caller);
-        Ok(())
+        self.pools_map().insert(token_id, caller);
     }
 
     #[view(getPoolAddress)]
     fn get_pool_address(&self, asset: &TokenIdentifier) -> ManagedAddress {
-        self.pools_map()
-            .get(asset)
-            .unwrap_or_else(|| ManagedAddress::zero())
+        match self.pools_map().get(asset) {
+            Some(addr) => addr,
+            None => sc_panic!("no pool address for asset"),
+        }
     }
 
-    fn get_pool_address_non_zero(&self, asset: &TokenIdentifier) -> SCResult<ManagedAddress> {
-        require!(
-            self.pools_map().contains_key(asset),
-            "no pool address for asset"
-        );
-        Ok(self
-            .pools_map()
-            .get(asset)
-            .unwrap_or_else(|| ManagedAddress::zero()))
-    }
-
-    fn get_liquidation_bonus_non_zero(&self, token_id: &TokenIdentifier) -> SCResult<BigUint> {
+    fn get_liquidation_bonus_non_zero(&self, token_id: &TokenIdentifier) -> BigUint {
         let liq_bonus = self.asset_liquidation_bonus(token_id).get();
         require!(liq_bonus > 0, "no liquidation_bonus present for asset");
 
-        Ok(liq_bonus)
+        liq_bonus
     }
 
-    fn get_loan_to_value_exists_and_non_zero(
-        &self,
-        token_id: &TokenIdentifier,
-    ) -> SCResult<BigUint> {
+    fn get_loan_to_value_exists_and_non_zero(&self, token_id: &TokenIdentifier) -> BigUint {
         require!(
             !self.asset_loan_to_value(token_id).is_empty(),
             "no loan_to_value value present for asset"
@@ -248,7 +193,11 @@ pub trait RouterModule:
         let loan_to_value = self.asset_loan_to_value(token_id).get();
         require!(loan_to_value > 0, "loan_to_value value can not be zero");
 
-        Ok(loan_to_value)
+        loan_to_value
+    }
+
+    fn resolve_nested_async_gas_limit(&self) -> u64 {
+        self.blockchain().get_gas_left() * 3 / 4
     }
 
     #[storage_mapper("pools_map")]

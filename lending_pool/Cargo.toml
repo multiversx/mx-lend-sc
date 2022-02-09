@@ -1,5 +1,5 @@
 [package]
-name = "lending_pool"
+name = "lending-pool"
 version = "0.0.0"
 authors = [ "you",]
 edition = "2018"
@@ -8,32 +8,20 @@ publish = false
 [lib]
 path = "src/lib.rs"
 
-[features]
-wasm-output-mode = [ "elrond-wasm-node" ]
-
 [dependencies.elrond-wasm]
-version = "0.21.2"
+version = "0.27.4"
 
-[dependencies.elrond-wasm-derive]
-version = "0.21.2"
-
-[dependencies.elrond-wasm-node]
-version = "0.21.2"
-optional = true
-
-[dependencies.liquidity_pool]
+[dependencies.liquidity-pool]
 path = "../liquidity_pool"
 
+[dependencies.price-aggregator-proxy]
+path = "../common/price-aggregator-proxy"
+
 [dev-dependencies.elrond-wasm-debug]
-version = "0.21.2"
+version = "0.27.4"
 
-[dependencies.elrond-wasm-output]
-version = "0.21.2"
-features = ["wasm-output-mode", "panic-message"]
-
-[dependencies.common_structs]
+[dependencies.common-structs]
 path = "../common/structs"
 
-[dependencies.common_checks]
+[dependencies.common-checks]
 path = "../common/checks"
-

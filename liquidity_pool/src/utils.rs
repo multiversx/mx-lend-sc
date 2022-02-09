@@ -6,7 +6,7 @@ use price_aggregator_proxy::AggregatorResult;
 
 use common_structs::*;
 
-const TICKER_SEPARATOR: u8 = b'-';
+const TOKEN_ID_SUFFIX_LEN: usize = 7; // "dash" + 6 random bytes
 const LEND_TOKEN_NAME: &[u8] = b"IntBearing";
 const DEBT_TOKEN_NAME: &[u8] = b"DebtBearing";
 const DOLLAR_TICKER: &[u8] = b"USD";
@@ -15,85 +15,68 @@ const DOLLAR_TICKER: &[u8] = b"USD";
 pub trait UtilsModule:
     math::MathModule + storage::StorageModule + price_aggregator_proxy::PriceAggregatorModule
 {
-    fn prepare_issue_data(
-        &self,
-        prefix: ManagedBuffer,
-        ticker: ManagedBuffer,
-    ) -> IssueData<Self::Api> {
-        let prefixed_ticker = [
-            prefix.to_boxed_bytes().as_slice(),
-            ticker.to_boxed_bytes().as_slice(),
-        ]
-        .concat();
+    fn prepare_issue_data(&self, prefix: u8, ticker: ManagedBuffer) -> IssueData<Self::Api> {
+        let mut prefixed_ticker = ManagedBuffer::new_from_bytes(&[prefix]);
+        prefixed_ticker.append(&ticker);
 
         let mut issue_data = IssueData {
-            name: self.types().managed_buffer_new(),
-            ticker: TokenIdentifier::from(ManagedBuffer::new_from_bytes(
-                self.type_manager(),
-                prefixed_ticker.as_slice(),
-            )),
+            name: ManagedBuffer::new(),
+            ticker: prefixed_ticker,
             is_empty_ticker: true,
         };
 
-        if prefix == ManagedBuffer::from(LEND_TOKEN_PREFIX) {
-            let name = [LEND_TOKEN_NAME, ticker.to_boxed_bytes().as_slice()].concat();
-            issue_data.name = ManagedBuffer::from(name.as_slice());
+        if prefix == LEND_TOKEN_PREFIX {
+            let mut name = ManagedBuffer::new_from_bytes(LEND_TOKEN_NAME);
+            name.append(&ticker);
+
+            issue_data.name = name;
             issue_data.is_empty_ticker = self.lend_token().is_empty();
-        } else if prefix == ManagedBuffer::from(BORROW_TOKEN_PREFIX) {
-            let name = [DEBT_TOKEN_NAME, ticker.to_boxed_bytes().as_slice()].concat();
-            issue_data.name = ManagedBuffer::from(name.as_slice());
+        } else if prefix == BORROW_TOKEN_PREFIX {
+            let mut name = ManagedBuffer::new_from_bytes(DEBT_TOKEN_NAME);
+            name.append(&ticker);
+
+            issue_data.name = name;
             issue_data.is_empty_ticker = self.borrow_token().is_empty();
         }
 
         issue_data
     }
 
-    fn get_token_price_data(
-        &self,
-        token_id: &TokenIdentifier,
-    ) -> SCResult<AggregatorResult<Self::Api>> {
+    fn get_token_price_data(&self, token_id: &TokenIdentifier) -> AggregatorResult<Self::Api> {
         let from_ticker = self.get_token_ticker(token_id);
-        let result = self.get_full_result_for_pair(
-            from_ticker,
-            ManagedBuffer::new_from_bytes(self.type_manager(), DOLLAR_TICKER),
-        );
+        let result = self
+            .get_full_result_for_pair(from_ticker, ManagedBuffer::new_from_bytes(DOLLAR_TICKER));
 
-        result.ok_or("failed to get token price").into()
+        match result {
+            Some(r) => r,
+            None => sc_panic!("failed to get token price"),
+        }
     }
 
     fn get_token_ticker(&self, token_id: &TokenIdentifier) -> ManagedBuffer {
-        for (i, char) in token_id.to_esdt_identifier().as_slice().iter().enumerate() {
-            if *char == TICKER_SEPARATOR {
-                let result = token_id.to_esdt_identifier();
-                return ManagedBuffer::new_from_bytes(self.type_manager(), &result.as_slice()[..i]);
-            }
-        }
+        let as_buffer = token_id.as_managed_buffer();
+        let ticker_start_index = 0;
+        let ticker_end_index = as_buffer.len() - TOKEN_ID_SUFFIX_LEN;
 
-        token_id.as_managed_buffer().clone()
-    }
-
-    #[only_owner]
-    #[endpoint(setPriceAggregator)]
-    fn set_price_aggregator(&self, address: ManagedAddress) -> SCResult<()> {
-        self.set_price_aggregator_address(address)?;
-        
-        Ok(())
+        as_buffer
+            .copy_slice(ticker_start_index, ticker_end_index)
+            .unwrap()
     }
 
     #[view(getCapitalUtilisation)]
     fn get_capital_utilisation(&self) -> BigUint {
-        let reserve_amount = self.reserves(&self.pool_asset().get()).get();
+        let reserve_amount = self.reserves().get();
         let borrowed_amount = self.borrowed_amount().get();
 
         self.compute_capital_utilisation(&borrowed_amount, &reserve_amount)
     }
 
     #[view(getDebtInterest)]
-    fn get_debt_interest(&self, amount: &BigUint, timestamp: u64) -> SCResult<BigUint> {
-        let time_diff = self.get_timestamp_diff(timestamp)?;
+    fn get_debt_interest(&self, amount: &BigUint, timestamp: u64) -> BigUint {
+        let time_diff = self.get_timestamp_diff(timestamp);
         let borrow_rate = self.get_borrow_rate();
 
-        Ok(self.compute_debt(amount, &BigUint::from(time_diff as u64), &borrow_rate))
+        self.compute_debt(amount, &BigUint::from(time_diff as u64), &borrow_rate)
     }
 
     #[view(getDepositRate)]
@@ -123,12 +106,14 @@ pub trait UtilsModule:
         )
     }
 
-    fn get_timestamp_diff(&self, timestamp: u64) -> SCResult<u64> {
+    fn get_timestamp_diff(&self, timestamp: u64) -> u64 {
         let current_time = self.blockchain().get_block_timestamp();
         require!(current_time >= timestamp, "Invalid timestamp");
-        Ok(current_time - timestamp)
+
+        current_time - timestamp
     }
 
+    #[inline]
     fn is_full_repay(
         &self,
         borrow_position: &BorrowPosition<Self::Api>,

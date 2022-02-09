@@ -5,8 +5,7 @@
 			"step": "setState",
 			"currentBlockInfo": {
 				"blockEpoch": "10",
-				"blockNonce": "10,000",
-				"blockTimestamp": "10,000,000"
+				"blockNonce": "10,000"
 			}
 		},
 		{
