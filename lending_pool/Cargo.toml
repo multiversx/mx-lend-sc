@@ -17,11 +17,19 @@ path = "../liquidity_pool"
 [dependencies.price-aggregator-proxy]
 path = "../common/price-aggregator-proxy"
 
-[dev-dependencies.elrond-wasm-debug]
-version = "0.27.4"
-
 [dependencies.common-structs]
 path = "../common/structs"
 
 [dependencies.common-checks]
 path = "../common/checks"
+
+[dev-dependencies.elrond-wasm-debug]
+version = "0.27.4"
+
+[dev-dependencies]
+num-bigint = "0.4.2"
+num-traits = "0.2"
+hex = "0.4"
+
+[dev-dependencies.aggregator-mock]
+path = "../aggregator_mock"
