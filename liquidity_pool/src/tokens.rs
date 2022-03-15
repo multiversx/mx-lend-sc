@@ -24,12 +24,7 @@ pub trait TokensModule:
     #[only_owner]
     #[payable("EGLD")]
     #[endpoint]
-    fn issue(
-        &self,
-        pool_asset_id: TokenIdentifier,
-        token_prefix: u8,
-        token_ticker: ManagedBuffer,
-    ) -> AsyncCall {
+    fn issue(&self, pool_asset_id: TokenIdentifier, token_prefix: u8, token_ticker: ManagedBuffer) {
         let issue_cost = self.call_value().egld_value();
 
         require!(
@@ -64,27 +59,28 @@ pub trait TokensModule:
             )
             .async_call()
             .with_callback(self.callbacks().issue_callback(token_prefix))
+            .call_and_exit();
     }
 
     #[only_owner]
     #[endpoint(setLendTokensRoles)]
-    fn set_lend_token_roles(&self) -> AsyncCall {
+    fn set_lend_token_roles(&self) {
         require!(!self.lend_token().is_empty(), "token not issued yet");
 
         let lend_token_id = self.lend_token().get();
-        self.set_roles(lend_token_id)
+        self.set_roles(lend_token_id);
     }
 
     #[only_owner]
     #[endpoint(setBorrowTokenRoles)]
-    fn set_borrow_token_roles(&self) -> AsyncCall {
+    fn set_borrow_token_roles(&self) {
         require!(!self.borrow_token().is_empty(), "token not issued yet");
 
         let borrow_token_id = self.borrow_token().get();
-        self.set_roles(borrow_token_id)
+        self.set_roles(borrow_token_id);
     }
 
-    fn set_roles(&self, token: TokenIdentifier) -> AsyncCall {
+    fn set_roles(&self, token: TokenIdentifier) {
         self.send()
             .esdt_system_sc_proxy()
             .set_special_roles(
@@ -93,6 +89,7 @@ pub trait TokensModule:
                 (REQUIRED_LOCAL_ROLES[..]).iter().cloned(),
             )
             .async_call()
+            .call_and_exit();
     }
 
     fn mint_position_tokens(&self, token_id: &TokenIdentifier, amount: &BigUint) -> u64 {

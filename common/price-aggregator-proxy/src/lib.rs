@@ -4,8 +4,8 @@ elrond_wasm::imports!();
 
 pub const GWEI_STRING: &[u8] = b"GWEI";
 
-pub type AggregatorResultAsMultiResult<M> =
-    MultiResult5<u32, ManagedBuffer<M>, ManagedBuffer<M>, BigUint<M>, u8>;
+pub type AggregatorResultAsMultiValue<M> =
+    MultiValue5<u32, ManagedBuffer<M>, ManagedBuffer<M>, BigUint<M>, u8>;
 
 mod price_aggregator_proxy_mod {
     elrond_wasm::imports!();
@@ -17,7 +17,7 @@ mod price_aggregator_proxy_mod {
             &self,
             from: ManagedBuffer,
             to: ManagedBuffer,
-        ) -> OptionalResult<super::AggregatorResultAsMultiResult<Self::Api>>;
+        ) -> OptionalValue<super::AggregatorResultAsMultiValue<Self::Api>>;
     }
 }
 
@@ -29,8 +29,8 @@ pub struct AggregatorResult<M: ManagedTypeApi> {
     pub decimals: u8,
 }
 
-impl<M: ManagedTypeApi> From<AggregatorResultAsMultiResult<M>> for AggregatorResult<M> {
-    fn from(multi_result: AggregatorResultAsMultiResult<M>) -> Self {
+impl<M: ManagedTypeApi> From<AggregatorResultAsMultiValue<M>> for AggregatorResult<M> {
+    fn from(multi_result: AggregatorResultAsMultiValue<M>) -> Self {
         let (round_id, from_token_name, to_token_name, price, decimals) = multi_result.into_tuple();
 
         AggregatorResult {
@@ -75,7 +75,7 @@ pub trait PriceAggregatorModule {
             return None;
         }
 
-        let result: OptionalResult<AggregatorResultAsMultiResult<Self::Api>> = self
+        let result: OptionalValue<AggregatorResultAsMultiValue<Self::Api>> = self
             .aggregator_proxy(price_aggregator_address)
             .latest_price_feed_optional(from_ticker, to_ticker)
             .execute_on_dest_context();

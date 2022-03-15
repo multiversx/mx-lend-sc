@@ -22,7 +22,7 @@ pub trait LendingPool:
 
     #[payable("*")]
     #[endpoint]
-    fn deposit(&self, #[var_args] caller: OptionalArg<ManagedAddress>) {
+    fn deposit(&self, #[var_args] caller: OptionalValue<ManagedAddress>) {
         let (amount, asset) = self.call_value().payment_token_pair();
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -39,7 +39,7 @@ pub trait LendingPool:
 
     #[payable("*")]
     #[endpoint]
-    fn withdraw(&self, #[var_args] caller: OptionalArg<ManagedAddress>) {
+    fn withdraw(&self, #[var_args] caller: OptionalValue<ManagedAddress>) {
         let (amount, lend_token) = self.call_value().payment_token_pair();
         let token_nonce = self.call_value().esdt_token_nonce();
         let initial_caller = self.caller_from_option_or_sender(caller);
@@ -60,7 +60,7 @@ pub trait LendingPool:
         &self,
         collateral_token_id: TokenIdentifier,
         asset_to_borrow: TokenIdentifier,
-        #[var_args] caller: OptionalArg<ManagedAddress>,
+        #[var_args] caller: OptionalValue<ManagedAddress>,
     ) {
         let (payment_amount, payment_lend_id) = self.call_value().payment_token_pair();
         let payment_nonce = self.call_value().esdt_token_nonce();
@@ -86,7 +86,7 @@ pub trait LendingPool:
     fn repay(
         &self,
         asset_to_repay: TokenIdentifier,
-        #[var_args] caller: OptionalArg<ManagedAddress>,
+        #[var_args] caller: OptionalValue<ManagedAddress>,
     ) {
         let transfers = self.call_value().all_esdt_transfers();
         let initial_caller = self.caller_from_option_or_sender(caller);
@@ -108,7 +108,7 @@ pub trait LendingPool:
     fn liquidate(
         &self,
         borrow_position_nonce: u64,
-        #[var_args] caller: OptionalArg<ManagedAddress>,
+        #[var_args] caller: OptionalValue<ManagedAddress>,
     ) {
         let (amount, asset) = self.call_value().payment_token_pair();
         let initial_caller = self.caller_from_option_or_sender(caller);
@@ -134,7 +134,10 @@ pub trait LendingPool:
             .execute_on_dest_context_ignore_result();
     }
 
-    fn caller_from_option_or_sender(&self, caller: OptionalArg<ManagedAddress>) -> ManagedAddress {
+    fn caller_from_option_or_sender(
+        &self,
+        caller: OptionalValue<ManagedAddress>,
+    ) -> ManagedAddress {
         caller
             .into_option()
             .unwrap_or_else(|| self.blockchain().get_caller())
