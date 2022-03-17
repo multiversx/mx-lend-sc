@@ -1,7 +1,7 @@
-use elrond_wasm::types::{Address, BigUint, ManagedAddress, ManagedBuffer};
+use elrond_wasm::types::Address;
 use elrond_wasm_debug::{
     managed_address, managed_biguint, managed_buffer, rust_biguint,
-    testing_framework::{BlockchainStateWrapper, ContractObjWrapper, StateChange},
+    testing_framework::{BlockchainStateWrapper, ContractObjWrapper},
     DebugApi,
 };
 
@@ -32,8 +32,6 @@ where
                 managed_buffer!(DOLLAR_TICKER),
                 managed_biguint!(EGLD_PRICE_IN_DOLLARS),
             );
-
-            StateChange::Commit
         })
         .assert_ok();
 
@@ -61,8 +59,6 @@ where
     b_mock
         .execute_tx(owner_addr, &lending_pool_wrapper, &rust_zero, |sc| {
             sc.init(managed_address!(&lp_template_addr));
-
-            StateChange::Commit
         })
         .assert_ok();
 

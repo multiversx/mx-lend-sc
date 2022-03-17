@@ -28,7 +28,7 @@ pub trait SafetyModule {
 
     #[payable("*")]
     #[endpoint(fund)]
-    fn fund(self, #[var_args] caller: OptionalArg<ManagedAddress>) {
+    fn fund(self, #[var_args] caller: OptionalValue<ManagedAddress>) {
         let (payment, token) = self.call_value().payment_token_pair();
 
         require!(payment > 0, "amount must be greater than 0");
@@ -51,11 +51,7 @@ pub trait SafetyModule {
     #[only_owner]
     #[payable("EGLD")]
     #[endpoint(nftIssue)]
-    fn nft_issue(
-        &self,
-        token_display_name: ManagedBuffer,
-        token_ticker: ManagedBuffer,
-    ) -> AsyncCall {
+    fn nft_issue(&self, token_display_name: ManagedBuffer, token_ticker: ManagedBuffer) {
         let issue_cost = self.call_value().egld_value();
 
         self.send()
@@ -78,6 +74,7 @@ pub trait SafetyModule {
                 self.callbacks()
                     .nft_issue_callback(self.blockchain().get_caller()),
             )
+            .call_and_exit();
     }
 
     #[callback]
@@ -150,7 +147,7 @@ pub trait SafetyModule {
             nft_nonce,
         );
 
-        let nft_metadata = nft_info.decode_attributes_or_exit::<DepositPosition<Self::Api>>();
+        let nft_metadata = nft_info.decode_attributes::<DepositPosition<Self::Api>>();
         let time_in_pool = self.blockchain().get_block_timestamp() - nft_metadata.timestamp;
 
         require!(time_in_pool > 0, "invalid timestamp");
@@ -180,11 +177,11 @@ pub trait SafetyModule {
 
     #[only_owner]
     #[endpoint(setLocalRolesNftToken)]
-    fn set_local_roles_nft_token(&self, #[var_args] roles: VarArgs<EsdtLocalRole>) -> AsyncCall {
+    fn set_local_roles_nft_token(&self, #[var_args] roles: MultiValueEncoded<EsdtLocalRole>) {
         require!(!self.nft_token().is_empty(), "No nft token issued");
 
         let token = self.nft_token().get();
-        self.set_local_roles(token, roles.into_vec())
+        self.set_local_roles(token, roles.to_vec());
     }
 
     #[callback]
@@ -199,16 +196,13 @@ pub trait SafetyModule {
         }
     }
 
-    fn set_local_roles(&self, token: TokenIdentifier, roles: Vec<EsdtLocalRole>) -> AsyncCall {
+    fn set_local_roles(&self, token: TokenIdentifier, roles: ManagedVec<EsdtLocalRole>) {
         self.send()
             .esdt_system_sc_proxy()
-            .set_special_roles(
-                &self.blockchain().get_sc_address(),
-                &token,
-                (roles[..]).iter().cloned(),
-            )
+            .set_special_roles(&self.blockchain().get_sc_address(), &token, roles.iter())
             .async_call()
             .with_callback(self.callbacks().change_roles_callback())
+            .call_and_exit();
     }
 
     fn calculate_amount_for_withdrawal(self, deposit_amount: BigUint, time: BigUint) -> BigUint {

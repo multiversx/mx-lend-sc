@@ -11,8 +11,8 @@ pub struct AggregatorResult<M: ManagedTypeApi> {
     pub decimals: u8,
 }
 
-pub type AggregatorResultAsMultiResult<M> =
-    MultiResult5<u32, ManagedBuffer<M>, ManagedBuffer<M>, BigUint<M>, u8>;
+pub type AggregatorResultAsMultiValue<M> =
+    MultiValue5<u32, ManagedBuffer<M>, ManagedBuffer<M>, BigUint<M>, u8>;
 
 const DEFAULT_PRICE: u64 = 1_000;
 const DEFAULT_PRICE_DECIMALS: u8 = 2;
@@ -27,8 +27,8 @@ pub trait PriceAggregatorMock {
         &self,
         from: ManagedBuffer,
         to: ManagedBuffer,
-    ) -> OptionalResult<AggregatorResultAsMultiResult<Self::Api>> {
-        OptionalArg::Some(MultiResult5::from((
+    ) -> OptionalValue<AggregatorResultAsMultiValue<Self::Api>> {
+        OptionalValue::Some(MultiValue5::from((
             1u32,
             from.clone(),
             to.clone(),
