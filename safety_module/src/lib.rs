@@ -56,11 +56,12 @@ pub trait SafetyModule {
 
         self.send()
             .esdt_system_sc_proxy()
-            .issue_semi_fungible(
+            .register_meta_esdt(
                 issue_cost,
                 &token_display_name,
                 &token_ticker,
-                SemiFungibleTokenProperties {
+                MetaTokenProperties {
+                    num_decimals: 18,
                     can_freeze: true,
                     can_wipe: true,
                     can_pause: true,

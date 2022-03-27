@@ -44,11 +44,12 @@ pub trait TokensModule:
 
         self.send()
             .esdt_system_sc_proxy()
-            .issue_semi_fungible(
+            .register_meta_esdt(
                 issue_cost,
                 &issue_data.name,
                 &issue_data.ticker,
-                SemiFungibleTokenProperties {
+                MetaTokenProperties {
+                    num_decimals: 18,
                     can_freeze: true,
                     can_wipe: true,
                     can_pause: true,
