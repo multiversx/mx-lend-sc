@@ -54,6 +54,9 @@ pub trait UtilsModule:
     }
 
     fn get_token_ticker(&self, token_id: &TokenIdentifier) -> ManagedBuffer {
+        if token_id.is_egld() {
+            return ManagedBuffer::new_from_bytes(b"EGLD");
+        }
         let as_buffer = token_id.as_managed_buffer();
         let ticker_start_index = 0;
         let ticker_end_index = as_buffer.len() - TOKEN_ID_SUFFIX_LEN;

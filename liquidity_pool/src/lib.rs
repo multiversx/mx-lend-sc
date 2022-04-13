@@ -10,7 +10,7 @@ pub mod liquidity;
 pub mod tokens;
 pub use common_structs::*;
 
-mod storage;
+pub mod storage;
 pub mod utils;
 
 #[elrond_wasm::contract]

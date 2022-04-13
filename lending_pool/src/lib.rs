@@ -3,9 +3,9 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-mod factory;
+pub mod factory;
 mod proxy;
-mod router;
+pub mod router;
 
 pub use common_structs::*;
 

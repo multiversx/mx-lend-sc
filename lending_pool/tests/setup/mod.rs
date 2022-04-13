@@ -32,6 +32,11 @@ where
                 managed_buffer!(DOLLAR_TICKER),
                 managed_biguint!(EGLD_PRICE_IN_DOLLARS),
             );
+            sc.set_latest_price_feed(
+                managed_buffer!(USDC_TICKER),
+                managed_buffer!(DOLLAR_TICKER),
+                managed_biguint!(USDC_PRICE_IN_DOLLARS),
+            );
         })
         .assert_ok();
 
@@ -42,6 +47,7 @@ pub fn setup_lending_pool<LendingPoolObjBuilder>(
     owner_addr: &Address,
     b_mock: &mut BlockchainStateWrapper,
     builder: LendingPoolObjBuilder,
+    _template: &Address,
 ) -> ContractObjWrapper<lending_pool::ContractObj<DebugApi>, LendingPoolObjBuilder>
 where
     LendingPoolObjBuilder: 'static + Copy + Fn() -> lending_pool::ContractObj<DebugApi>,
@@ -65,7 +71,7 @@ where
     lending_pool_wrapper
 }
 
-fn setup_liquidity_pool_template<LiquidityPoolObjBuilder>(
+pub fn setup_liquidity_pool_template<LiquidityPoolObjBuilder>(
     owner_addr: &Address,
     b_mock: &mut BlockchainStateWrapper,
     builder: LiquidityPoolObjBuilder,

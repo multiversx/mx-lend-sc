@@ -115,7 +115,7 @@ pub trait LiquidityModule:
         let asset_reserve = self.reserves().get();
 
         require!(
-            asset_reserve > borrow_amount_in_tokens,
+            asset_reserve >= borrow_amount_in_tokens,
             "insufficient funds to perform loan"
         );
 
