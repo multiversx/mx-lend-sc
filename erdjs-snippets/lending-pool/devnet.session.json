@@ -1,0 +1,24 @@
+{
+    "networkProvider": {
+        "type": "ProxyNetworkProvider",
+        "url": "https://devnet-gateway.elrond.com"
+    },
+    "users": {
+        "individuals": [
+            {
+                "name": "whale",
+                "pem": "~/elrondsdk/testwallets/latest/users/alice.pem"
+            },
+            {
+                "name": "firstUser",
+                "pem": "lending-pool/wallets/firstUser.pem"
+            },
+            {
+                "name": "secondUser",
+                "pem": "lending-pool/wallets/secondUser.pem"
+            }
+        ],
+        "groups": [
+        ]
+    }
+}
