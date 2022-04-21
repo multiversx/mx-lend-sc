@@ -13,7 +13,7 @@ pub fn setup_price_aggregator<PriceAggregatorObjBuilder>(
     owner_addr: &Address,
     b_mock: &mut BlockchainStateWrapper,
     builder: PriceAggregatorObjBuilder,
-) -> Address
+) -> ContractObjWrapper<aggregator_mock::ContractObj<DebugApi>, PriceAggregatorObjBuilder>
 where
     PriceAggregatorObjBuilder: 'static + Copy + Fn() -> aggregator_mock::ContractObj<DebugApi>,
 {
@@ -40,7 +40,7 @@ where
         })
         .assert_ok();
 
-    price_aggregator_wrapper.address_ref().clone()
+    price_aggregator_wrapper
 }
 
 pub fn setup_lending_pool<LendingPoolObjBuilder>(
