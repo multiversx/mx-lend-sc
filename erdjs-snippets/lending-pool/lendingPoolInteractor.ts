@@ -1,5 +1,5 @@
 import path from "path";
-import { AddressValue, BigIntValue, CodeMetadata, IAddress, Interaction, ResultsParser, ReturnCode, SmartContract, SmartContractAbi, Struct, TokenIdentifierValue, TokenPayment, TransactionWatcher } from "@elrondnetwork/erdjs";
+import { AddressValue, BigIntValue, BytesValue, CodeMetadata, IAddress, Interaction, ResultsParser, ReturnCode, SmartContract, SmartContractAbi, Struct, TokenIdentifierValue, TokenPayment, TransactionWatcher } from "@elrondnetwork/erdjs";
 import { INetworkProvider, ITestSession, ITestUser, loadAbiRegistry, loadCode } from "@elrondnetwork/erdjs-snippets";
 import { NetworkConfig } from "@elrondnetwork/erdjs-network-providers";
 
@@ -49,7 +49,7 @@ export class LendingPoolInteractor {
                 new BigIntValue(100000000),
                 new BigIntValue(700000000)
             ],
-            gasLimit: 40000000,
+            gasLimit: 100000000,
             chainID: this.networkConfig.ChainID
         });
 
@@ -85,7 +85,7 @@ export class LendingPoolInteractor {
             initArguments: [
                 new AddressValue(dummyAddress)
             ],
-            gasLimit: 60000000,
+            gasLimit: 100000000,
             chainID: this.networkConfig.ChainID
         });
 
@@ -110,13 +110,223 @@ export class LendingPoolInteractor {
         return { address, returnCode };
     }
 
+    async addLiquidityPool(user: ITestUser, tokenIdentifier: string, R_BASE: number, R_SLOPE1: number, R_SLOPE2: number, U_OPTIMAL: number, RESERVE_FACTOR: number, LIQ_THRESHOLD: number): Promise<ReturnCode> {
+        console.log(`LendingPoolInteractor.addLiquidityPool(): address = ${user.address}`);
+
+        // Prepare the interaction
+        let interaction = <Interaction>this.contract.methods
+            .createLiquidityPool([tokenIdentifier, R_BASE, R_SLOPE1, R_SLOPE2, U_OPTIMAL, RESERVE_FACTOR, LIQ_THRESHOLD])
+            .withGasLimit(50000000)
+            .withNonce(user.account.getNonceThenIncrement())
+            .withChainID(this.networkConfig.ChainID);
+
+        // Let's check the interaction, then build the transaction object.
+        let transaction = interaction.check().buildTransaction();
+
+        // Let's sign the transaction. For dApps, use a wallet provider instead.
+        await user.signer.sign(transaction);
+
+        // The contract address is deterministically computable:
+        let address = SmartContract.computeAddress(transaction.getSender(), transaction.getNonce());
+        this.contract.setAddress(address);
+
+        // Let's broadcast the transaction and await its completion:
+        await this.networkProvider.sendTransaction(transaction);
+        let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
+
+        // In the end, parse the results:
+        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+        console.log(`LendingPoolInteractor.addLiquidityPool(): contract = ${address}`);
+
+        return returnCode;
+    }
+
+
+    async issueLend(user: ITestUser, tokenIdentifier: string): Promise<ReturnCode> {
+        console.log(`LendingPoolInteractor.issueLend(): address = ${user.address}`);
+
+        // Prepare the interaction
+        let interaction = <Interaction>this.contract.methods
+            .issueLendToken([tokenIdentifier, tokenIdentifier.split("-")[0]])
+            .withGasLimit(120000000)
+            .withValue(50000000000000000)
+            .withNonce(user.account.getNonceThenIncrement())
+            .withChainID(this.networkConfig.ChainID);
+
+        // Let's check the interaction, then build the transaction object.
+        let transaction = interaction.check().buildTransaction();
+
+        // Let's sign the transaction. For dApps, use a wallet provider instead.
+        await user.signer.sign(transaction);
+
+        // The contract address is deterministically computable:
+        let address = SmartContract.computeAddress(transaction.getSender(), transaction.getNonce());
+        this.contract.setAddress(address);
+
+        // Let's broadcast the transaction and await its completion:
+        await this.networkProvider.sendTransaction(transaction);
+        let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
+
+        // In the end, parse the results:
+        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+        return returnCode;
+    }
+
+    async issueBorrow(user: ITestUser, tokenIdentifier: string): Promise<ReturnCode> {
+        console.log(`LendingPoolInteractor.issueBorrow(): address = ${user.address}`);
+
+        // Prepare the interaction
+        let interaction = <Interaction>this.contract.methods
+            .issueBorrowToken([tokenIdentifier, tokenIdentifier.split("-")[0]])
+            .withValue(50000000000000000)
+            .withGasLimit(120000000)
+            .withNonce(user.account.getNonceThenIncrement())
+            .withChainID(this.networkConfig.ChainID);
+
+        // Let's check the interaction, then build the transaction object.
+        let transaction = interaction.check().buildTransaction();
+
+        // Let's sign the transaction. For dApps, use a wallet provider instead.
+        await user.signer.sign(transaction);
+
+        // The contract address is deterministically computable:
+        let address = SmartContract.computeAddress(transaction.getSender(), transaction.getNonce());
+        this.contract.setAddress(address);
+
+        // Let's broadcast the transaction and await its completion:
+        await this.networkProvider.sendTransaction(transaction);
+        let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
+
+        // In the end, parse the results:
+        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+        return returnCode;
+    }
+
+
+    async setLendRoles(user: ITestUser, tokenIdentifier: string): Promise<ReturnCode> {
+        console.log(`LendingPoolInteractor.issueBorrow(): address = ${user.address}`);
+
+        // Prepare the interaction
+        let interaction = <Interaction>this.contract.methods
+            .setLendRoles([tokenIdentifier])
+            .withGasLimit(100000000)
+            .withNonce(user.account.getNonceThenIncrement())
+            .withChainID(this.networkConfig.ChainID);
+
+        // Let's check the interaction, then build the transaction object.
+        let transaction = interaction.check().buildTransaction();
+
+        // Let's sign the transaction. For dApps, use a wallet provider instead.
+        await user.signer.sign(transaction);
+
+        // The contract address is deterministically computable:
+        let address = SmartContract.computeAddress(transaction.getSender(), transaction.getNonce());
+        this.contract.setAddress(address);
+
+        // Let's broadcast the transaction and await its completion:
+        await this.networkProvider.sendTransaction(transaction);
+        let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
+
+        // In the end, parse the results:
+        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+        return returnCode;
+    }
+
+
+    async setBorrowRoles(user: ITestUser, tokenIdentifier: string): Promise<ReturnCode> {
+        console.log(`LendingPoolInteractor.issueBorrow(): address = ${user.address}`);
+
+        // Prepare the interaction
+        let interaction = <Interaction>this.contract.methods
+            .setBorrowRoles([tokenIdentifier])
+            .withGasLimit(100000000)
+            .withNonce(user.account.getNonceThenIncrement())
+            .withChainID(this.networkConfig.ChainID);
+
+        // Let's check the interaction, then build the transaction object.
+        let transaction = interaction.check().buildTransaction();
+
+        // Let's sign the transaction. For dApps, use a wallet provider instead.
+        await user.signer.sign(transaction);
+
+        // The contract address is deterministically computable:
+        let address = SmartContract.computeAddress(transaction.getSender(), transaction.getNonce());
+        this.contract.setAddress(address);
+
+        // Let's broadcast the transaction and await its completion:
+        await this.networkProvider.sendTransaction(transaction);
+        let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
+
+        // In the end, parse the results:
+        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+        return returnCode;
+    }
+
+    async setAssetLoanToValue(user: ITestUser, tokenIdentifier: string, ltv: number): Promise<ReturnCode> {
+        console.log(`LendingPoolInteractor.setAssetLoanToValue(): address = ${user.address}`);
+
+        // Prepare the interaction
+        let interaction = <Interaction>this.contract.methods
+            .setAssetLoanToValue([tokenIdentifier, ltv])
+            .withGasLimit(8000000)
+            .withNonce(user.account.getNonceThenIncrement())
+            .withChainID(this.networkConfig.ChainID);
+
+        // Let's check the interaction, then build the transaction object.
+        let transaction = interaction.check().buildTransaction();
+
+        // Let's sign the transaction. For dApps, use a wallet provider instead.
+        await user.signer.sign(transaction);
+
+        // The contract address is deterministically computable:
+        let address = SmartContract.computeAddress(transaction.getSender(), transaction.getNonce());
+        this.contract.setAddress(address);
+
+        // Let's broadcast the transaction and await its completion:
+        await this.networkProvider.sendTransaction(transaction);
+        let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
+
+        // In the end, parse the results:
+        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+        return returnCode;
+    }
+
+    async setAssetLiquidationBonus(user: ITestUser, tokenIdentifier: string, liqBonus: number): Promise<ReturnCode> {
+        console.log(`LendingPoolInteractor.setAssetLiquidationBonus(): address = ${user.address}`);
+
+        // Prepare the interaction
+        let interaction = <Interaction>this.contract.methods
+            .setAssetLiquidationBonus([tokenIdentifier, liqBonus])
+            .withGasLimit(8000000)
+            .withNonce(user.account.getNonceThenIncrement())
+            .withChainID(this.networkConfig.ChainID);
+
+        // Let's check the interaction, then build the transaction object.
+        let transaction = interaction.check().buildTransaction();
+
+        // Let's sign the transaction. For dApps, use a wallet provider instead.
+        await user.signer.sign(transaction);
+
+        // The contract address is deterministically computable:
+        let address = SmartContract.computeAddress(transaction.getSender(), transaction.getNonce());
+        this.contract.setAddress(address);
+
+        // Let's broadcast the transaction and await its completion:
+        await this.networkProvider.sendTransaction(transaction);
+        let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
+
+        // In the end, parse the results:
+        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+        return returnCode;
+    }
+
     async deposit(user: ITestUser, amount: TokenPayment): Promise<ReturnCode> {
         console.log(`LendingPoolInteractor.deposit(): address = ${user.address}, amount = ${amount.toPrettyString()}`);
 
         // Prepare the interaction
         let interaction = <Interaction>this.contract.methods
             .deposit([])
-            .withGasLimit(30000000)
+            .withGasLimit(40000000)
             .withSingleESDTTransfer(amount)
             .withNonce(user.account.getNonceThenIncrement())
             .withChainID(this.networkConfig.ChainID);

@@ -11,11 +11,11 @@
             },
             {
                 "name": "firstUser",
-                "pem": "lending-pool/wallets/firstUser.pem"
+                "pem": "~/elrondsdk/testwallets/latest/users/bob.pem"
             },
             {
                 "name": "secondUser",
-                "pem": "lending-pool/wallets/secondUser.pem"
+                "pem": "~/elrondsdk/testwallets/latest/users/carol.pem"
             }
         ],
         "groups": [
