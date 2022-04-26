@@ -98,6 +98,7 @@ export class LendingPoolInteractor {
 
         // The contract address is deterministically computable:
         let address = SmartContract.computeAddress(transaction.getSender(), transaction.getNonce());
+        this.contract.setAddress(address);
 
         // Let's broadcast the transaction and await its completion:
         await this.networkProvider.sendTransaction(transaction);
@@ -126,17 +127,13 @@ export class LendingPoolInteractor {
         // Let's sign the transaction. For dApps, use a wallet provider instead.
         await user.signer.sign(transaction);
 
-        // The contract address is deterministically computable:
-        let address = SmartContract.computeAddress(transaction.getSender(), transaction.getNonce());
-        this.contract.setAddress(address);
-
         // Let's broadcast the transaction and await its completion:
         await this.networkProvider.sendTransaction(transaction);
         let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
 
         // In the end, parse the results:
         let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
-        console.log(`LendingPoolInteractor.addLiquidityPool(): contract = ${address}`);
+        console.log(`LendingPoolInteractor.addLiquidityPool(): contract = ${this.contract.getAddress()}`);
 
         return returnCode;
     }
@@ -149,7 +146,7 @@ export class LendingPoolInteractor {
         let interaction = <Interaction>this.contract.methods
             .issueLendToken([tokenIdentifier, tokenIdentifier.split("-")[0]])
             .withGasLimit(120000000)
-            .withValue(50000000000000000)
+            .withValue(TokenPayment.egldFromAmount(0.05))
             .withNonce(user.account.getNonceThenIncrement())
             .withChainID(this.networkConfig.ChainID);
 
@@ -158,10 +155,6 @@ export class LendingPoolInteractor {
 
         // Let's sign the transaction. For dApps, use a wallet provider instead.
         await user.signer.sign(transaction);
-
-        // The contract address is deterministically computable:
-        let address = SmartContract.computeAddress(transaction.getSender(), transaction.getNonce());
-        this.contract.setAddress(address);
 
         // Let's broadcast the transaction and await its completion:
         await this.networkProvider.sendTransaction(transaction);
@@ -178,7 +171,7 @@ export class LendingPoolInteractor {
         // Prepare the interaction
         let interaction = <Interaction>this.contract.methods
             .issueBorrowToken([tokenIdentifier, tokenIdentifier.split("-")[0]])
-            .withValue(50000000000000000)
+            .withValue(TokenPayment.egldFromAmount(0.05))
             .withGasLimit(120000000)
             .withNonce(user.account.getNonceThenIncrement())
             .withChainID(this.networkConfig.ChainID);
@@ -188,10 +181,6 @@ export class LendingPoolInteractor {
 
         // Let's sign the transaction. For dApps, use a wallet provider instead.
         await user.signer.sign(transaction);
-
-        // The contract address is deterministically computable:
-        let address = SmartContract.computeAddress(transaction.getSender(), transaction.getNonce());
-        this.contract.setAddress(address);
 
         // Let's broadcast the transaction and await its completion:
         await this.networkProvider.sendTransaction(transaction);
@@ -219,10 +208,6 @@ export class LendingPoolInteractor {
         // Let's sign the transaction. For dApps, use a wallet provider instead.
         await user.signer.sign(transaction);
 
-        // The contract address is deterministically computable:
-        let address = SmartContract.computeAddress(transaction.getSender(), transaction.getNonce());
-        this.contract.setAddress(address);
-
         // Let's broadcast the transaction and await its completion:
         await this.networkProvider.sendTransaction(transaction);
         let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
@@ -249,10 +234,6 @@ export class LendingPoolInteractor {
         // Let's sign the transaction. For dApps, use a wallet provider instead.
         await user.signer.sign(transaction);
 
-        // The contract address is deterministically computable:
-        let address = SmartContract.computeAddress(transaction.getSender(), transaction.getNonce());
-        this.contract.setAddress(address);
-
         // Let's broadcast the transaction and await its completion:
         await this.networkProvider.sendTransaction(transaction);
         let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
@@ -278,10 +259,6 @@ export class LendingPoolInteractor {
         // Let's sign the transaction. For dApps, use a wallet provider instead.
         await user.signer.sign(transaction);
 
-        // The contract address is deterministically computable:
-        let address = SmartContract.computeAddress(transaction.getSender(), transaction.getNonce());
-        this.contract.setAddress(address);
-
         // Let's broadcast the transaction and await its completion:
         await this.networkProvider.sendTransaction(transaction);
         let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
@@ -306,10 +283,6 @@ export class LendingPoolInteractor {
 
         // Let's sign the transaction. For dApps, use a wallet provider instead.
         await user.signer.sign(transaction);
-
-        // The contract address is deterministically computable:
-        let address = SmartContract.computeAddress(transaction.getSender(), transaction.getNonce());
-        this.contract.setAddress(address);
 
         // Let's broadcast the transaction and await its completion:
         await this.networkProvider.sendTransaction(transaction);

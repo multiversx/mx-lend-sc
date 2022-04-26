@@ -39,7 +39,7 @@ describe("lending snippet", async function () {
         await session.saveToken("tokenABC", await interactor.issueFungibleToken(whale, { name: "ABC", ticker: "ABC", decimals: 0, supply: "10000000000" }));
     });
 
-    it("setup", async function () {
+    it("deploy", async function () {
         session.expectLongInteraction(this);
 
         await session.syncUsers([whale]);
@@ -56,42 +56,47 @@ describe("lending snippet", async function () {
         let { address, returnCode } = await interactor.deploy(whale, dummyAddress);
         assert.isTrue(returnCode.isSuccess());
         await session.saveAddress("contractAddress", address);
+    });
+
+
+    it("setup", async function () {
+        session.expectLongInteraction(this);
+
+        await session.syncUsers([whale]);
+
+        let token = await session.loadToken("tokenABC");
+        let lendAddress = await session.loadAddress("contractAddress");
+        let interactor = await createInteractor(session, lendAddress);
 
         // Setup Liquidity pool
-        interactor = await createInteractor(session, address)
         let returnCodeSetup = await interactor.addLiquidityPool(whale, token.identifier, 0, 40000000, 1000000000, 800000000, 100000000, 700000000);
         assert.isTrue(returnCodeSetup.isSuccess());
 
         // Issue Lend Tokens
-        interactor = await createInteractor(session, address)
         returnCodeSetup = await interactor.issueLend(whale, token.identifier);
         assert.isTrue(returnCodeSetup.isSuccess());
 
         // Issue Borrow Tokens
-        interactor = await createInteractor(session, address)
         returnCodeSetup = await interactor.issueBorrow(whale, token.identifier);
         assert.isTrue(returnCodeSetup.isSuccess());
 
         // Set Lend Roles
-        interactor = await createInteractor(session, address)
         returnCodeSetup = await interactor.setLendRoles(whale, token.identifier);
         assert.isTrue(returnCodeSetup.isSuccess());
 
         // Set Borrow Roles
-        interactor = await createInteractor(session, address)
         returnCodeSetup = await interactor.setBorrowRoles(whale, token.identifier);
         assert.isTrue(returnCodeSetup.isSuccess());
 
         // Set Asset LTV
-        interactor = await createInteractor(session, address)
         returnCodeSetup = await interactor.setAssetLoanToValue(whale, token.identifier, 500000000);
         assert.isTrue(returnCodeSetup.isSuccess());
 
         // Set Liquidation Bonus
-        interactor = await createInteractor(session, address)
         returnCodeSetup = await interactor.setAssetLiquidationBonus(whale, token.identifier, 40000000);
         assert.isTrue(returnCodeSetup.isSuccess());
     });
+
 
     it("airdrop pool_token to users", async function () {
         session.expectLongInteraction(this);
