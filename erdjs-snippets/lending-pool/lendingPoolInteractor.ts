@@ -293,13 +293,13 @@ export class LendingPoolInteractor {
         return returnCode;
     }
 
-    async deposit(user: ITestUser, amount: TokenPayment): Promise<ReturnCode> {
+    async deposit(user: ITestUser, amount: TokenPayment): Promise<{returnCode: ReturnCode, depositNonce: number}> {
         console.log(`LendingPoolInteractor.deposit(): address = ${user.address}, amount = ${amount.toPrettyString()}`);
 
         // Prepare the interaction
         let interaction = <Interaction>this.contract.methods
             .deposit([])
-            .withGasLimit(40000000)
+            .withGasLimit(15000000)
             .withSingleESDTTransfer(amount)
             .withNonce(user.account.getNonceThenIncrement())
             .withChainID(this.networkConfig.ChainID);
@@ -315,7 +315,41 @@ export class LendingPoolInteractor {
         let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
 
         // In the end, parse the results:
-        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+        let { returnCode, firstValue } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+
+        console.log(`LendingPoolInteractor.deposit(): contract = ${this.contract.getAddress()} Received SDT with nonce = ${returnCode} ${firstValue}`);
+        let depositNonce = firstValue?.valueOf();
+
+        return { returnCode, depositNonce };
+    }
+
+
+    async withdraw(user: ITestUser, amount: TokenPayment): Promise<ReturnCode> {
+        console.log(`LendingPoolInteractor.deposit(): address = ${user.address}, amount = ${amount.toPrettyString()}`);
+
+        // Prepare the interaction
+        let interaction = <Interaction>this.contract.methods
+            .withdraw([])
+            .withGasLimit(15000000)
+            .withSingleESDTNFTTransfer(amount, user.address)
+            .withNonce(user.account.getNonceThenIncrement())
+            .withChainID(this.networkConfig.ChainID);
+
+        // Let's check the interaction, then build the transaction object.
+        let transaction = interaction.check().buildTransaction();
+
+        // Let's sign the transaction. For dApps, use a wallet provider instead.
+        await user.signer.sign(transaction);
+
+        // Let's broadcast the transaction and await its completion:
+        await this.networkProvider.sendTransaction(transaction);
+        let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
+
+        // In the end, parse the results:
+        let { returnCode, firstValue } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+
+        console.log(`LendingPoolInteractor.deposit(): contract = ${this.contract.getAddress()}  returnCode = ${returnCode} Received SDT with nonce = ${firstValue}`);
+
         return returnCode;
     }
 }

@@ -1,7 +1,7 @@
 {
     "networkProvider": {
-        "type": "ProxyNetworkProvider",
-        "url": "https://devnet-gateway.elrond.com"
+        "type": "ApiNetworkProvider",
+        "url": "https://devnet-api.elrond.com"
     },
     "users": {
         "individuals": [

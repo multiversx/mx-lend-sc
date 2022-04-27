@@ -1,7 +1,9 @@
-import { BigIntValue, BytesValue, TokenPayment } from "@elrondnetwork/erdjs";
+import { BigIntValue, BytesValue, isTyped, ResultsParser, TokenPayment, TransactionWatcher } from "@elrondnetwork/erdjs";
+import { ProxyNetworkProvider } from "@elrondnetwork/erdjs-network-providers/out";
 import { createAirdropService, createESDTInteractor, INetworkProvider, ITestSession, ITestUser, TestSession } from "@elrondnetwork/erdjs-snippets";
 import { constants } from "buffer";
 import { assert } from "chai";
+import { hasUncaughtExceptionCaptureCallback } from "process";
 import { createInteractor } from "./lendingPoolInteractor";
 
 describe("lending snippet", async function () {
@@ -118,7 +120,48 @@ describe("lending snippet", async function () {
         let paymentTwo = TokenPayment.fungibleFromAmount(token.identifier, "700", token.decimals);
 
         await session.syncUsers([firstUser, secondUser]);
-        await interactor.deposit(firstUser, paymentOne);
-        await interactor.deposit(secondUser, paymentTwo);
+        let { returnCode: returnCodeDeposit1, depositNonce: depositNonceOne } = await interactor.deposit(firstUser, paymentOne);
+        assert.isTrue(returnCodeDeposit1.isSuccess());
+
+        let { returnCode: returnCodeDeposit2, depositNonce: depositNonceTwo } = await interactor.deposit(secondUser, paymentTwo);
+        assert.isTrue(returnCodeDeposit2.isSuccess());
+
+        session.saveBreadcrumb("depositNonceOne", depositNonceOne)
+        session.saveBreadcrumb("depositNonceTwo", depositNonceTwo)
+    });
+
+
+    it("withdraw token", async function () {
+        session.expectLongInteraction(this);
+
+        let token = await session.loadToken("tokenABC");
+        let address = await session.loadAddress("contractAddress");
+        let interactor = await createInteractor(session, address);
+        await session.syncUsers([firstUser, secondUser]);
+        let depositNonceOne = await session.loadBreadcrumb("depositNonceOne")
+        let depositNonceTwo = await session.loadBreadcrumb("depositNonceTwo")
+        let paymentOne = TokenPayment.semiFungible("L"+token.identifier, depositNonceOne, 500);
+        let paymentTwo = TokenPayment.semiFungible("L"+token.identifier, depositNonceTwo, 700);
+
+
+        let retCodeWithdraw = await interactor.withdraw(firstUser, paymentOne);
+        assert.isTrue(retCodeWithdraw.isSuccess());
+
+        retCodeWithdraw = await interactor.withdraw(secondUser, paymentTwo);
+        assert.isTrue(retCodeWithdraw.isSuccess());
+
+    });
+
+    it("test", async function() {
+        session.expectLongInteraction(this);
+        
+        let transactionOnNetwork = await new TransactionWatcher(session.networkProvider).awaitCompleted({
+            getHash: () => { return { hex: () => "e410efed8bb044db330de94d4f90a461ef5a3096987cdea303cc3466f8f13423"}}
+        });
+
+        // In the end, parse the results:
+        let { returnCode, values } = new ResultsParser().parseUntypedOutcome(transactionOnNetwork);
+        console.log(`LendingPoolInteractor.test(): Received SDT with nonce = ${returnCode} ${values[0].toString("hex")}`);
+
     });
 });
