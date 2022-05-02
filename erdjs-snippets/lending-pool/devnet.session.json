@@ -7,7 +7,7 @@
         "individuals": [
             {
                 "name": "whale",
-                "pem": "~/elrondsdk/testwallets/latest/users/alice.pem"
+                "pem": "~/elrondsdk/testwallets/latest/users/frank.pem"
             },
             {
                 "name": "firstUser",
