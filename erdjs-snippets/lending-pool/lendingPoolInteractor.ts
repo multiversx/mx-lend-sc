@@ -123,9 +123,6 @@ export class LendingPoolInteractor {
             .withChainID(this.networkConfig.ChainID);
 
 
-        // TODO save liquidityPoolAddress
-
-
         // Let's check the interaction, then build the transaction object.
         let transaction = interaction.check().buildTransaction();
 
@@ -135,8 +132,6 @@ export class LendingPoolInteractor {
         // Let's broadcast the transaction and await its completion:
         await this.networkProvider.sendTransaction(transaction);
         let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
-
-        // console.log(`!!!!!!!!  transactionOnNetwork = ${JSON.stringify(transactionOnNetwork, null, 4)}`);
 
         // In the end, parse the results:
         let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
@@ -321,9 +316,6 @@ export class LendingPoolInteractor {
         await this.networkProvider.sendTransaction(transaction);
         let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
 
-        // let parts = transactionOnNetwork.contractResults.items[2].data.split("@");
-        // let lendToken = Buffer.from(parts[1], "hex").toString();
-
         // In the end, parse the results:
         let { returnCode, firstValue } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
 
@@ -358,7 +350,7 @@ export class LendingPoolInteractor {
         // In the end, parse the results:
         let { returnCode, firstValue } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
 
-        console.log(`LendingPoolInteractor.deposit(): contract = ${this.contract.getAddress()}  returnCode = ${returnCode} Received SDT with nonce = ${firstValue}`);
+        console.log(`LendingPoolInteractor.withdraw(): contract = ${this.contract.getAddress()}  returnCode = ${returnCode} Received metaESDT with nonce = ${firstValue}`);
 
         return returnCode;
     }
@@ -369,8 +361,6 @@ export class LendingPoolInteractor {
 
         // Prepare the interaction, check it, then build the query:
         let interaction = <Interaction>this.contract.methods.getPoolAddress([tokenIdentifier]);
-
-        // <Interaction>this.liquidityContract.methods.
 
         let query = interaction.check().buildQuery();
 
