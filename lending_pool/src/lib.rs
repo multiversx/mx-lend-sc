@@ -75,7 +75,7 @@ pub trait LendingPool:
         self.liquidity_pool_proxy(borrow_token_pool_address)
             .borrow(
                 initial_caller,
-                TokenAmountPair::new(payment_lend_id.clone(), 0, payment_amount.clone()),
+                // TokenAmountPair::new(payment_lend_id.clone(), 0, payment_amount.clone()),
                 loan_to_value,
             )
             .add_token_transfer(payment_lend_id, payment_nonce, payment_amount)

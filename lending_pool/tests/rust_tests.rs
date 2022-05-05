@@ -190,7 +190,7 @@ fn borrow_test() {
             |sc| {
                 sc.borrow(
                     managed_address!(&user_addr),
-                    TokenAmountPair::new(managed_token_id!(EGLD_TOKEN_ID), 0, managed_biguint!(10)),
+                    // TokenAmountPair::new(managed_token_id!(EGLD_TOKEN_ID), 0, managed_biguint!(10)),
                     managed_biguint!(500_000_000),
                 );
             },
