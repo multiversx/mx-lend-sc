@@ -73,7 +73,11 @@ pub trait LendingPool:
 
         //L tokens for a specific token X are 1:1 with deposited X tokens
         self.liquidity_pool_proxy(borrow_token_pool_address)
-            .borrow(initial_caller, TokenAmountPair::new(payment_lend_id.clone(), 0, payment_amount.clone()), loan_to_value)
+            .borrow(
+                initial_caller,
+                TokenAmountPair::new(payment_lend_id.clone(), 0, payment_amount.clone()),
+                loan_to_value,
+            )
             .add_token_transfer(payment_lend_id, payment_nonce, payment_amount)
             .execute_on_dest_context_ignore_result();
     }
