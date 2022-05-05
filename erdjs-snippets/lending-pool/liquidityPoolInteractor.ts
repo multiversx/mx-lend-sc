@@ -1,12 +1,12 @@
 import path from "path";
-import { AddressValue, BigIntValue, BytesValue, CodeMetadata, IAddress, Interaction, ResultsParser, ReturnCode, SmartContract, SmartContractAbi, Struct, TokenIdentifierValue, TokenPayment, TransactionWatcher } from "@elrondnetwork/erdjs";
-import { INetworkProvider, ITestSession, ITestUser, loadAbiRegistry, loadCode } from "@elrondnetwork/erdjs-snippets";
+import { IAddress, Interaction, ResultsParser, SmartContract, SmartContractAbi, TransactionWatcher } from "@elrondnetwork/erdjs";
+import { INetworkProvider, ITestSession, loadAbiRegistry } from "@elrondnetwork/erdjs-snippets";
 import { NetworkConfig } from "@elrondnetwork/erdjs-network-providers";
 
-const PathtoLiquidityAbi = path.resolve(__dirname, "..", "..", "liquidity_pool", "output", "liquidity-pool.abi.json");
+const PathToLiquidityAbi = path.resolve(__dirname, "..", "..", "liquidity_pool", "output", "liquidity-pool.abi.json");
 
 export async function createLiquidityInteractor(session: ITestSession, contractAddress?: IAddress): Promise<LiquidityPoolInteractor> {
-    let registry = await loadAbiRegistry(PathtoLiquidityAbi);
+    let registry = await loadAbiRegistry(PathToLiquidityAbi);
     let abi = new SmartContractAbi(registry, ["LiquidityPool"]);
     let contract = new SmartContract({ address: contractAddress, abi: abi });
     let networkProvider = session.networkProvider;
@@ -32,10 +32,8 @@ export class LiquidityPoolInteractor {
     }
 
     async getLendingToken(): Promise<string> {
-        // let contract = this.liquidityHashMap.get(liquidityPoolAddress.bech32());
-
         // Prepare the interaction, check it, then build the query:
-        let interaction = <Interaction>this.contract.methods.getDepositRate();
+        let interaction = <Interaction>this.contract.methods.getLendToken();
         let query = interaction.check().buildQuery();
 
         // Let's run the query and parse the results:

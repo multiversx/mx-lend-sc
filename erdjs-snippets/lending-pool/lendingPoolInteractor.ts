@@ -1,5 +1,5 @@
 import path from "path";
-import { AddressValue, BigIntValue, BytesValue, CodeMetadata, IAddress, Interaction, ResultsParser, ReturnCode, SmartContract, SmartContractAbi, Struct, TokenIdentifierValue, TokenPayment, TransactionWatcher } from "@elrondnetwork/erdjs";
+import { AddressValue, BigIntValue, CodeMetadata, IAddress, Interaction, ResultsParser, ReturnCode, SmartContract, SmartContractAbi, TokenIdentifierValue, TokenPayment, TransactionWatcher } from "@elrondnetwork/erdjs";
 import { INetworkProvider, ITestSession, ITestUser, loadAbiRegistry, loadCode } from "@elrondnetwork/erdjs-snippets";
 import { NetworkConfig } from "@elrondnetwork/erdjs-network-providers";
 
@@ -355,10 +355,7 @@ export class LendingPoolInteractor {
         return returnCode;
     }
 
-
     async getLiquidityAddress(tokenIdentifier: string): Promise<IAddress> {
-        // let contract = this.liquidityHashMap.get(liquidityPoolAddress.bech32());
-
         // Prepare the interaction, check it, then build the query:
         let interaction = <Interaction>this.contract.methods.getPoolAddress([tokenIdentifier]);
 
@@ -369,7 +366,7 @@ export class LendingPoolInteractor {
         let { firstValue } = this.resultsParser.parseQueryResponse(queryResponse, interaction.getEndpoint());
 
         // Now let's interpret the results.
-        return firstValue!.valueOf().toString();
+        return firstValue!.valueOf();
     }
 
 }

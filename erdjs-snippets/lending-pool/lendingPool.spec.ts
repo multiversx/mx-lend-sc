@@ -1,9 +1,6 @@
-import { BigIntValue, BytesValue, isTyped, ResultsParser, TokenPayment, TransactionWatcher } from "@elrondnetwork/erdjs";
-import { ProxyNetworkProvider } from "@elrondnetwork/erdjs-network-providers/out";
+import {  TokenPayment } from "@elrondnetwork/erdjs";
 import { createAirdropService, createESDTInteractor, INetworkProvider, ITestSession, ITestUser, TestSession } from "@elrondnetwork/erdjs-snippets";
-import { constants } from "buffer";
 import { assert } from "chai";
-import { hasUncaughtExceptionCaptureCallback } from "process";
 import { createLendingInteractor } from "./lendingPoolInteractor";
 import { createLiquidityInteractor } from "./liquidityPoolInteractor";
 
@@ -72,8 +69,8 @@ describe("lending snippet", async function () {
         let interactor = await createLendingInteractor(session, lendAddress);
 
         // Setup Liquidity pool
-        let returnCodeSetup = await interactor.addLiquidityPool(whale, token.identifier, 0, 40000000, 1000000000, 800000000, 100000000, 700000000);
-        assert.isTrue(returnCodeSetup.isSuccess());
+        let returnCode = await interactor.addLiquidityPool(whale, token.identifier, 0, 40000000, 1000000000, 800000000, 100000000, 700000000);
+        assert.isTrue(returnCode.isSuccess());
 
     });
 
@@ -87,8 +84,8 @@ describe("lending snippet", async function () {
         let interactor = await createLendingInteractor(session, lendAddress);
 
         // Issue Lend Tokens
-        let returnCodeSetup = await interactor.issueLend(whale, token.identifier);
-        assert.isTrue(returnCodeSetup.isSuccess());
+        let returnCode = await interactor.issueLend(whale, token.identifier);
+        assert.isTrue(returnCode.isSuccess());
     });
 
     it("Issue Borrow Token", async function () {
@@ -101,8 +98,8 @@ describe("lending snippet", async function () {
         let interactor = await createLendingInteractor(session, lendAddress);
 
         // Issue Borrow Tokens
-        let returnCodeSetup = await interactor.issueBorrow(whale, token.identifier);
-        assert.isTrue(returnCodeSetup.isSuccess());
+        let returnCode = await interactor.issueBorrow(whale, token.identifier);
+        assert.isTrue(returnCode.isSuccess());
     });
 
     it("Setup Lending Pool", async function () {
@@ -115,20 +112,20 @@ describe("lending snippet", async function () {
         let interactor = await createLendingInteractor(session, lendAddress);
 
         // Set Lend Roles
-        let returnCodeSetup = await interactor.setLendRoles(whale, token.identifier);
-        assert.isTrue(returnCodeSetup.isSuccess());
+        let returnCode = await interactor.setLendRoles(whale, token.identifier);
+        assert.isTrue(returnCode.isSuccess());
 
         // Set Borrow Roles
-        returnCodeSetup = await interactor.setBorrowRoles(whale, token.identifier);
-        assert.isTrue(returnCodeSetup.isSuccess());
+        returnCode = await interactor.setBorrowRoles(whale, token.identifier);
+        assert.isTrue(returnCode.isSuccess());
 
         // Set Asset LTV
-        returnCodeSetup = await interactor.setAssetLoanToValue(whale, token.identifier, 500000000);
-        assert.isTrue(returnCodeSetup.isSuccess());
+        returnCode = await interactor.setAssetLoanToValue(whale, token.identifier, 500000000);
+        assert.isTrue(returnCode.isSuccess());
 
         // Set Liquidation Bonus
-        returnCodeSetup = await interactor.setAssetLiquidationBonus(whale, token.identifier, 40000000);
-        assert.isTrue(returnCodeSetup.isSuccess());
+        returnCode = await interactor.setAssetLiquidationBonus(whale, token.identifier, 40000000);
+        assert.isTrue(returnCode.isSuccess());
     });
 
 
@@ -179,11 +176,11 @@ describe("lending snippet", async function () {
         let paymentOne = TokenPayment.metaEsdtFromAmount(lendToken, depositNonceOne, 7, token.decimals)
         let paymentTwo = TokenPayment.metaEsdtFromAmount(lendToken, depositNonceTwo, 7, token.decimals)
 
-        let retCodeWithdraw = await lendingInteractor.withdraw(firstUser, paymentOne);
-        assert.isTrue(retCodeWithdraw.isSuccess());
+        let returnCode = await lendingInteractor.withdraw(firstUser, paymentOne);
+        assert.isTrue(returnCode.isSuccess());
 
-        retCodeWithdraw = await lendingInteractor.withdraw(secondUser, paymentTwo);
-        assert.isTrue(retCodeWithdraw.isSuccess());
+        returnCode = await lendingInteractor.withdraw(secondUser, paymentTwo);
+        assert.isTrue(returnCode.isSuccess());
 
     });
 });
