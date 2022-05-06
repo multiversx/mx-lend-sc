@@ -348,7 +348,7 @@ pub trait LiquidityModule:
         let lend_amount_to_return = (asset_amount * (&bp + &liquidation_bonus)) / bp;
         let lend_tokens = borrow_position.lend_tokens.clone();
         require!(
-            lend_tokens.amount > lend_amount_to_return,
+            lend_tokens.amount >= lend_amount_to_return,
             "total amount to return bigger than position"
         );
 

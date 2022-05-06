@@ -9,6 +9,7 @@ pub const EGLD_TICKER: &[u8] = b"EGLD";
 pub const EGLD_TOKEN_ID: &[u8] = b"EGLD-123456";
 pub const LEND_EGLD: &[u8] = b"LEGLD-abcdef";
 pub const EGLD_PRICE_IN_DOLLARS: u64 = 20_000; // $200
+pub const EGLD_PRICE_DROPPED_IN_DOLLARS: u64 = 10_000; // $100
 pub const USDC_PRICE_IN_DOLLARS: u64 = 100; // $1
 pub const PRICE_DECIMALS: usize = 2;
 pub const R_BASE: u64 = 0;

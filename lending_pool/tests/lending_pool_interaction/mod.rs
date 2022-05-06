@@ -17,15 +17,17 @@ use crate::{
     setup::*,
 };
 
-pub struct LendingSetup<LendingPoolObjBuilder, LiquidityPoolObjBuilder>
+pub struct LendingSetup<LendingPoolObjBuilder, LiquidityPoolObjBuilder, PriceAggregatorObjBuilder>
 where
     LendingPoolObjBuilder: 'static + Copy + Fn() -> lending_pool::ContractObj<DebugApi>,
     LiquidityPoolObjBuilder: 'static + Copy + Fn() -> liquidity_pool::ContractObj<DebugApi>,
+    PriceAggregatorObjBuilder: 'static + Copy + Fn() -> aggregator_mock::ContractObj<DebugApi>,
 {
     pub owner_addr: Address,
     pub first_user_addr: Address,
     pub second_user_addr: Address,
-    pub price_aggregator_addr: Address,
+    pub price_aggregator_wrapper:
+        ContractObjWrapper<aggregator_mock::ContractObj<DebugApi>, PriceAggregatorObjBuilder>,
     pub b_mock: BlockchainStateWrapper,
     pub lending_pool_wrapper:
         ContractObjWrapper<lending_pool::ContractObj<DebugApi>, LendingPoolObjBuilder>,
@@ -33,16 +35,18 @@ where
         ContractObjWrapper<liquidity_pool::ContractObj<DebugApi>, LiquidityPoolObjBuilder>,
 }
 
-impl<LendingPoolObjBuilder, LiquidityPoolObjBuilder>
-    LendingSetup<LendingPoolObjBuilder, LiquidityPoolObjBuilder>
+impl<LendingPoolObjBuilder, LiquidityPoolObjBuilder, PriceAggregatorObjBuilder>
+    LendingSetup<LendingPoolObjBuilder, LiquidityPoolObjBuilder, PriceAggregatorObjBuilder>
 where
     LendingPoolObjBuilder: 'static + Copy + Fn() -> lending_pool::ContractObj<DebugApi>,
     LiquidityPoolObjBuilder: 'static + Copy + Fn() -> liquidity_pool::ContractObj<DebugApi>,
+    PriceAggregatorObjBuilder: 'static + Copy + Fn() -> aggregator_mock::ContractObj<DebugApi>,
 {
     /* Deploys Lending SC with a template Liquidity Pool */
     pub fn deploy_lending(
         lending_pool_builder: LendingPoolObjBuilder,
         liquidity_pool_builder: LiquidityPoolObjBuilder,
+        price_aggregator_builder: PriceAggregatorObjBuilder,
     ) -> Self {
         let rust_zero = rust_biguint!(0u64);
         let mut b_mock = BlockchainStateWrapper::new();
@@ -50,8 +54,8 @@ where
         let first_user_addr = b_mock.create_user_account(&rust_biguint!(100_000_000));
         let second_user_addr = b_mock.create_user_account(&rust_biguint!(100_000_000));
 
-        let price_aggregator_addr =
-            setup_price_aggregator(&owner_addr, &mut b_mock, aggregator_mock::contract_obj);
+        let price_aggregator_wrapper =
+            setup_price_aggregator(&owner_addr, &mut b_mock, price_aggregator_builder);
 
         let lending_pool_wrapper = setup_lending_pool(
             &owner_addr,
@@ -85,7 +89,9 @@ where
                     sc.lend_token().set(managed_token_id!(LEND_USDC_TOKEN_ID));
                     sc.borrow_token()
                         .set(managed_token_id!(BORROW_USDC_TOKEN_ID));
-                    sc.set_price_aggregator_address(managed_address!(&price_aggregator_addr));
+                    sc.set_price_aggregator_address(managed_address!(
+                        &price_aggregator_wrapper.address_ref()
+                    ));
                 },
             )
             .assert_ok();
@@ -142,7 +148,7 @@ where
             owner_addr,
             first_user_addr,
             second_user_addr,
-            price_aggregator_addr,
+            price_aggregator_wrapper,
             b_mock,
             lending_pool_wrapper,
             liquidity_pool_wrapper,
