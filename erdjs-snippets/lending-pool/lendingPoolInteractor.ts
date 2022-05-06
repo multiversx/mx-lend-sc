@@ -1,5 +1,5 @@
 import path from "path";
-import { AddressValue, BigIntValue, BytesValue, CodeMetadata, IAddress, Interaction, ResultsParser, ReturnCode, SmartContract, SmartContractAbi, Struct, TokenIdentifierValue, TokenPayment, TransactionWatcher } from "@elrondnetwork/erdjs";
+import { AddressValue, BigIntValue, CodeMetadata, IAddress, Interaction, ResultsParser, ReturnCode, SmartContract, SmartContractAbi, TokenIdentifierValue, TokenPayment, TransactionWatcher } from "@elrondnetwork/erdjs";
 import { INetworkProvider, ITestSession, ITestUser, loadAbiRegistry, loadCode } from "@elrondnetwork/erdjs-snippets";
 import { NetworkConfig } from "@elrondnetwork/erdjs-network-providers";
 
@@ -7,12 +7,13 @@ const PathToWasm = path.resolve(__dirname, "..", "..", "lending_pool", "output",
 const PathToAbi = path.resolve(__dirname, "..", "..", "lending_pool", "output", "lending-pool.abi.json");
 const PathToWasmDummyLiquidityPool = path.resolve(__dirname, "..", "..", "liquidity_pool", "output", "liquidity-pool.wasm");
 
-export async function createInteractor(session: ITestSession, contractAddress?: IAddress): Promise<LendingPoolInteractor> {
+export async function createLendingInteractor(session: ITestSession, contractAddress?: IAddress): Promise<LendingPoolInteractor> {
     let registry = await loadAbiRegistry(PathToAbi);
     let abi = new SmartContractAbi(registry, ["LendingPool"]);
-    let contract = new SmartContract({ address: contractAddress, abi: abi });
+    let contract = new SmartContract({ address: contractAddress, abi: abi});
     let networkProvider = session.networkProvider;
     let networkConfig = session.getNetworkConfig();
+
     let interactor = new LendingPoolInteractor(contract, networkProvider, networkConfig);
     return interactor;
 }
@@ -120,6 +121,7 @@ export class LendingPoolInteractor {
             .withGasLimit(50000000)
             .withNonce(user.account.getNonceThenIncrement())
             .withChainID(this.networkConfig.ChainID);
+
 
         // Let's check the interaction, then build the transaction object.
         let transaction = interaction.check().buildTransaction();
@@ -293,14 +295,14 @@ export class LendingPoolInteractor {
         return returnCode;
     }
 
-    async deposit(user: ITestUser, amount: TokenPayment): Promise<ReturnCode> {
-        console.log(`LendingPoolInteractor.deposit(): address = ${user.address}, amount = ${amount.toPrettyString()}`);
+    async deposit(user: ITestUser, tokenPayment: TokenPayment): Promise<{ returnCode: ReturnCode, depositNonce: number }> {
+        console.log(`LendingPoolInteractor.deposit(): address = ${user.address}, amount = ${tokenPayment.toPrettyString()}`);
 
         // Prepare the interaction
         let interaction = <Interaction>this.contract.methods
             .deposit([])
-            .withGasLimit(40000000)
-            .withSingleESDTTransfer(amount)
+            .withGasLimit(15000000)
+            .withSingleESDTTransfer(tokenPayment)
             .withNonce(user.account.getNonceThenIncrement())
             .withChainID(this.networkConfig.ChainID);
 
@@ -315,7 +317,56 @@ export class LendingPoolInteractor {
         let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
 
         // In the end, parse the results:
-        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+        let { returnCode, firstValue } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+
+        console.log(`LendingPoolInteractor.deposit(): contract = ${this.contract.getAddress()} Received SDT with nonce = ${returnCode} ${firstValue}`);
+        let depositNonce = firstValue!.valueOf();
+
+        return { returnCode, depositNonce };
+    }
+
+
+    async withdraw(user: ITestUser, tokenPayment: TokenPayment): Promise<ReturnCode> {
+        console.log(`LendingPoolInteractor.deposit(): address = ${user.address}, amount = ${tokenPayment.toPrettyString()}`);
+
+        // Prepare the interaction
+        let interaction = <Interaction>this.contract.methods
+            .withdraw([])
+            .withGasLimit(15000000)
+            .withSingleESDTNFTTransfer(tokenPayment, user.address)
+            .withNonce(user.account.getNonceThenIncrement())
+            .withChainID(this.networkConfig.ChainID);
+
+        // Let's check the interaction, then build the transaction object.
+        let transaction = interaction.check().buildTransaction();
+
+        // Let's sign the transaction. For dApps, use a wallet provider instead.
+        await user.signer.sign(transaction);
+
+        // Let's broadcast the transaction and await its completion:
+        await this.networkProvider.sendTransaction(transaction);
+        let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
+
+        // In the end, parse the results:
+        let { returnCode, firstValue } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+
+        console.log(`LendingPoolInteractor.withdraw(): contract = ${this.contract.getAddress()}  returnCode = ${returnCode} Received metaESDT with nonce = ${firstValue}`);
+
         return returnCode;
     }
+
+    async getLiquidityAddress(tokenIdentifier: string): Promise<IAddress> {
+        // Prepare the interaction, check it, then build the query:
+        let interaction = <Interaction>this.contract.methods.getPoolAddress([tokenIdentifier]);
+
+        let query = interaction.check().buildQuery();
+
+        // Let's run the query and parse the results:
+        let queryResponse = await this.networkProvider.queryContract(query);
+        let { firstValue } = this.resultsParser.parseQueryResponse(queryResponse, interaction.getEndpoint());
+
+        // Now let's interpret the results.
+        return firstValue!.valueOf();
+    }
+
 }
