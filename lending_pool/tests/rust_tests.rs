@@ -1,5 +1,7 @@
 use constants::*;
-use elrond_wasm_debug::{managed_address, managed_biguint, managed_token_id, rust_biguint};
+use elrond_wasm_debug::{
+    managed_address, managed_biguint, managed_token_id, rust_biguint, tx_mock::TxInputESDT,
+};
 use lending_pool_interaction::LendingSetup;
 use liquidity_pool::{liquidity::LiquidityModule, storage::StorageModule};
 
@@ -245,7 +247,7 @@ fn repay_test() {
 
     lending_setup
         .b_mock
-        .set_nft_balance(&user_addr, LEND_EGLD, 1, &rust_biguint!(5), &());
+        .set_nft_balance(&user_addr, LEND_EGLD, 1, &rust_biguint!(10), &());
 
     lending_setup
         .b_mock
@@ -256,11 +258,7 @@ fn repay_test() {
             1,
             &rust_biguint!(5),
             |sc| {
-                sc.borrow(
-                    managed_address!(&user_addr),
-                    TokenAmountPair::new(managed_token_id!(EGLD_TOKEN_ID), 0, managed_biguint!(5)),
-                    managed_biguint!(500_000_000),
-                );
+                sc.borrow(managed_address!(&user_addr), managed_biguint!(500_000_000));
             },
         )
         .assert_ok();
@@ -333,7 +331,7 @@ fn repay_test() {
         &user_addr,
         LEND_EGLD,
         1,
-        &rust_biguint!(5),
+        &rust_biguint!(10),
         &Vec::<u8>::new(),
     );
 }
