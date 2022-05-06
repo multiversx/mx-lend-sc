@@ -1,9 +1,5 @@
 use constants::*;
-use elrond_wasm_debug::{
-    managed_address, managed_biguint, managed_token_id, rust_biguint,
-    tx_mock::TxInputESDT,
-};
-use lending_pool::TokenAmountPair;
+use elrond_wasm_debug::{managed_address, managed_biguint, managed_token_id, rust_biguint};
 use lending_pool_interaction::LendingSetup;
 use liquidity_pool::{liquidity::LiquidityModule, storage::StorageModule};
 
@@ -188,11 +184,7 @@ fn borrow_test() {
             1,
             &rust_biguint!(10),
             |sc| {
-                sc.borrow(
-                    managed_address!(&user_addr),
-                    // TokenAmountPair::new(managed_token_id!(EGLD_TOKEN_ID), 0, managed_biguint!(10)),
-                    managed_biguint!(500_000_000),
-                );
+                sc.borrow(managed_address!(&user_addr), managed_biguint!(500_000_000));
             },
         )
         .assert_ok();

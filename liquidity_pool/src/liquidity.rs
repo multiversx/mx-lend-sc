@@ -79,12 +79,7 @@ pub trait LiquidityModule:
     #[only_owner]
     #[payable("*")]
     #[endpoint]
-    fn borrow(
-        &self,
-        initial_caller: ManagedAddress,
-        // collateral_tokens: TokenAmountPair<Self::Api>,
-        loan_to_value: BigUint,
-    ) {
+    fn borrow(&self, initial_caller: ManagedAddress, loan_to_value: BigUint) {
         let (payment_lend_amount, payment_lend_token_id) = self.call_value().payment_token_pair();
         let payment_lend_token_nonce = self.call_value().esdt_token_nonce();
 
@@ -99,16 +94,9 @@ pub trait LiquidityModule:
         let borrow_token_id = self.borrow_token().get();
         let pool_token_id = self.pool_asset().get();
 
-        // let collateral_data = self.get_token_price_data(&collateral_tokens.token_id);
-        let collateral_data = self.get_token_price_data(&payment_lend_token_id);
+        let collateral_data = self.get_token_price_data_lending(&payment_lend_token_id);
         let pool_asset_data = self.get_token_price_data(&pool_token_id);
 
-        // let borrow_amount_in_dollars = self.compute_borrowable_amount(
-        //     &collateral_tokens.amount,
-        //     &collateral_data.price,
-        //     &loan_to_value,
-        //     collateral_data.decimals,
-        // );
         let borrow_amount_in_dollars = self.compute_borrowable_amount(
             &payment_lend_amount,
             &collateral_data.price,
