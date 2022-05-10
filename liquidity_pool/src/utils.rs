@@ -80,6 +80,7 @@ pub trait UtilsModule:
             .unwrap()
     }
 
+    // Each lent/borrowed token has an L/B prefix, so we start from index 1
     fn get_token_ticker_from_lending(&self, token_id: &TokenIdentifier) -> ManagedBuffer {
         let as_buffer = token_id.as_managed_buffer();
         let ticker_start_index = 1;
