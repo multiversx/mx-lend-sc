@@ -50,7 +50,7 @@ fn deposit_test() {
         LEND_USDC_TOKEN_ID,
         1,
         &rust_biguint!(1_000),
-        &(),
+        Some(&()),
     );
 
     lending_setup
@@ -95,7 +95,7 @@ fn withdraw_test() {
         LEND_USDC_TOKEN_ID,
         1,
         &rust_biguint!(1_000),
-        &(),
+        Some(&()),
     );
 
     lending_setup
@@ -126,7 +126,7 @@ fn withdraw_test() {
         LEND_USDC_TOKEN_ID,
         1,
         &rust_biguint!(0),
-        &(),
+        Some(&()),
     );
 
     lending_setup.b_mock.check_nft_balance(
@@ -134,7 +134,7 @@ fn withdraw_test() {
         USDC_TOKEN_ID,
         0,
         &rust_biguint!(1_000),
-        &(),
+        Some(&()),
     );
 }
 
@@ -170,7 +170,7 @@ fn borrow_test() {
         LEND_USDC_TOKEN_ID,
         1,
         &rust_biguint!(1_000),
-        &(),
+        Some(&()),
     );
 
     lending_setup
@@ -196,7 +196,7 @@ fn borrow_test() {
         BORROW_USDC_TOKEN_ID,
         1,
         &rust_biguint!(1_000),
-        &Vec::<u8>::new(),
+        Some(&Vec::<u8>::new()),
     );
 
     lending_setup.b_mock.check_nft_balance(
@@ -204,7 +204,7 @@ fn borrow_test() {
         USDC_TOKEN_ID,
         0,
         &rust_biguint!(1_000),
-        &Vec::<u8>::new(),
+        Some(&Vec::<u8>::new()),
     );
 }
 
@@ -240,7 +240,7 @@ fn repay_test() {
         LEND_USDC_TOKEN_ID,
         1,
         &rust_biguint!(1_000),
-        &(),
+        Some(&()),
     );
 
     lending_setup.b_mock.set_block_timestamp(1_000);
@@ -268,7 +268,7 @@ fn repay_test() {
         BORROW_USDC_TOKEN_ID,
         1,
         &rust_biguint!(500),
-        &Vec::<u8>::new(),
+        Some(&Vec::<u8>::new()),
     );
 
     lending_setup.b_mock.check_nft_balance(
@@ -276,7 +276,7 @@ fn repay_test() {
         USDC_TOKEN_ID,
         0,
         &rust_biguint!(500),
-        &Vec::<u8>::new(),
+        Some(&Vec::<u8>::new()),
     );
 
     lending_setup.b_mock.set_block_timestamp(200_000);
@@ -316,7 +316,7 @@ fn repay_test() {
         BORROW_USDC_TOKEN_ID,
         1,
         &rust_biguint!(0),
-        &Vec::<u8>::new(),
+        Some(&Vec::<u8>::new()),
     );
 
     lending_setup.b_mock.check_nft_balance(
@@ -324,7 +324,7 @@ fn repay_test() {
         USDC_TOKEN_ID,
         0,
         &rust_biguint!(0),
-        &Vec::<u8>::new(),
+        Some(&Vec::<u8>::new()),
     );
 
     lending_setup.b_mock.check_nft_balance(
@@ -332,6 +332,6 @@ fn repay_test() {
         LEND_EGLD,
         1,
         &rust_biguint!(10),
-        &Vec::<u8>::new(),
+        Some(&Vec::<u8>::new()),
     );
 }

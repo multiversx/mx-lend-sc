@@ -9,7 +9,7 @@ publish = false
 path = "src/lib.rs"
 
 [dependencies.elrond-wasm]
-version = "0.29.3"
+version = "0.30.0"
 
 [dependencies.liquidity-pool]
 path = "../liquidity_pool"
@@ -24,7 +24,7 @@ path = "../common/structs"
 path = "../common/checks"
 
 [dev-dependencies.elrond-wasm-debug]
-version = "0.29.3"
+version = "0.30.0"
 
 [dev-dependencies]
 num-bigint = "0.4.2"
