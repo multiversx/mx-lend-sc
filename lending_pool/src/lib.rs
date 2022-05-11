@@ -9,8 +9,6 @@ pub mod router;
 
 pub use common_structs::*;
 
-use liquidity_pool::liquidity::ProxyTrait as _;
-
 #[elrond_wasm::contract]
 pub trait LendingPool:
     factory::FactoryModule + router::RouterModule + common_checks::ChecksModule + proxy::ProxyModule
@@ -22,7 +20,7 @@ pub trait LendingPool:
 
     #[payable("*")]
     #[endpoint]
-    fn deposit(&self, #[var_args] caller: OptionalValue<ManagedAddress>) {
+    fn deposit(&self, caller: OptionalValue<ManagedAddress>) {
         let (amount, asset) = self.call_value().payment_token_pair();
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -34,12 +32,12 @@ pub trait LendingPool:
         self.liquidity_pool_proxy(pool_address)
             .deposit_asset(initial_caller)
             .add_token_transfer(asset, 0, amount)
-            .execute_on_dest_context();
+            .execute_on_dest_context_ignore_result();
     }
 
     #[payable("*")]
     #[endpoint]
-    fn withdraw(&self, #[var_args] caller: OptionalValue<ManagedAddress>) {
+    fn withdraw(&self, caller: OptionalValue<ManagedAddress>) {
         let (amount, lend_token) = self.call_value().payment_token_pair();
         let token_nonce = self.call_value().esdt_token_nonce();
         let initial_caller = self.caller_from_option_or_sender(caller);
@@ -51,7 +49,7 @@ pub trait LendingPool:
         self.liquidity_pool_proxy(pool_address)
             .withdraw(initial_caller)
             .add_token_transfer(lend_token, token_nonce, amount)
-            .execute_on_dest_context();
+            .execute_on_dest_context_ignore_result();
     }
 
     #[payable("*")]
@@ -59,7 +57,7 @@ pub trait LendingPool:
     fn borrow(
         &self,
         asset_to_borrow: TokenIdentifier,
-        #[var_args] caller: OptionalValue<ManagedAddress>,
+        caller: OptionalValue<ManagedAddress>,
     ) {
         let (payment_amount, payment_lend_id) = self.call_value().payment_token_pair();
         let payment_nonce = self.call_value().esdt_token_nonce();
@@ -83,7 +81,7 @@ pub trait LendingPool:
     fn repay(
         &self,
         asset_to_repay: TokenIdentifier,
-        #[var_args] caller: OptionalValue<ManagedAddress>,
+        caller: OptionalValue<ManagedAddress>,
     ) {
         let transfers = self.call_value().all_esdt_transfers();
         let initial_caller = self.caller_from_option_or_sender(caller);
@@ -97,7 +95,7 @@ pub trait LendingPool:
         self.liquidity_pool_proxy(asset_address)
             .repay(initial_caller)
             .with_multi_token_transfer(transfers)
-            .execute_on_dest_context();
+            .execute_on_dest_context_ignore_result();
     }
 
     #[payable("*")]
@@ -105,7 +103,7 @@ pub trait LendingPool:
     fn liquidate(
         &self,
         borrow_position_nonce: u64,
-        #[var_args] caller: OptionalValue<ManagedAddress>,
+        caller: OptionalValue<ManagedAddress>,
     ) {
         let (amount, asset) = self.call_value().payment_token_pair();
         let initial_caller = self.caller_from_option_or_sender(caller);
@@ -121,7 +119,7 @@ pub trait LendingPool:
             .liquidity_pool_proxy(asset_address)
             .liquidate(initial_caller, borrow_position_nonce, liq_bonus)
             .add_token_transfer(asset, 0, amount)
-            .execute_on_dest_context();
+            .execute_on_dest_context::<TokenAmountPair<>>();
 
         let lend_tokens_pool = self.get_pool_address(&lend_tokens.token_id);
 

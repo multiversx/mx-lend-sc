@@ -28,7 +28,7 @@ pub trait SafetyModule {
 
     #[payable("*")]
     #[endpoint(fund)]
-    fn fund(self, #[var_args] caller: OptionalValue<ManagedAddress>) {
+    fn fund(self, caller: OptionalValue<ManagedAddress>) {
         let (payment, token) = self.call_value().payment_token_pair();
 
         require!(payment > 0, "amount must be greater than 0");
@@ -178,7 +178,7 @@ pub trait SafetyModule {
 
     #[only_owner]
     #[endpoint(setLocalRolesNftToken)]
-    fn set_local_roles_nft_token(&self, #[var_args] roles: MultiValueEncoded<EsdtLocalRole>) {
+    fn set_local_roles_nft_token(&self, roles: MultiValueEncoded<EsdtLocalRole>) {
         require!(!self.nft_token().is_empty(), "No nft token issued");
 
         let token = self.nft_token().get();
