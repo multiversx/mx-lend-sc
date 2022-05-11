@@ -58,7 +58,6 @@ pub trait LendingPool:
     #[endpoint]
     fn borrow(
         &self,
-        collateral_token_id: TokenIdentifier,
         asset_to_borrow: TokenIdentifier,
         #[var_args] caller: OptionalValue<ManagedAddress>,
     ) {
@@ -70,13 +69,11 @@ pub trait LendingPool:
         self.require_non_zero_address(&initial_caller);
 
         let borrow_token_pool_address = self.get_pool_address(&asset_to_borrow);
-        let loan_to_value = self.get_loan_to_value_exists_and_non_zero(&collateral_token_id);
+        let loan_to_value = self.get_loan_to_value_exists_and_non_zero(&payment_lend_id);
 
         //L tokens for a specific token X are 1:1 with deposited X tokens
-        let collateral_amount = payment_amount.clone();
-        let collateral_tokens = TokenAmountPair::new(collateral_token_id, 0, collateral_amount);
         self.liquidity_pool_proxy(borrow_token_pool_address)
-            .borrow(initial_caller, collateral_tokens, loan_to_value)
+            .borrow(initial_caller, loan_to_value)
             .add_token_transfer(payment_lend_id, payment_nonce, payment_amount)
             .execute_on_dest_context_ignore_result();
     }
