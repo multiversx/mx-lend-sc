@@ -25,6 +25,10 @@ describe("lending snippet", async function () {
         await session.syncNetworkConfig();
     });
 
+    this.beforeEach(async function () {
+        session.correlation.step = this.currentTest?.fullTitle() || "";
+    });
+
     it("Airdrop EGLD", async function () {
         this.timeout(FiveMinutesInMilliseconds);
         
@@ -45,7 +49,7 @@ describe("lending snippet", async function () {
 
 
     it("airdrop pool_tokens to users", async function () {
-        session.expectLongInteraction(this);
+        this.timeout(FiveMinutesInMilliseconds);
         await helperAirdropTokens(session, whale, firstUser, secondUser, "tokenABC");
         await helperAirdropTokens(session, whale, firstUser, secondUser, "tokenXYZ");
 
@@ -72,7 +76,7 @@ describe("lending snippet", async function () {
     });
 
     it("Set price aggregator for Liquidity Pools", async function () {
-        session.expectLongInteraction(this);
+        this.timeout(FiveMinutesInMilliseconds);
         await session.syncUsers([whale, firstUser, secondUser]);
 
 
@@ -83,7 +87,7 @@ describe("lending snippet", async function () {
         await priceAggregatorInteractor.unpausePoolAggregator(whale);
         await priceAggregatorInteractor.submitPriceAggregator(whale, "ABC", "USD", 7000000000000000000);
         await priceAggregatorInteractor.submitPriceAggregator(whale, "XYZ", "USD", 9000000000000000000);
-        await session.saveAddress("priceAggregatorAddress", priceAggregatorAddress);
+        await session.saveAddress({name: "priceAggregatorAddress", address: priceAggregatorAddress});
     });
 
 
@@ -93,17 +97,15 @@ describe("lending snippet", async function () {
 
         await session.syncUsers([whale]);
 
-        let isSuccess = helperAddLiquidityPool(session, whale, "tokenABC");
-        assert.isTrue(await isSuccess);
+        let isSuccess = await helperAddLiquidityPool(session, whale, "tokenABC");
+        assert.isTrue(isSuccess);
 
-        isSuccess = helperAddLiquidityPool(session, whale, "tokenXYZ");
-        assert.isTrue(await isSuccess);
+        isSuccess = await helperAddLiquidityPool(session, whale, "tokenXYZ");
+        assert.isTrue(isSuccess);
     });
 
-    it("Issue Lending Token", async function () {
+    it("Issue Lend Tokens", async function () {
         this.timeout(FiveMinutesInMilliseconds);
-        this.retries(5);
-
         await session.syncUsers([whale]);
 
         let isSuccess = await helperIssueLendToken(session, whale, "tokenABC");
@@ -113,10 +115,8 @@ describe("lending snippet", async function () {
         assert.isTrue(isSuccess);
     });
 
-    it("Issue Borrow Token", async function () {
+    it("Issue Borrow Tokens ", async function () {
         this.timeout(FiveMinutesInMilliseconds);
-        this.retries(5);
-
         await session.syncUsers([whale]);
 
         let isSuccess = await helperIssueBorrowToken(session, whale, "tokenABC");
@@ -163,14 +163,15 @@ describe("lending snippet", async function () {
         assert.isTrue(isSuccess);
     });
 
+
     it("deposit token", async function () {
         this.timeout(FiveMinutesInMilliseconds);
 
         let token = await session.loadToken("tokenABC");
         let address = await session.loadAddress("lendingAddr");
         let interactor = await createLendingInteractor(session, address);
-        let paymentOne = TokenPayment.fungibleFromAmount(token.identifier, "10", token.decimals);
-        let paymentTwo = TokenPayment.fungibleFromAmount(token.identifier, "10", token.decimals);
+        let paymentOne = TokenPayment.fungibleFromAmount(token.identifier, "20", token.decimals);
+        let paymentTwo = TokenPayment.fungibleFromAmount(token.identifier, "20", token.decimals);
 
 
         await session.syncUsers([firstUser, secondUser]);

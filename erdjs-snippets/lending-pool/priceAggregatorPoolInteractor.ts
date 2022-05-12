@@ -1,6 +1,6 @@
 import path from "path";
 import { AddressValue, BigIntValue, CodeMetadata, IAddress, Interaction, ResultsParser, ReturnCode, SmartContract, SmartContractAbi, TransactionWatcher } from "@elrondnetwork/erdjs";
-import { INetworkProvider, ITestSession, ITestUser, loadAbiRegistry, loadCode } from "@elrondnetwork/erdjs-snippets";
+import { INetworkConfig, INetworkProvider, ITestSession, ITestUser, loadAbiRegistry, loadCode } from "@elrondnetwork/erdjs-snippets";
 import { NetworkConfig } from "@elrondnetwork/erdjs-network-providers";
 
 const PathToPriceAggregatorAbi = path.resolve(__dirname, "..", "..", "price_aggregator", "output", "price-aggregator.abi.json");
@@ -12,7 +12,7 @@ export async function createPriceAggregatorInteractor(session: ITestSession, con
     let contract = new SmartContract({ address: contractAddress, abi: abi });
     let networkProvider = session.networkProvider;
     let networkConfig = session.getNetworkConfig();
-
+    const audit = session.audit;
     let interactor = new PriceAggregatorInteractor(contract, networkProvider, networkConfig);
     return interactor;
 }
@@ -20,11 +20,11 @@ export async function createPriceAggregatorInteractor(session: ITestSession, con
 export class PriceAggregatorInteractor {
     private readonly contract: SmartContract;
     private readonly networkProvider: INetworkProvider;
-    private readonly networkConfig: NetworkConfig;
+    private readonly networkConfig: INetworkConfig;
     private readonly transactionWatcher: TransactionWatcher;
     private readonly resultsParser: ResultsParser;
 
-    constructor(contract: SmartContract, networkProvider: INetworkProvider, networkConfig: NetworkConfig) {
+    constructor(contract: SmartContract, networkProvider: INetworkProvider, networkConfig: INetworkConfig) {
         this.contract = contract;
         this.networkProvider = networkProvider;
         this.networkConfig = networkConfig;
