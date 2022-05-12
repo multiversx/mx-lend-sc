@@ -1,4 +1,5 @@
 use constants::*;
+use elrond_wasm::elrond_codec::Empty;
 use elrond_wasm_debug::{
     managed_address, managed_biguint, managed_token_id, rust_biguint, tx_mock::TxInputESDT,
 };
@@ -50,7 +51,7 @@ fn deposit_test() {
         LEND_USDC_TOKEN_ID,
         1,
         &rust_biguint!(1_000),
-        Some(&()),
+        Option::<&Empty>::None,
     );
 
     lending_setup
@@ -95,7 +96,7 @@ fn withdraw_test() {
         LEND_USDC_TOKEN_ID,
         1,
         &rust_biguint!(1_000),
-        Some(&()),
+        Option::<&Empty>::None,
     );
 
     lending_setup
@@ -126,7 +127,7 @@ fn withdraw_test() {
         LEND_USDC_TOKEN_ID,
         1,
         &rust_biguint!(0),
-        Some(&()),
+        Option::<&Empty>::None,
     );
 
     lending_setup.b_mock.check_nft_balance(
@@ -134,7 +135,7 @@ fn withdraw_test() {
         USDC_TOKEN_ID,
         0,
         &rust_biguint!(1_000),
-        Some(&()),
+        Some(&Empty),
     );
 }
 
@@ -170,12 +171,12 @@ fn borrow_test() {
         LEND_USDC_TOKEN_ID,
         1,
         &rust_biguint!(1_000),
-        Some(&()),
+        Option::<&Empty>::None,
     );
 
     lending_setup
         .b_mock
-        .set_nft_balance(&user_addr, LEND_EGLD, 1, &rust_biguint!(10), &());
+        .set_nft_balance(&user_addr, LEND_EGLD, 1, &rust_biguint!(10), &Empty);
 
     lending_setup
         .b_mock
@@ -240,14 +241,14 @@ fn repay_test() {
         LEND_USDC_TOKEN_ID,
         1,
         &rust_biguint!(1_000),
-        Some(&()),
+        Option::<&Empty>::None,
     );
 
     lending_setup.b_mock.set_block_timestamp(1_000);
 
     lending_setup
         .b_mock
-        .set_nft_balance(&user_addr, LEND_EGLD, 1, &rust_biguint!(10), &());
+        .set_nft_balance(&user_addr, LEND_EGLD, 1, &rust_biguint!(5), &Empty);
 
     lending_setup
         .b_mock
@@ -331,7 +332,7 @@ fn repay_test() {
         &user_addr,
         LEND_EGLD,
         1,
-        &rust_biguint!(10),
+        &rust_biguint!(5),
         Some(&Vec::<u8>::new()),
     );
 }

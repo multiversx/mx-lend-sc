@@ -50,7 +50,7 @@ pub trait FactoryModule {
                 reserve_factor,
                 liquidation_threshold,
             )
-            .deploy_from_source(
+            .deploy_from_source::<()>(
                 &self.liq_pool_template_address().get(),
                 CodeMetadata::UPGRADEABLE,
             );
