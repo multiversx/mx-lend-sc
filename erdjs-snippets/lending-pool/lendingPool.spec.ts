@@ -211,9 +211,36 @@ describe("lending snippet", async function () {
 
     });
 
+    it("borrow token", async function () {
+        session.expectLongInteraction(this);
+        await session.syncUsers([firstUser, secondUser]);
+        let tokenABC = await session.loadToken("tokenABC");
+        let tokenXYZ = await session.loadToken("tokenXYZ");
+        let depositNonceOne = 5;
+        // let depositNonceTwo = await session.loadBreadcrumb("depositNonceTwo");
+
+        let lendingAddress = await session.loadAddress("contractAddress");
+        let lendingInteractor = await createLendingInteractor(session, lendingAddress);
+
+        let liquidityAddressABC = await lendingInteractor.getLiquidityAddress(tokenABC.identifier);
+        let liquidityInteractorABC = await createLiquidityInteractor(session, liquidityAddressABC);
+
+        let lendToken = await liquidityInteractorABC.getLendingToken();
+
+        let liquidityAddressXYZ = await lendingInteractor.getLiquidityAddress(tokenXYZ.identifier);
+        let liquidityInteractorXYZ = await createLiquidityInteractor(session, liquidityAddressXYZ);
+
+        let assetToBorrow = await liquidityInteractorXYZ.getLendingToken();
+
+        let collateralPayment = TokenPayment.metaEsdtFromAmount(lendToken, depositNonceOne, 10, tokenABC.decimals)
+
+        let returnCode = await lendingInteractor.borrow(firstUser, collateralPayment, assetToBorrow);
+        assert.isTrue(returnCode.isSuccess());
+
+    });
+
     it("generate report", async function () {
         await session.generateReport();
-    });
 
     it("destroy session", async function () {
         await session.destroy();
