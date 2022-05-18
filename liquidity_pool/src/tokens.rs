@@ -3,6 +3,7 @@ elrond_wasm::derive_imports!();
 
 use common_structs::BORROW_TOKEN_PREFIX;
 use common_structs::LEND_TOKEN_PREFIX;
+use elrond_wasm::elrond_codec::Empty;
 
 use super::math;
 use super::storage;
@@ -104,7 +105,7 @@ pub trait TokensModule:
             &empty_buffer,
             &big_zero,
             &empty_buffer,
-            &(),
+            &Empty,
             &empty_vec,
         )
     }
@@ -139,7 +140,7 @@ pub trait TokensModule:
         let owner = self.blockchain().get_owner_address();
         self.lending_pool_proxy(owner)
             .set_token_id_after_issue(token)
-            .execute_on_dest_context();
+            .execute_on_dest_context_ignore_result();
     }
 
     #[proxy]

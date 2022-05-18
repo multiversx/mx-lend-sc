@@ -108,7 +108,7 @@ pub trait RouterModule:
             .issue(pool_asset_id, token_prefix, token_ticker)
             .with_egld_transfer(payment_amount)
             .with_gas_limit(gas_limit)
-            .execute_on_dest_context();
+            .execute_on_dest_context_ignore_result();
     }
 
     #[only_owner]
@@ -120,7 +120,7 @@ pub trait RouterModule:
         self.liquidity_pool_proxy(pool_address)
             .set_lend_token_roles()
             .with_gas_limit(gas_limit)
-            .execute_on_dest_context();
+            .execute_on_dest_context_ignore_result();
     }
 
     #[only_owner]
@@ -132,7 +132,7 @@ pub trait RouterModule:
         self.liquidity_pool_proxy(pool_address)
             .set_borrow_token_roles()
             .with_gas_limit(gas_limit)
-            .execute_on_dest_context();
+            .execute_on_dest_context_ignore_result();
     }
 
     #[only_owner]
@@ -142,7 +142,7 @@ pub trait RouterModule:
 
         self.liquidity_pool_proxy(pool_address)
             .set_price_aggregator_address(aggregator)
-            .execute_on_dest_context();
+            .execute_on_dest_context_ignore_result();
     }
 
     #[only_owner]
