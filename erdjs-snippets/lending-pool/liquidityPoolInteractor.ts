@@ -1,11 +1,6 @@
 import path from "path";
 import { IAddress, Interaction, ResultsParser, SmartContract, SmartContractAbi, TransactionWatcher } from "@elrondnetwork/erdjs";
-<<<<<<< HEAD
 import { IAudit, INetworkConfig, INetworkProvider, ITestSession, ITestUser, loadAbiRegistry, loadCode } from "@elrondnetwork/erdjs-snippets";
-=======
-import { INetworkProvider, ITestSession, ITestUser, loadAbiRegistry } from "@elrondnetwork/erdjs-snippets";
->>>>>>> Add helper functions to Interactors
-import { NetworkConfig } from "@elrondnetwork/erdjs-network-providers";
 
 const PathToLiquidityAbi = path.resolve(__dirname, "..", "..", "liquidity_pool", "output", "liquidity-pool.abi.json");
 
