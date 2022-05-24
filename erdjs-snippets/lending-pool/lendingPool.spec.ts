@@ -60,6 +60,21 @@ describe("lending snippet", async function () {
         await session.saveAddress({name: "lendingAddr", address: address});
     });
 
+    it("Set price aggregator for Liquidity Pools", async function () {
+        session.expectLongInteraction(this);
+        await session.syncUsers([whale, firstUser, secondUser]);
+
+
+
+        let priceAggregatorInteractor = await createPriceAggregatorInteractor(session);
+        let { address: priceAggregatorAddress, returnCode: returnCode } = await priceAggregatorInteractor.deployAggregator(whale);
+
+        await priceAggregatorInteractor.unpausePoolAggregator(whale);
+        await priceAggregatorInteractor.submitPriceAggregator(whale, "ABC", "USD", 7000000000000000000);
+        await priceAggregatorInteractor.submitPriceAggregator(whale, "XYZ", "USD", 9000000000000000000);
+        await session.saveAddress("priceAggregatorAddress", priceAggregatorAddress);
+    });
+
 
     it("Create Liquidity Pool", async function () {
         this.timeout(FiveMinutesInMilliseconds);
