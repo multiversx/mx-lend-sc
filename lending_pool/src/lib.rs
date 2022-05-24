@@ -21,7 +21,7 @@ pub trait LendingPool:
 
     #[payable("*")]
     #[endpoint]
-    fn deposit(&self, caller: OptionalValue<ManagedAddress>) {
+    fn deposit(&self, caller: OptionalValue<ManagedAddress>) -> EsdtTokenPayment<Self::Api> {
         let (amount, asset) = self.call_value().payment_token_pair();
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -33,7 +33,7 @@ pub trait LendingPool:
         self.liquidity_pool_proxy(pool_address)
             .deposit_asset(initial_caller)
             .add_token_transfer(asset, 0, amount)
-            .execute_on_dest_context_ignore_result();
+            .execute_on_dest_context()
     }
 
     #[payable("*")]
@@ -55,7 +55,7 @@ pub trait LendingPool:
 
     #[payable("*")]
     #[endpoint]
-    fn borrow(&self, asset_to_borrow: TokenIdentifier, caller: OptionalValue<ManagedAddress>) {
+    fn borrow(&self, asset_to_borrow: TokenIdentifier, caller: OptionalValue<ManagedAddress>) -> EsdtTokenPayment<Self::Api> {
         let (payment_amount, payment_lend_id) = self.call_value().payment_token_pair();
         let payment_nonce = self.call_value().esdt_token_nonce();
         let initial_caller = self.caller_from_option_or_sender(caller);
@@ -64,13 +64,13 @@ pub trait LendingPool:
         self.require_non_zero_address(&initial_caller);
 
         let borrow_token_pool_address = self.get_pool_address(&asset_to_borrow);
-        let loan_to_value = self.get_loan_to_value_exists_and_non_zero(&payment_lend_id);
+        let loan_to_value = self.get_loan_to_value_exists_and_non_zero(&asset_to_borrow);
 
         //L tokens for a specific token X are 1:1 with deposited X tokens
         self.liquidity_pool_proxy(borrow_token_pool_address)
             .borrow(initial_caller, loan_to_value)
             .add_token_transfer(payment_lend_id, payment_nonce, payment_amount)
-            .execute_on_dest_context_ignore_result();
+            .execute_on_dest_context()
     }
 
     #[payable("*")]
