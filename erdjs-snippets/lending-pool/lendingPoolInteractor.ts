@@ -430,4 +430,47 @@ export class LendingPoolInteractor {
         return firstValue!.valueOf();
     }
 
+    async getAssetLoanToValue(tokenIdentifier: string): Promise<IAddress> {
+        // Prepare the interaction, check it, then build the query:
+        let interaction = <Interaction>this.contract.methods.getAssetLoanToValue([tokenIdentifier]);
+
+        let query = interaction.check().buildQuery();
+
+        // Let's run the query and parse the results:
+        let queryResponse = await this.networkProvider.queryContract(query);
+        let { firstValue } = this.resultsParser.parseQueryResponse(queryResponse, interaction.getEndpoint());
+
+        console.log(`Asset ${tokenIdentifier} are LTV ${firstValue!.valueOf()}`)
+        // Now let's interpret the results.
+        return firstValue!.valueOf();
+    }
+
+
+    async setAggregator(user: ITestUser, poolAsset: string, priceAggregatorAddress: IAddress) {
+        console.log(`LiquidityInteractor.setPriceAggregatorAddress(): priceAggregatorAddres = ${priceAggregatorAddress}`);
+
+        // Prepare the interaction
+        let interaction = <Interaction>this.contract.methods
+            .setAggregator([poolAsset, priceAggregatorAddress])
+            .withGasLimit(10000000)
+            .withNonce(user.account.getNonceThenIncrement())
+            .withChainID(this.networkConfig.ChainID);
+
+        // Let's check the interaction, then build the transaction object.
+        let transaction = interaction.check().buildTransaction();
+
+        // Let's sign the transaction. For dApps, use a wallet provider instead.
+        await user.signer.sign(transaction);
+
+        // Let's broadcast the transaction and await its completion:
+        await this.networkProvider.sendTransaction(transaction);
+        let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
+
+        // console.log("[LendingInteractor.setPriceAggregatorAddress()] tranzacția de pe API", JSON.stringify(transactionOnNetwork, null, 4));
+
+        // In the end, parse the results:
+        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+        return returnCode;
+    }
+
 }
