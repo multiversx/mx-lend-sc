@@ -1,6 +1,11 @@
 import path from "path";
+<<<<<<< HEAD
 import { AddressValue, BigIntValue, CodeMetadata, IAddress, Interaction, ResultsParser, ReturnCode, SmartContract, SmartContractAbi, TokenIdentifierValue, TokenPayment, TransactionWatcher } from "@elrondnetwork/erdjs";
 import { IAudit, INetworkConfig, INetworkProvider, ITestSession, ITestUser, loadAbiRegistry, loadCode } from "@elrondnetwork/erdjs-snippets";
+=======
+import { AddressValue, BigIntValue, CodeMetadata, IAddress, Interaction, ResultsParser, ReturnCode, SmartContract, SmartContractAbi, Struct, TokenIdentifierValue, TokenPayment, TransactionWatcher } from "@elrondnetwork/erdjs";
+import { INetworkProvider, ITestSession, ITestUser, loadAbiRegistry, loadCode } from "@elrondnetwork/erdjs-snippets";
+>>>>>>> Fix Borrow, Withdraw, Deposit scenarios
 import { NetworkConfig } from "@elrondnetwork/erdjs-network-providers";
 
 const PathToWasm = path.resolve(__dirname, "..", "..", "lending_pool", "output", "lending-pool.wasm");
@@ -349,8 +354,7 @@ export class LendingPoolInteractor {
         // In the end, parse the results:
         let { returnCode, firstValue } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
 
-        console.log(`LendingPoolInteractor.deposit(): contract = ${this.contract.getAddress()} Received SDT with nonce = ${firstValue} (return value =  ${returnCode})`);
-        let depositNonce = firstValue!.valueOf();
+        let depositNonce: number = +(<Struct>firstValue).getFieldValue("token_nonce")["c"][0];
 
         console.log(`!!!!!!!!!depositNonce = ${depositNonce}`);
         return { returnCode, depositNonce };
@@ -379,21 +383,22 @@ export class LendingPoolInteractor {
         let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
 
         // In the end, parse the results:
-        let { returnCode, firstValue } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
 
-        console.log(`LendingPoolInteractor.withdraw(): contract = ${this.contract.getAddress()}  returnCode = ${returnCode} Received metaESDT with nonce = ${firstValue}`);
+        console.log(`LendingPoolInteractor.withdraw(): contract = ${this.contract.getAddress()}  returnCode = ${returnCode}`);
 
         return returnCode;
     }
 
-    async borrow(user: ITestUser, collateralToken: TokenPayment, assetToBorrow: string): Promise<ReturnCode> {
-        console.log(`LendingPoolInteractor.borrow(): address = ${user.address}, collateralToken = ${collateralToken.toPrettyString()}, assetToBorrow = ${assetToBorrow}`);
+    async borrow(user: ITestUser, collateralToken: TokenPayment, assetToBorrow: string): Promise<{ returnCode: ReturnCode, borrowNonce: number }> {
+        console.log(`LendingPoolInteractor.borrow(): address = ${user.address}, collateralToken = ${collateralToken.toPrettyString()}, 
+                    nonce = ${collateralToken.nonce} assetToBorrow = ${assetToBorrow}`);
 
 
         // Prepare the interaction
         let interaction = <Interaction>this.contract.methods
             .borrow([assetToBorrow])
-            .withGasLimit(15000000)
+            .withGasLimit(150000000)
             .withSingleESDTNFTTransfer(collateralToken, user.address)
             .withNonce(user.account.getNonceThenIncrement())
             .withChainID(this.networkConfig.ChainID);
@@ -409,11 +414,12 @@ export class LendingPoolInteractor {
         let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
 
         // In the end, parse the results:
-        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+        let { returnCode, firstValue } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
 
+        let borrowNonce: number = +(<Struct>firstValue).getFieldValue("token_nonce")["c"][0];
         console.log(`LendingPoolInteractor.borrow(): contract = ${this.contract.getAddress()}  returnCode = ${returnCode}`);
 
-        return returnCode;
+        return { returnCode, borrowNonce };
     }
 
     async getLiquidityAddress(tokenIdentifier: string): Promise<IAddress> {
