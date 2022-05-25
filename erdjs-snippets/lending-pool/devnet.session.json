@@ -11,11 +11,11 @@
             },
             {
                 "name": "firstUser",
-                "pem": "~/elrondsdk/testwallets/latest/users/bob.pem"
+                "pem": "~/elrondsdk/testwallets/latest/users/dan.pem"
             },
             {
                 "name": "secondUser",
-                "pem": "~/elrondsdk/testwallets/latest/users/carol.pem"
+                "pem": "~/elrondsdk/testwallets/latest/users/eve.pem"
             }
         ],
         "groups": [
