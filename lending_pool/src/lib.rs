@@ -55,7 +55,11 @@ pub trait LendingPool:
 
     #[payable("*")]
     #[endpoint]
-    fn borrow(&self, asset_to_borrow: TokenIdentifier, caller: OptionalValue<ManagedAddress>) -> EsdtTokenPayment<Self::Api> {
+    fn borrow(
+        &self,
+        asset_to_borrow: TokenIdentifier,
+        caller: OptionalValue<ManagedAddress>,
+    ) -> EsdtTokenPayment<Self::Api> {
         let (payment_amount, payment_lend_id) = self.call_value().payment_token_pair();
         let payment_nonce = self.call_value().esdt_token_nonce();
         let initial_caller = self.caller_from_option_or_sender(caller);

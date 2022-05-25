@@ -47,7 +47,7 @@ pub trait LiquidityModule:
             &amount,
             &[],
         );
-        EsdtTokenPayment::new(self.lend_token().get(), new_nonce, amount)
+        EsdtTokenPayment::new(lend_token_id, new_nonce, amount)
     }
 
     #[only_owner]
