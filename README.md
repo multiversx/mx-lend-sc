@@ -77,7 +77,9 @@ TL;DR: User sends *LTOKEN_A* and receives *TOKEN_A*.
 #### Borrow
 
 
-![Borrow Scenario (1)](https://user-images.githubusercontent.com/3630188/170348702-203cea74-c624-40ba-874d-dd225f671873.png)
+
+![Borrow Scenario (2)](https://user-images.githubusercontent.com/3630188/170364142-a9e5b0f4-80ae-4930-887e-174de375994e.png)
+
 
 
 The flow is as follows:
@@ -85,14 +87,14 @@ The flow is as follows:
 2. The *Lending Pool SC* gets the *Liquidity Pool Address* based on the *asset_to_borrow* parameters passed by the user;
 3. The *Lending Pool SC* gets the *LTV* (Loan To Value), a value specific (different) for each token;
 4. The *Lending Pool SC* calls the `borrow` endpoint from the *Liquidity Pool SC*;
-5. The *Liquidity Pool SC* mints metaESDT tokens with an unique nonce. These have the same ticker as the token with an *B* appended in front (ABC -> BABC);
+5. The *Liquidity Pool SC* mints metaESDT tokens with an unique nonce. These have the same ticker as the borrwed token with an *B* appended in front (ABC -> BABC);
 6. The *Liquidity Pool SC* computes the borrowable amount (*collateral value *LTV*) and creates a BorrowPosition with this particular borrow information.
 7. The *Liquidity Pool SC* updates the reservers;
-8. The *Liquidity Pool SC* performs 2 transactions: First transaction with the MetaEsdt tokens freshly minted, derived from the collateral (if the collateral token is TOKEN_A, the minted token is BTOKEN_A). These tokens will be used to repay the debt.
+8. The *Liquidity Pool SC* performs 2 transactions: First transaction with the MetaEsdt tokens freshly minted, derived from the collateral (if the borrowed token is TOKEN_B, the minted token is BTOKEN_B). These tokens will be used to repay the debt.
 9. The second transaction with the requested tokens (TOKEN_B).
-10. The *Liquidity Pool SC* returns an EsdtTokenPayment with the MetaESDT freshly minted, its nonce and the amount which is the same as the deposited amount (1 TOKEN = 1 BTOKEN). The *Lending Pool* returns the same result to the user.
+10. The *Liquidity Pool SC* returns an EsdtTokenPayment with the MetaESDT freshly minted, its nonce and the amount which is the same as the borrowed amount (1 TOKEN = 1 BTOKEN). The *Lending Pool* returns the same result to the user.
 
-TL;DR: User sends *LTOKEN_A* as collateral and receives *BTOKEN_A* (used for repay) and *TOKEN_B* (the token wanted to borrow).
+TL;DR: User sends *LTOKEN_A* as collateral and receives *BTOKEN_B* (used for repay) and *TOKEN_B* (the token wanted to borrow).
 
 
 
@@ -102,7 +104,8 @@ Borrowers can repay tokens to the market up to the **borrow balance**.
 If partial repayment is made, the **borrow balance** may be non-zero, and continue to accrue debt.
 Repayment is a transfer of tokens from the borrower back to the token market.
 
-![Repay Scenario](https://user-images.githubusercontent.com/3630188/170351530-94d0abc0-d983-48a5-bf66-9301f62326a6.png)
+
+![Repay Scenario (1)](https://user-images.githubusercontent.com/3630188/170364482-cd85653d-d8fa-4b00-a97d-bdd90877dc17.png)
 
 
 The flow is as follows:
@@ -116,7 +119,7 @@ The flow is as follows:
 8. The *Lending Pool SC* burns the borrowed tokens (minted at the borrow scenario);
 9. The *Lending Pool SC* sends directly to user the collateral used for borrow.
 
-TL;DR: User sends *BTOKEN_A* and *TOKEN_B* (initial borrowed amount + interest) and receives *BTOKEN_A*.
+TL;DR: User sends *BTOKEN_B* and *TOKEN_B* (initial borrowed amount + interest) and receives *BTOKEN_A*.
 
 
 #### Liquidate
