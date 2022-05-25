@@ -23,20 +23,110 @@ The main idea behind the lending/borrowing collateral in a p2p way is that of ut
 This means that contracts don’t need to hold state about rates, or enforce rates statically. 
 It achieves this by computing the current borrow/deposit rate in a dynamic way, taking the relation between the particular pool’s reserves and the utilisation rate at that moment (amount of collateral borrowed).
 
+![Supply-Borrow Lending Pool (1)](https://user-images.githubusercontent.com/3630188/170192980-f68ca7d9-88bb-4118-a83a-a1a67269f7b4.png)
+
+
 ## Protocol Architecture
 
 We propose a lending strategy based on algorithmic pool-based liquidity.
-It supports multiple assets, with a Liquidity Pool for each asset.
+The Lending Protocol supports multiple Liquidity Pools, which have their own state and a Lending Pool which acts as Router and Proxy for routing and executing transactions based on the transaction input.
 The addition of a new asset requires the deployment of another liquidity pool contract.
 The Lending Pool deploys and manages the Liquidity Pools as an owner.
-The protocol supports multiple Liquidity Pools, which have their own state and a Lending Pool which acts as Router and Proxy for routing and executing transactions based on the transaction input.
-
-Supliers wanting to supply a token **TEST**, will deposit 
-
-![Supply-Borrow Lending Pool](https://user-images.githubusercontent.com/3630188/159972815-8c7c746d-3f0e-444d-8bdc-81287ddc95c1.png)
 
 
-### Interest Rate Model
+
+### The LendingPool Contract
+
+#### Deposit
+
+The deposit action is the simplest one and does not have any state check.
+
+![Deposit Scenario (5)](https://user-images.githubusercontent.com/3630188/170304702-787c000f-c606-4255-b289-a800e28d625b.png)
+
+
+
+
+The flow is as follows:
+1. The user calls `deposit` endpoint from the *Lending Pool SC*, which calls the `deposit_asset` endpoint from the *Liquidity Pool*;
+2. The *Liquidity Pool SC* mints metaESDT tokens with an unique nonce. These have the same ticker as the token with an *L* appended in front (ABC -> LABC);
+3. The *Liquidity Pool SC* creates a `DepositPosition` which contains the timestamp and the amount of tokens;
+4. The *Liquidity Pool SC* updates the reservers (*Reserves Storage Mapper*).
+5. The *Liquidity Pool SC* sends the MetaESDT tokens to the user directly.
+6. The *Liquidity Pool SC* returns an EsdtTokenPayment with the MetaESDT freshly minted, its nonce and the amount which is the same as the deposited amount (1 TOKEN = 1 LTOKEN). The *Lending Pool* returns the same result to the user.
+
+TL;DR: User sends *TOKEN_A* and receives *LTOKEN_A*.
+
+#### Widthraw
+
+This is the opposite of Deposit scenario.
+
+
+![Withdraw Scenario (3)](https://user-images.githubusercontent.com/3630188/170304749-7a2adbe7-2cf3-4a22-a7b0-013c69980f81.png)
+
+
+
+The flow is as follows:
+1. The user calls `withdraw` endpoint from the *Lending Pool SC*, which calls the `withdraw` endpoint from the *Liquidity Pool*;
+2. The *Liquidity Pool SC* computes the witdrawal amount (capital deposited + interest accrueled);
+3. The *Liquidity Pool SC* updates the reservers and the DepositPosition (the user may have withdraw only a part of the amount deposited)
+4. The *Liquidity Pool SC* burns the MetaEsdt tokens sent by the user;
+5. The *Liquidity Pool SC* send the original tokens directly to the user;
+
+TL;DR: User sends *LTOKEN_A* and receives *TOKEN_A*.
+
+#### Borrow
+
+
+![Borrow Scenario (1)](https://user-images.githubusercontent.com/3630188/170348702-203cea74-c624-40ba-874d-dd225f671873.png)
+
+
+The flow is as follows:
+1. The user calls `borrow` endpoint from the *Lending Pool SC*;
+2. The *Lending Pool SC* gets the *Liquidity Pool Address* based on the *asset_to_borrow* parameters passed by the user;
+3. The *Lending Pool SC* gets the *LTV* (Loan To Value), a value specific (different) for each token;
+4. The *Lending Pool SC* calls the `borrow` endpoint from the *Liquidity Pool SC*;
+5. The *Liquidity Pool SC* mints metaESDT tokens with an unique nonce. These have the same ticker as the token with an *B* appended in front (ABC -> BABC);
+6. The *Liquidity Pool SC* computes the borrowable amount (*collateral value *LTV*) and creates a BorrowPosition with this particular borrow information.
+7. The *Liquidity Pool SC* updates the reservers;
+8. The *Liquidity Pool SC* performs 2 transactions: First transaction with the MetaEsdt tokens freshly minted, derived from the collateral (if the collateral token is TOKEN_A, the minted token is BTOKEN_A). These tokens will be used to repay the debt.
+9. The second transaction with the requested tokens (TOKEN_B).
+10. The *Liquidity Pool SC* returns an EsdtTokenPayment with the MetaESDT freshly minted, its nonce and the amount which is the same as the deposited amount (1 TOKEN = 1 BTOKEN). The *Lending Pool* returns the same result to the user.
+
+TL;DR: User sends *LTOKEN_A* as collateral and receives *BTOKEN_A* (used for repay) and *TOKEN_B* (the token wanted to borrow).
+
+
+
+#### Repay
+
+Borrowers can repay tokens to the market up to the **borrow balance**.
+If partial repayment is made, the **borrow balance** may be non-zero, and continue to accrue debt.
+Repayment is a transfer of tokens from the borrower back to the token market.
+
+![Repay Scenario](https://user-images.githubusercontent.com/3630188/170351530-94d0abc0-d983-48a5-bf66-9301f62326a6.png)
+
+
+The flow is as follows:
+1. The user calls `borrow` endpoint from the *Lending Pool SC*. (This scenario requires *multi token transfer*);
+2. The *Lending Pool SC* gets the *Liquidity Pool Address* based on the *asset_to_repay* parameters passed by the user;
+3. The *Lending Pool SC* calls the `repay` endpoint from the *Liquidity Pool SC*;
+4. The *Lending Pool SC* computes the accumulated debt. `total_owed = borrowed_token_amount + accumulated_debt`;
+5. The *Lending Pool SC* sends back to user the extra tokens (`extra_tokens = asset_payed - total_owed`); 
+6. The *Lending Pool SC* computes the amount of tokens to send to user;
+7. The *Lending Pool SC* update reserves (borrowed amount and LP asset amount);
+8. The *Lending Pool SC* burns the borrowed tokens (minted at the borrow scenario);
+9. The *Lending Pool SC* sends directly to user the collateral used for borrow.
+
+TL;DR: User sends *BTOKEN_A* and *TOKEN_B* (initial borrowed amount + interest) and receives *BTOKEN_A*.
+
+
+#### Liquidate
+
+If a borrower’s **borrowing balance exceeds** their total collateral value, it means that the protocol is at risk of suffering a loss if the borrower defaults on repayment.
+We call this a shortfall event.
+In order to reduce this risk, the protocol provides a public liquidate function which can be called by any user
+
+
+## Interest Rate Model
 
 We use an interest rate model which is based on the pool’s capital utilisation, which we can call *U*.
 Liquidity risk materialises when utilisation is high, its becomes more problematic as *U* gets closer to 100%.
@@ -52,7 +142,7 @@ The interest rate *Rt* formulas depending on the capital utilisation of the pool
 
 *R0*, *Rslope1* and *Rslope2* are predefined values
 
-#### Simulations
+### Simulations
 
 ![image](https://user-images.githubusercontent.com/3630188/160086654-8cfb9201-abb6-4b56-a57d-5bb72a0273e9.png)
 
@@ -80,40 +170,5 @@ Once a borrow is taken, the LTV evolves with market conditions.
 For example, a Liquidation threshold of 80% means that if the value rises above 80% of the collateral, the position is undercollateralised and could be liquidated.
 
 The delta between the Loan-To-Value and the Liquidation Threshold is a safety cushion for borrowers.
-
-
-
-## The LendingPool Contract
-
-### Deposit
-
-The deposit action is the simplest one and does not have any state check.
-
-![Deposit Position (2)](https://user-images.githubusercontent.com/3630188/160102524-defb6b6f-870a-45b2-a037-ae210da2aae8.png)
-
-
-The flow is as follows:
-1. The user calls `deposit` function from the *Lending Pool*, which calls `deposit_asset` from the *Liquidity Pool*;
-2. Mints metaESDT tokens with an unique nonce;
-3. Creates a `DepositPosition` which contains the timestamp;
-4. Deposit in the *Deposit Storage Mapper* an entry with the nonce (obtained from the 2nd step) and `DepositPosition` struct (obtained from the 3rd step);
-5. Updates the *Reserves Storage Mapper*.
-
-
-### Widthraw
-
-### Borrow
-
-### Repay
-
-Borrowers can repay tokens to the market up to the **borrow balance**.
-If partial repayment is made, the **borrow balance** may be non-zero, and continue to accrue interest.
-Repayment is a transfer of tokens from the borrower back to the token market.
-
-### Liquidate
-
-If a borrower’s **borrowing balance exceeds** their total collateral value, it means that the protocol is at risk of suffering a loss if the borrower defaults on repayment.
-We call this a shortfall event.
-In order to reduce this risk, the protocol provides a public liquidate function which can be called by any user
 
 
