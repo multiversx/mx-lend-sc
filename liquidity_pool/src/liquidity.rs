@@ -22,7 +22,7 @@ pub trait LiquidityModule:
     #[only_owner]
     #[payable("*")]
     #[endpoint(depositAsset)]
-    fn deposit_asset(&self, initial_caller: ManagedAddress) {
+    fn deposit_asset(&self, initial_caller: ManagedAddress) -> EsdtTokenPayment<Self::Api> {
         let (amount, asset) = self.call_value().payment_token_pair();
 
         let pool_asset = self.pool_asset().get();
@@ -47,6 +47,7 @@ pub trait LiquidityModule:
             &amount,
             &[],
         );
+        EsdtTokenPayment::new(lend_token_id, new_nonce, amount)
     }
 
     #[only_owner]
@@ -79,7 +80,11 @@ pub trait LiquidityModule:
     #[only_owner]
     #[payable("*")]
     #[endpoint]
-    fn borrow(&self, initial_caller: ManagedAddress, loan_to_value: BigUint) {
+    fn borrow(
+        &self,
+        initial_caller: ManagedAddress,
+        loan_to_value: BigUint,
+    ) -> EsdtTokenPayment<Self::Api> {
         let (payment_lend_amount, payment_lend_token_id) = self.call_value().payment_token_pair();
         let payment_lend_token_nonce = self.call_value().esdt_token_nonce();
 
@@ -145,6 +150,7 @@ pub trait LiquidityModule:
             &borrow_amount_in_tokens,
             &[],
         );
+        EsdtTokenPayment::new(borrow_token_id, new_nonce, borrow_amount_in_tokens)
     }
 
     #[only_owner]
