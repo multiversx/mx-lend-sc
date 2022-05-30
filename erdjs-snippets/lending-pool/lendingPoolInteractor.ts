@@ -318,7 +318,7 @@ export class LendingPoolInteractor {
         // In the end, parse the results:
         let { returnCode, firstValue } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
 
-        let depositNonce: number = +(<Struct>firstValue).getFieldValue("token_nonce")["c"][0];
+        let depositNonce: number = +(<Struct>firstValue).getFieldValue("token_nonce").toNumber();
 
         return { returnCode, depositNonce };
     }
@@ -375,7 +375,7 @@ export class LendingPoolInteractor {
         // In the end, parse the results:
         let { returnCode, firstValue } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
 
-        let borrowNonce: number = +(<Struct>firstValue).getFieldValue("token_nonce")["c"][0];
+        let borrowNonce: number = +(<Struct>firstValue).getFieldValue("token_nonce").toNumber();
         return { returnCode, borrowNonce };
     }
 
