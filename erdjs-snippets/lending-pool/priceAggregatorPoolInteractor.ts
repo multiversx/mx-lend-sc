@@ -8,7 +8,7 @@ const PathToPriceAggregator = path.resolve(__dirname, "..", "..", "price_aggrega
 
 export async function createPriceAggregatorInteractor(session: ITestSession, contractAddress?: IAddress): Promise<PriceAggregatorInteractor> {
     let registry = await loadAbiRegistry(PathToPriceAggregatorAbi);
-    let abi = new SmartContractAbi(registry, ["PriceAggregator"]);
+    let abi = new SmartContractAbi(registry);
     let contract = new SmartContract({ address: contractAddress, abi: abi });
     let networkProvider = session.networkProvider;
     let networkConfig = session.getNetworkConfig();
@@ -72,8 +72,6 @@ export class PriceAggregatorInteractor {
     }
 
     async unpausePoolAggregator(user: ITestUser) {
-        // console.log(`PriceAggregatorInteractor.unpausePoolAggregator(): address = ${user.address}`);
-
         // Prepare the interaction
         let interaction = <Interaction>this.contract.methods
             .unpause([])
@@ -127,8 +125,6 @@ export class PriceAggregatorInteractor {
         let queryResponse = await this.networkProvider.queryContract(query);
         let { values } = this.resultsParser.parseQueryResponse(queryResponse, interaction.getEndpoint());
 
-        // Now let's interpret the results.
         console.log(`New price for ${from}, is ${values}`);
     }
-
 }
