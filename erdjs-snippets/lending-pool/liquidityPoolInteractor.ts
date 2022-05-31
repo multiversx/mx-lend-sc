@@ -1,34 +1,36 @@
 import path from "path";
 import { IAddress, Interaction, ResultsParser, SmartContract, SmartContractAbi, TransactionWatcher } from "@elrondnetwork/erdjs";
-import { INetworkProvider, ITestSession, loadAbiRegistry } from "@elrondnetwork/erdjs-snippets";
+import { IAudit, INetworkConfig, INetworkProvider, ITestSession, ITestUser, loadAbiRegistry, loadCode } from "@elrondnetwork/erdjs-snippets";
 import { NetworkConfig } from "@elrondnetwork/erdjs-network-providers";
 
 const PathToLiquidityAbi = path.resolve(__dirname, "..", "..", "liquidity_pool", "output", "liquidity-pool.abi.json");
 
 export async function createLiquidityInteractor(session: ITestSession, contractAddress?: IAddress): Promise<LiquidityPoolInteractor> {
-    let registry = await loadAbiRegistry(PathToLiquidityAbi);
-    let abi = new SmartContractAbi(registry, ["LiquidityPool"]);
-    let contract = new SmartContract({ address: contractAddress, abi: abi });
-    let networkProvider = session.networkProvider;
-    let networkConfig = session.getNetworkConfig();
-
-    let interactor = new LiquidityPoolInteractor(contract, networkProvider, networkConfig);
+    const registry = await loadAbiRegistry(PathToLiquidityAbi);
+    const abi = new SmartContractAbi(registry, ["LiquidityPool"]);
+    const contract = new SmartContract({ address: contractAddress, abi: abi });
+    const networkProvider = session.networkProvider;
+    const networkConfig = session.getNetworkConfig();
+    const audit = session.audit;
+    const interactor = new LiquidityPoolInteractor(contract, networkProvider, networkConfig, audit);
     return interactor;
 }
 
 export class LiquidityPoolInteractor {
     private readonly contract: SmartContract;
     private readonly networkProvider: INetworkProvider;
-    private readonly networkConfig: NetworkConfig;
+    private readonly networkConfig: INetworkConfig;
     private readonly transactionWatcher: TransactionWatcher;
     private readonly resultsParser: ResultsParser;
+    private readonly audit: IAudit;
 
-    constructor(contract: SmartContract, networkProvider: INetworkProvider, networkConfig: NetworkConfig) {
+    constructor(contract: SmartContract, networkProvider: INetworkProvider, networkConfig: INetworkConfig, audit: IAudit) {
         this.contract = contract;
         this.networkProvider = networkProvider;
         this.networkConfig = networkConfig;
         this.transactionWatcher = new TransactionWatcher(networkProvider);
         this.resultsParser = new ResultsParser();
+        this.audit = audit;
     }
 
     async getLendingToken(): Promise<string> {
