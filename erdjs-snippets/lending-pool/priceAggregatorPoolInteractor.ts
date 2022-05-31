@@ -64,8 +64,6 @@ export class PriceAggregatorInteractor {
         await this.networkProvider.sendTransaction(transaction);
         let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
 
-        // console.log("[PriceAggregatorInteractor] tranzacția de pe API", JSON.stringify(transactionOnNetwork, null, 4));
-
         // In the end, parse the results:
         let { returnCode } = this.resultsParser.parseUntypedOutcome(transactionOnNetwork);
 
@@ -93,9 +91,6 @@ export class PriceAggregatorInteractor {
         await this.networkProvider.sendTransaction(transaction);
         let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
 
-        // console.log("[PriceAggregatorInteractor] tranzacția de pe API", JSON.stringify(transactionOnNetwork, null, 4));
-
-
         // In the end, parse the results:
         let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
         return returnCode;
@@ -120,13 +115,6 @@ export class PriceAggregatorInteractor {
         // Let's broadcast the transaction and await its completion:
         await this.networkProvider.sendTransaction(transaction);
         let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
-
-        // console.log("[PriceAggregatorInteractor] tranzacția de pe API", JSON.stringify(transactionOnNetwork, null, 4));
-
-
-        // In the end, parse the results:
-        // let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
-        // return returnCode;
     }
 
     async latestPriceFeed(from: string, to: string) {
@@ -140,7 +128,7 @@ export class PriceAggregatorInteractor {
         let { values } = this.resultsParser.parseQueryResponse(queryResponse, interaction.getEndpoint());
 
         // Now let's interpret the results.
-        console.log(`Noul preț al ${from} este, Răspunsul fiind ${values}`);
+        console.log(`New price for ${from}, is ${values}`);
     }
 
 }
