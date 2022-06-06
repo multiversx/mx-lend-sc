@@ -33,11 +33,6 @@ where
                 managed_biguint!(EGLD_PRICE_IN_DOLLARS),
             );
             sc.set_latest_price_feed(
-                managed_buffer!(LEND_EGLD),
-                managed_buffer!(DOLLAR_TICKER),
-                managed_biguint!(EGLD_PRICE_IN_DOLLARS),
-            );
-            sc.set_latest_price_feed(
                 managed_buffer!(USDC_TICKER),
                 managed_buffer!(DOLLAR_TICKER),
                 managed_biguint!(USDC_PRICE_IN_DOLLARS),

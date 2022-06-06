@@ -1,7 +1,9 @@
+use aggregator_mock::PriceAggregatorMock;
 use constants::*;
 use elrond_wasm::elrond_codec::Empty;
 use elrond_wasm_debug::{
-    managed_address, managed_biguint, managed_token_id, rust_biguint, tx_mock::TxInputESDT,
+    managed_address, managed_biguint, managed_buffer, managed_token_id, rust_biguint,
+    tx_mock::TxInputESDT,
 };
 use lending_pool_interaction::LendingSetup;
 use liquidity_pool::{liquidity::LiquidityModule, storage::StorageModule};
@@ -334,5 +336,140 @@ fn repay_test() {
         1,
         &rust_biguint!(5),
         Some(&Vec::<u8>::new()),
+    );
+}
+
+#[test]
+fn liquidate_test() {
+    let mut lending_setup = LendingSetup::deploy_lending(
+        lending_pool::contract_obj,
+        liquidity_pool::contract_obj,
+        aggregator_mock::contract_obj,
+    );
+    let borrower_addr = lending_setup.first_user_addr.clone();
+    let liquidator_addr = lending_setup.second_user_addr.clone();
+
+    lending_setup
+        .b_mock
+        .set_esdt_balance(&borrower_addr, USDC_TOKEN_ID, &rust_biguint!(200_000));
+
+    // Deposit USDC
+    lending_setup
+        .b_mock
+        .execute_esdt_transfer(
+            &borrower_addr,
+            &lending_setup.liquidity_pool_wrapper,
+            USDC_TOKEN_ID,
+            0,
+            &rust_biguint!(200_000),
+            |sc| {
+                sc.deposit_asset(managed_address!(&borrower_addr));
+            },
+        )
+        .assert_ok();
+
+    // Check LUSDC
+    lending_setup.b_mock.check_nft_balance(
+        &borrower_addr,
+        LEND_USDC_TOKEN_ID,
+        1,
+        &rust_biguint!(200_000),
+        Option::<&Empty>::None,
+    );
+
+    lending_setup.b_mock.set_nft_balance(
+        &borrower_addr,
+        LEND_EGLD,
+        1,
+        &rust_biguint!(1_000),
+        &Empty,
+    );
+
+    // Borrow USDC
+    lending_setup
+        .b_mock
+        .execute_esdt_transfer(
+            &borrower_addr,
+            &lending_setup.liquidity_pool_wrapper,
+            LEND_EGLD,
+            1,
+            &rust_biguint!(1_000),
+            |sc| {
+                sc.borrow(
+                    managed_address!(&borrower_addr),
+                    managed_biguint!(500_000_000),
+                );
+            },
+        )
+        .assert_ok();
+
+    // Check received BUSDC
+    lending_setup.b_mock.check_nft_balance(
+        &borrower_addr,
+        BORROW_USDC_TOKEN_ID,
+        1,
+        &rust_biguint!(100_000),
+        Some(&Vec::<u8>::new()),
+    );
+
+    // Check received USDC
+    lending_setup.b_mock.check_nft_balance(
+        &borrower_addr,
+        USDC_TOKEN_ID,
+        0,
+        &rust_biguint!(100_000),
+        Some(&Vec::<u8>::new()),
+    );
+
+    lending_setup
+        .b_mock
+        .execute_tx(
+            &liquidator_addr,
+            &lending_setup.price_aggregator_wrapper,
+            &rust_biguint!(0),
+            |sc| {
+                sc.set_latest_price_feed(
+                    managed_buffer!(EGLD_TICKER),
+                    managed_buffer!(DOLLAR_TICKER),
+                    managed_biguint!(EGLD_PRICE_DROPPED_IN_DOLLARS),
+                );
+            },
+        )
+        .assert_ok();
+
+    lending_setup
+        .b_mock
+        .set_esdt_balance(&liquidator_addr, USDC_TOKEN_ID, &rust_biguint!(100_000));
+
+    lending_setup
+        .b_mock
+        .execute_esdt_transfer(
+            &liquidator_addr,
+            &lending_setup.liquidity_pool_wrapper,
+            USDC_TOKEN_ID,
+            0,
+            &rust_biguint!(100_000),
+            |sc| {
+                sc.liquidate(managed_address!(&liquidator_addr), 1, managed_biguint!(0));
+            },
+        )
+        .assert_ok();
+
+    // Check LUSDC
+    lending_setup.b_mock.check_nft_balance(
+        &borrower_addr,
+        LEND_EGLD,
+        1,
+        &rust_biguint!(0),
+        Option::<&Empty>::None,
+    );
+
+    // Check LUSDC
+    lending_setup.b_mock.check_nft_balance(
+        &liquidator_addr,
+        LEND_EGLD,
+        1,
+        &rust_biguint!(1_000),
+        Option::<&Empty>::None,
     );
 }
