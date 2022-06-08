@@ -105,7 +105,7 @@ If partial repayment is made, the **borrow balance** may be non-zero, and contin
 Repayment is a transfer of tokens from the borrower back to the token market.
 
 
-![Repay Scenario (2)](https://user-images.githubusercontent.com/3630188/172658781-2aab6429-7091-425e-93b0-45fad6027571.png)
+![Repay Scenario (3)](https://user-images.githubusercontent.com/3630188/172659147-d72209bb-a462-49e7-a0f9-670d13a49415.png)
 
 
 The flow is as follows:
