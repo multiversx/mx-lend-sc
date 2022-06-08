@@ -78,7 +78,7 @@ TL;DR: User sends *LTOKEN_A* and receives *TOKEN_A*.
 
 
 
-![Borrow Scenario (2)](https://user-images.githubusercontent.com/3630188/170364142-a9e5b0f4-80ae-4930-887e-174de375994e.png)
+![Borrow Scenario (3)](https://user-images.githubusercontent.com/3630188/172658812-df59d7cb-8977-4b38-b021-e5f09d725b18.png)
 
 
 
@@ -105,7 +105,7 @@ If partial repayment is made, the **borrow balance** may be non-zero, and contin
 Repayment is a transfer of tokens from the borrower back to the token market.
 
 
-![Repay Scenario (1)](https://user-images.githubusercontent.com/3630188/170364482-cd85653d-d8fa-4b00-a97d-bdd90877dc17.png)
+![Repay Scenario (2)](https://user-images.githubusercontent.com/3630188/172658781-2aab6429-7091-425e-93b0-45fad6027571.png)
 
 
 The flow is as follows:
