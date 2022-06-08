@@ -11,8 +11,8 @@ use price_aggregator_proxy::PriceAggregatorModule;
 
 use crate::{
     constants::{
-        BORROW_USDC_TOKEN_ID, LEND_USDC_TOKEN_ID, LIQ_THRESOLD, RESERVE_FACTOR, R_BASE, R_SLOPE1,
-        R_SLOPE2, USDC_TOKEN_ID, U_OPTIMAL,
+        BORROW_EGLD, BORROW_USDC_TOKEN_ID, EGLD_TOKEN_ID, LEND_EGLD, LEND_USDC_TOKEN_ID,
+        LIQ_THRESOLD, RESERVE_FACTOR, R_BASE, R_SLOPE1, R_SLOPE2, USDC_TOKEN_ID, U_OPTIMAL,
     },
     setup::*,
 };
@@ -31,7 +31,9 @@ where
     pub b_mock: BlockchainStateWrapper,
     pub lending_pool_wrapper:
         ContractObjWrapper<lending_pool::ContractObj<DebugApi>, LendingPoolObjBuilder>,
-    pub liquidity_pool_wrapper:
+    pub liquidity_pool_usdc_wrapper:
+        ContractObjWrapper<liquidity_pool::ContractObj<DebugApi>, LiquidityPoolObjBuilder>,
+    pub liquidity_pool_egld_wrapper:
         ContractObjWrapper<liquidity_pool::ContractObj<DebugApi>, LiquidityPoolObjBuilder>,
 }
 
@@ -64,7 +66,7 @@ where
             &Address::zero(),
         );
 
-        let liquidity_pool_wrapper = b_mock.create_sc_account(
+        let liquidity_pool_usdc_wrapper = b_mock.create_sc_account(
             &rust_biguint!(0u64),
             Some(&lending_pool_wrapper.address_ref()),
             liquidity_pool_builder,
@@ -74,7 +76,7 @@ where
         b_mock
             .execute_tx(
                 &owner_addr,
-                &liquidity_pool_wrapper,
+                &liquidity_pool_usdc_wrapper,
                 &rust_biguint!(0),
                 |sc| {
                     sc.init(
@@ -104,22 +106,22 @@ where
                 |sc| {
                     sc.pools_map().insert(
                         managed_token_id!(USDC_TOKEN_ID),
-                        managed_address!(&liquidity_pool_wrapper.address_ref()),
+                        managed_address!(&liquidity_pool_usdc_wrapper.address_ref()),
                     );
                     sc.pools_allowed()
-                        .insert(managed_address!(&liquidity_pool_wrapper.address_ref()));
+                        .insert(managed_address!(&liquidity_pool_usdc_wrapper.address_ref()));
                 },
             )
             .assert_ok();
 
         b_mock.set_esdt_balance(
-            &liquidity_pool_wrapper.address_ref(),
+            &liquidity_pool_usdc_wrapper.address_ref(),
             LEND_USDC_TOKEN_ID,
             &rust_biguint!(0),
         );
 
         b_mock.set_esdt_local_roles(
-            liquidity_pool_wrapper.address_ref(),
+            liquidity_pool_usdc_wrapper.address_ref(),
             LEND_USDC_TOKEN_ID,
             &[
                 EsdtLocalRole::NftCreate,
@@ -129,14 +131,93 @@ where
         );
 
         b_mock.set_esdt_balance(
-            &liquidity_pool_wrapper.address_ref(),
+            &liquidity_pool_usdc_wrapper.address_ref(),
             BORROW_USDC_TOKEN_ID,
             &rust_biguint!(0),
         );
 
         b_mock.set_esdt_local_roles(
-            liquidity_pool_wrapper.address_ref(),
+            liquidity_pool_usdc_wrapper.address_ref(),
             BORROW_USDC_TOKEN_ID,
+            &[
+                EsdtLocalRole::NftCreate,
+                EsdtLocalRole::NftAddQuantity,
+                EsdtLocalRole::NftBurn,
+            ],
+        );
+
+        let liquidity_pool_egld_wrapper = b_mock.create_sc_account(
+            &rust_biguint!(0u64),
+            Some(&lending_pool_wrapper.address_ref()),
+            liquidity_pool_builder,
+            "liq_pool_template_other",
+        );
+
+        b_mock
+            .execute_tx(
+                &owner_addr,
+                &liquidity_pool_egld_wrapper,
+                &rust_biguint!(0),
+                |sc| {
+                    sc.init(
+                        managed_token_id!(EGLD_TOKEN_ID),
+                        managed_biguint!(R_BASE),
+                        managed_biguint!(R_SLOPE1),
+                        managed_biguint!(R_SLOPE2),
+                        managed_biguint!(U_OPTIMAL),
+                        managed_biguint!(RESERVE_FACTOR),
+                        managed_biguint!(LIQ_THRESOLD),
+                    );
+                    sc.lend_token().set(managed_token_id!(LEND_EGLD));
+                    sc.borrow_token().set(managed_token_id!(BORROW_EGLD));
+                    sc.set_price_aggregator_address(managed_address!(
+                        &price_aggregator_wrapper.address_ref()
+                    ));
+                },
+            )
+            .assert_ok();
+
+        b_mock
+            .execute_tx(
+                &owner_addr,
+                &lending_pool_wrapper,
+                &rust_biguint!(0),
+                |sc| {
+                    sc.pools_map().insert(
+                        managed_token_id!(EGLD_TOKEN_ID),
+                        managed_address!(&liquidity_pool_egld_wrapper.address_ref()),
+                    );
+                    sc.pools_allowed()
+                        .insert(managed_address!(&liquidity_pool_egld_wrapper.address_ref()));
+                },
+            )
+            .assert_ok();
+
+        b_mock.set_esdt_balance(
+            &liquidity_pool_egld_wrapper.address_ref(),
+            LEND_EGLD,
+            &rust_biguint!(0),
+        );
+
+        b_mock.set_esdt_local_roles(
+            liquidity_pool_egld_wrapper.address_ref(),
+            LEND_EGLD,
+            &[
+                EsdtLocalRole::NftCreate,
+                EsdtLocalRole::NftAddQuantity,
+                EsdtLocalRole::NftBurn,
+            ],
+        );
+
+        b_mock.set_esdt_balance(
+            &liquidity_pool_egld_wrapper.address_ref(),
+            BORROW_EGLD,
+            &rust_biguint!(0),
+        );
+
+        b_mock.set_esdt_local_roles(
+            liquidity_pool_egld_wrapper.address_ref(),
+            BORROW_EGLD,
             &[
                 EsdtLocalRole::NftCreate,
                 EsdtLocalRole::NftAddQuantity,
@@ -151,7 +232,8 @@ where
             price_aggregator_wrapper,
             b_mock,
             lending_pool_wrapper,
-            liquidity_pool_wrapper,
+            liquidity_pool_usdc_wrapper: liquidity_pool_usdc_wrapper,
+            liquidity_pool_egld_wrapper: liquidity_pool_egld_wrapper,
         }
     }
 }
