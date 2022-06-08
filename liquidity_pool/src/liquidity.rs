@@ -315,12 +315,12 @@ pub trait LiquidityModule:
         let asset_price_data = self.get_token_price_data(&asset_token_id);
         let asset_price_decs = base_big.pow(asset_price_data.decimals as u32);
 
-        let collateral_price_data = self.get_token_price_data(&collateral_token_id);
+        let collateral_price_data = self.get_token_price_data_lending(&collateral_token_id);
         let collateral_price_decs = base_big.pow(collateral_price_data.decimals as u32);
 
         let collateral_amount = borrow_position.lend_tokens.amount.clone();
         let collateral_value_in_dollars =
-            (collateral_amount * collateral_price_data.price) / collateral_price_decs;
+            (collateral_amount * collateral_price_data.price.clone()) / collateral_price_decs;
 
         let borrowed_value_in_dollars =
             (&asset_amount * &asset_price_data.price) / asset_price_decs;
@@ -332,9 +332,11 @@ pub trait LiquidityModule:
             &liquidation_threshold,
         );
 
+        let bp = self.get_base_precision();
+
         require!(health_factor < 1, "health not low enough for liquidation");
         require!(
-            asset_amount >= borrow_position.borrowed_amount,
+            asset_amount >= collateral_value_in_dollars * liquidation_threshold / &bp,
             "insufficient funds for liquidation"
         );
 
@@ -345,11 +347,13 @@ pub trait LiquidityModule:
 
         self.borrow_position(borrow_position_nonce).clear();
 
-        let bp = self.get_base_precision();
         let lend_amount_to_return = (asset_amount * (&bp + &liquidation_bonus)) / bp;
+        let lend_amount_to_return_in_lend_token =
+            (&lend_amount_to_return * &asset_price_data.price) / &collateral_price_data.price;
         let lend_tokens = borrow_position.lend_tokens.clone();
+
         require!(
-            lend_tokens.amount >= lend_amount_to_return,
+            lend_tokens.amount >= lend_amount_to_return_in_lend_token,
             "total amount to return bigger than position"
         );
 
@@ -357,11 +361,11 @@ pub trait LiquidityModule:
             &initial_caller,
             &borrow_position.lend_tokens.token_id,
             borrow_position.lend_tokens.nonce,
-            &lend_amount_to_return,
+            &lend_amount_to_return_in_lend_token,
             &[],
         );
 
-        let remaining_amount = lend_tokens.amount - lend_amount_to_return;
+        let remaining_amount = lend_tokens.amount - lend_amount_to_return_in_lend_token;
 
         TokenAmountPair::new(lend_tokens.token_id, lend_tokens.nonce, remaining_amount)
     }
