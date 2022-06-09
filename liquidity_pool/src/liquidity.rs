@@ -56,8 +56,8 @@ pub trait LiquidityModule:
     fn reduce_position_after_liquidation(&self) {
         let (payment_amount, payment_token_id) = self.call_value().payment_token_pair();
         let payment_token_nonce = self.call_value().esdt_token_nonce();
-
         let lend_token_id = self.lend_token().get();
+
         require!(
             payment_token_id == lend_token_id,
             "lend tokens not supported by this pool"
@@ -347,13 +347,13 @@ pub trait LiquidityModule:
 
         self.borrow_position(borrow_position_nonce).clear();
 
-        let lend_amount_to_return = (asset_amount * (&bp + &liquidation_bonus)) / bp;
-        let lend_amount_to_return_in_lend_token =
-            (&lend_amount_to_return * &asset_price_data.price) / &collateral_price_data.price;
+        let lend_amount_to_return_in_dollars = (asset_amount * (&bp + &liquidation_bonus)) / bp;
+        let lend_amount_to_return = (&lend_amount_to_return_in_dollars * &asset_price_data.price)
+            / &collateral_price_data.price;
         let lend_tokens = borrow_position.lend_tokens.clone();
 
         require!(
-            lend_tokens.amount >= lend_amount_to_return_in_lend_token,
+            lend_tokens.amount >= lend_amount_to_return,
             "total amount to return bigger than position"
         );
 
@@ -361,12 +361,14 @@ pub trait LiquidityModule:
             &initial_caller,
             &borrow_position.lend_tokens.token_id,
             borrow_position.lend_tokens.nonce,
-            &lend_amount_to_return_in_lend_token,
+            &lend_amount_to_return,
             &[],
         );
 
-        let remaining_amount = lend_tokens.amount - lend_amount_to_return_in_lend_token;
-
-        TokenAmountPair::new(lend_tokens.token_id, lend_tokens.nonce, remaining_amount)
+        TokenAmountPair::new(
+            lend_tokens.token_id,
+            lend_tokens.nonce,
+            lend_amount_to_return,
+        )
     }
 }
