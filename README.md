@@ -126,8 +126,25 @@ TL;DR: User sends *BTOKEN_B* and *TOKEN_B* (initial borrowed amount + interest) 
 
 If a borrower’s **borrowing balance exceeds** their total collateral value, it means that the protocol is at risk of suffering a loss if the borrower defaults on repayment.
 We call this a shortfall event.
-In order to reduce this risk, the protocol provides a public liquidate function which can be called by any user
+In order to reduce this risk, the protocol provides a public liquidate function which can be called by any user.
 
+![Liquidation Scenario Without Bonus Liquidation (1)](https://user-images.githubusercontent.com/3630188/173180521-f2bba5d7-1e43-474c-88f0-56bd7062fa5a.png)
+
+
+Prerequisites for liquidation:
+1. Borrower provided deposited 1000 EGLD and got 1000 LEGLD (earns interest on it);
+2. Borrower provides 1000 LEGLD as collateral and gets 100.000 USDC and 100.000 BUSDC (that are debt bearing and are used to recover the 1000 LEGLD);
+3. Borrow health is 1.4 (`200$ * 1000 LEGLD * 0.7 / 100.000 USDC = 1.4`). *0.7* is the *liquidation_threshold*.
+
+
+The liquidations goes as follows:
+1. Price of collateral drops to 140$. The BorrowHealth is now `140$ * 1000 LEGLD * 0.7 / 100.000 USDC = 0.98`;
+2. A liquidator can take advantage of this. Because the BorrowHealth is *under 1* he can liquidate the position;
+3. Liquidator calls the `liquidate` endpoint from the *Lending Pool SC* which calls the `liquidate` endpoint from the `Liquidity Pool SC` specific to the tokens he sent;
+4. As the diagram shows, the liquidator sends 100.000 USDC to liquidate the BorrowPosition, so `Lending Pool SC` will forward the call to `USDC Liquity Pool SC`.
+5. The `Liquidity Pool SC` computes the HealthFactor and verifies that it is *under 1*.
+6. The `Liquidity Pool SC` removes the BorrowPosition. Each BorrowPosition is identified by a nonce and this is removed. This implies that the 100.000 BUSDC tokens from the Borrower are worthless from now on.
+7. The `Liquidity Pool SC` sends back to the Liquidator part of the Borrower's position + a bonus. For example the liquidator will get 100.000 USDC / 140$ (EGLD_PRICE) = 714 LEGLD + 36 LEGLD (5% bonus) =  750 LEGLD.
 
 ## Interest Rate Model
 
