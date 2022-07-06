@@ -38,8 +38,8 @@ pub trait SafetyModule {
             .into_option()
             .unwrap_or_else(|| self.blockchain().get_caller());
 
-        let timestamp = self.blockchain().get_block_timestamp();
-        let deposit_metadata = DepositPosition::new(timestamp, payment.clone());
+        let round_no = self.blockchain().get_block_round();
+        let deposit_metadata = DepositPosition::new(round_no, payment.clone(), BigUint::from(1u64));
 
         let nft_token = self.nft_token().get();
         let nft_nonce = self.mint_deposit_nft(&deposit_metadata, payment.clone());
@@ -149,12 +149,12 @@ pub trait SafetyModule {
         );
 
         let nft_metadata = nft_info.decode_attributes::<DepositPosition<Self::Api>>();
-        let time_in_pool = self.blockchain().get_block_timestamp() - nft_metadata.timestamp;
+        let rounds_in_pool = self.blockchain().get_block_round() - nft_metadata.round_no;
 
-        require!(time_in_pool > 0, "invalid timestamp");
+        require!(rounds_in_pool > 0, "invalid timestamp");
 
         let withdraw_amount =
-            self.calculate_amount_for_withdrawal(amount.clone(), BigUint::from(time_in_pool));
+            self.calculate_amount_for_withdrawal(amount.clone(), BigUint::from(rounds_in_pool));
 
         let wegld_token_id = &self.wegld_token().get();
         let contract_balance = self.blockchain().get_esdt_balance(

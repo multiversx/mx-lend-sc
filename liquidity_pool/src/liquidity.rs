@@ -34,8 +34,9 @@ pub trait LiquidityModule:
         let lend_token_id = self.lend_token().get();
         let new_nonce = self.mint_position_tokens(&lend_token_id, &amount);
 
-        let timestamp = self.blockchain().get_block_timestamp();
-        let deposit_position = DepositPosition::new(timestamp, amount.clone());
+        let round_no = self.blockchain().get_block_round();
+        let deposit_position =
+            DepositPosition::new(round_no, amount.clone(), self.borrow_index().get());
         self.deposit_position(new_nonce).set(&deposit_position);
 
         self.reserves().update(|x| *x += &amount);
@@ -120,13 +121,16 @@ pub trait LiquidityModule:
         );
 
         let new_nonce = self.mint_position_tokens(&borrow_token_id, &borrow_amount_in_tokens);
-        let timestamp = self.blockchain().get_block_timestamp();
+        let round_no = self.blockchain().get_block_round();
         let borrow_position = BorrowPosition::new(
-            timestamp,
+            round_no,
             lend_tokens,
             borrow_amount_in_tokens.clone(),
             payment_lend_token_id,
+            self.borrow_index().get(),
         );
+
+        self.update_rewards_reserves(round_no);
 
         self.borrow_position(new_nonce).set(&borrow_position);
 
@@ -169,9 +173,11 @@ pub trait LiquidityModule:
         let mut deposit = self.deposit_position(token_nonce).get();
 
         let deposit_rate = self.get_deposit_rate();
-        let time_diff = self.get_timestamp_diff(deposit.timestamp);
+        let time_diff = self.get_round_diff(deposit.round_no);
         let withdrawal_amount =
             self.compute_withdrawal_amount(&amount, &BigUint::from(time_diff), &deposit_rate);
+
+        self.update_rewards_reserves(self.blockchain().get_block_round());
 
         self.reserves().update(|asset_reserve| {
             require!(*asset_reserve >= withdrawal_amount, "insufficient funds");
@@ -229,14 +235,19 @@ pub trait LiquidityModule:
         );
         let mut borrow_position = self.borrow_position(borrow_token_nonce).get();
 
-        let accumulated_debt =
-            self.get_debt_interest(borrow_token_amount, borrow_position.timestamp);
+        let accumulated_debt = self.get_debt_interest(
+            borrow_token_amount,
+            borrow_position.round_no,
+            &borrow_position.initial_borrow_index,
+        );
         let total_owed = borrow_token_amount + &accumulated_debt;
 
         require!(
             asset_amount >= &total_owed,
             "Not enough asset tokens deposited"
         );
+
+        self.update_rewards_reserves(self.blockchain().get_block_round());
 
         if asset_amount > &total_owed {
             let extra_asset_paid = asset_amount - &total_owed;
@@ -339,6 +350,8 @@ pub trait LiquidityModule:
             asset_amount >= collateral_value_in_dollars * liquidation_threshold / &bp,
             "insufficient funds for liquidation"
         );
+
+        self.update_rewards_reserves(self.blockchain().get_block_round());
 
         self.borrowed_amount()
             .update(|total| *total -= &borrow_position.borrowed_amount);

@@ -13,6 +13,10 @@ pub trait StorageModule {
     #[storage_mapper("reserves")]
     fn reserves(&self) -> SingleValueMapper<BigUint>;
 
+    #[view(getRewardsReserves)]
+    #[storage_mapper("rewards_reserves")]
+    fn rewards_reserves(&self) -> SingleValueMapper<BigUint>;
+
     #[view(getLendToken)]
     #[storage_mapper("lend_token")]
     fn lend_token(&self) -> SingleValueMapper<TokenIdentifier>;
@@ -40,4 +44,12 @@ pub trait StorageModule {
     #[view(getLiquidationThreshold)]
     #[storage_mapper("liquidation_threshold")]
     fn liquidation_threshold(&self) -> SingleValueMapper<BigUint>;
+
+    #[view(getBorrowIndex)]
+    #[storage_mapper("borrow_index")]
+    fn borrow_index(&self) -> SingleValueMapper<BigUint>;
+
+    #[view(getSupplyIndex)]
+    #[storage_mapper("supply_index")]
+    fn supply_index(&self) -> SingleValueMapper<BigUint>;
 }

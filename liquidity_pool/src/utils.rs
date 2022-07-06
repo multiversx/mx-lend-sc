@@ -100,11 +100,17 @@ pub trait UtilsModule:
     }
 
     #[view(getDebtInterest)]
-    fn get_debt_interest(&self, amount: &BigUint, timestamp: u64) -> BigUint {
-        let time_diff = self.get_timestamp_diff(timestamp);
-        let borrow_rate = self.get_borrow_rate();
+    fn get_debt_interest(
+        &self,
+        amount: &BigUint,
+        round_no: u64,
+        initial_borrow_index: &BigUint,
+    ) -> BigUint {
+        let round_diff = self.get_round_diff(round_no);
+        let borrow_index_diff = self.get_borrow_index_diff(initial_borrow_index);
+        // self.compute_debt(amount, &BigUint::from(round_diff as u64), &current_borrow_index)
 
-        self.compute_debt(amount, &BigUint::from(time_diff as u64), &borrow_rate)
+        amount * &borrow_index_diff * round_diff
     }
 
     #[view(getDepositRate)]
@@ -134,11 +140,41 @@ pub trait UtilsModule:
         )
     }
 
+    fn update_borrow_index(&self) {
+        let borrow_rate = self.get_borrow_rate();
+        self.borrow_index()
+            .set(self.borrow_index().get() + &borrow_rate);
+    }
+
+    fn update_rewards_reserves(&self, round_no: u64) {
+        let borrow_rate = self.get_borrow_rate();
+        let round_diff = self.get_round_diff(round_no);
+
+        self.rewards_reserves().set(
+            self.rewards_reserves().get()
+                + &borrow_rate * &self.get_capital_utilisation() * round_diff,
+        );
+    }
+
     fn get_timestamp_diff(&self, timestamp: u64) -> u64 {
         let current_time = self.blockchain().get_block_timestamp();
         require!(current_time >= timestamp, "Invalid timestamp");
 
         current_time - timestamp
+    }
+
+    fn get_round_diff(&self, round_no: u64) -> u64 {
+        let current_round = self.blockchain().get_block_round();
+        require!(current_round >= round_no, "Invalid timestamp");
+
+        current_round - round_no
+    }
+
+    fn get_borrow_index_diff(&self, initial_borrow_index: &BigUint) -> BigUint {
+        let current_borrow_index = self.borrow_index().get();
+        // require!(current_borrow_index >= initial_borrow_index, "Invalid timestamp");
+
+        current_borrow_index - initial_borrow_index
     }
 
     #[inline]
