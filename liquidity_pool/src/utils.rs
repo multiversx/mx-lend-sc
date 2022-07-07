@@ -95,22 +95,19 @@ pub trait UtilsModule:
     fn get_capital_utilisation(&self) -> BigUint {
         let reserve_amount = self.reserves().get();
         let borrowed_amount = self.borrowed_amount().get();
-
-        self.compute_capital_utilisation(&borrowed_amount, &reserve_amount)
+        let total_amount = &reserve_amount + &borrowed_amount;
+        
+        self.compute_capital_utilisation(&borrowed_amount, &total_amount)
     }
 
     #[view(getDebtInterest)]
     fn get_debt_interest(
         &self,
         amount: &BigUint,
-        round_no: u64,
         initial_borrow_index: &BigUint,
     ) -> BigUint {
-        let round_diff = self.get_round_diff(round_no);
         let borrow_index_diff = self.get_borrow_index_diff(initial_borrow_index);
-        // self.compute_debt(amount, &BigUint::from(round_diff as u64), &current_borrow_index)
-
-        amount * &borrow_index_diff * round_diff
+        amount * &borrow_index_diff / BP
     }
 
     #[view(getDepositRate)]
@@ -140,20 +137,28 @@ pub trait UtilsModule:
         )
     }
 
-    fn update_borrow_index(&self) {
+    fn update_borrow_index(&self, round_last_update: u64) {
         let borrow_rate = self.get_borrow_rate();
+        let capital_utilisation = self.get_capital_utilisation();
+        let delta_rounds = self.get_round_diff(round_last_update);
+
         self.borrow_index()
-            .set(self.borrow_index().get() + &borrow_rate);
+            .set(self.borrow_index().get() + &borrow_rate * delta_rounds * &capital_utilisation / BP);
+        
     }
 
-    fn update_rewards_reserves(&self, round_no: u64) {
+    fn update_rewards_reserves(&self, borrow_index_last_used: u64) {
         let borrow_rate = self.get_borrow_rate();
-        let round_diff = self.get_round_diff(round_no);
+        let delta_rounds = self.get_round_diff(borrow_index_last_used);
 
         self.rewards_reserves().set(
             self.rewards_reserves().get()
-                + &borrow_rate * &self.get_capital_utilisation() * round_diff,
+                + &borrow_rate * &self.get_capital_utilisation() * delta_rounds,
         );
+    }
+
+    fn update_borrow_index_last_used(&self) {
+        self.borrow_index_last_used().set(self.blockchain().get_block_round());
     }
 
     fn get_timestamp_diff(&self, timestamp: u64) -> u64 {
@@ -163,16 +168,16 @@ pub trait UtilsModule:
         current_time - timestamp
     }
 
-    fn get_round_diff(&self, round_no: u64) -> u64 {
+    fn get_round_diff(&self, initial_round: u64) -> u64 {
         let current_round = self.blockchain().get_block_round();
-        require!(current_round >= round_no, "Invalid timestamp");
+        require!(current_round >= initial_round, "Invalid timestamp");
 
-        current_round - round_no
+        current_round - initial_round
     }
 
     fn get_borrow_index_diff(&self, initial_borrow_index: &BigUint) -> BigUint {
         let current_borrow_index = self.borrow_index().get();
-        // require!(current_borrow_index >= initial_borrow_index, "Invalid timestamp");
+        require!(&current_borrow_index >= initial_borrow_index, "Invalid timestamp");
 
         current_borrow_index - initial_borrow_index
     }

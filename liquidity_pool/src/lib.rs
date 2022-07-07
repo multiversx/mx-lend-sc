@@ -43,8 +43,9 @@ pub trait LiquidityPool:
             reserve_factor,
         });
         self.liquidation_threshold().set(&liquidation_threshold);
-        self.borrow_index().set(BigUint::from(1u64));
+        self.borrow_index().set(BigUint::from(BP));
         self.supply_index().set(BigUint::zero());
         self.rewards_reserves().set(BigUint::zero());
+        self.borrow_index_last_used().set(0);
     }
 }

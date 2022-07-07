@@ -5,6 +5,7 @@ use elrond_wasm_debug::{
     managed_address, managed_biguint, managed_buffer, managed_token_id, rust_biguint,
     tx_mock::TxInputESDT,
 };
+use lending_pool::BP;
 use lending_pool_interaction::LendingSetup;
 use liquidity_pool::{liquidity::LiquidityModule, storage::StorageModule};
 
@@ -222,7 +223,7 @@ fn repay_test() {
 
     lending_setup
         .b_mock
-        .set_esdt_balance(&user_addr, USDC_TOKEN_ID, &rust_biguint!(1_000));
+        .set_esdt_balance(&user_addr, USDC_TOKEN_ID, &rust_biguint!(2_000 * BP));
 
     lending_setup
         .b_mock
@@ -231,7 +232,7 @@ fn repay_test() {
             &lending_setup.liquidity_pool_usdc_wrapper,
             USDC_TOKEN_ID,
             0,
-            &rust_biguint!(1_000),
+            &rust_biguint!(2_000 * BP),
             |sc| {
                 sc.deposit_asset(managed_address!(&user_addr));
             },
@@ -242,15 +243,15 @@ fn repay_test() {
         &user_addr,
         LEND_USDC_TOKEN_ID,
         1,
-        &rust_biguint!(1_000),
+        &rust_biguint!(2_000 * BP),
         Option::<&Empty>::None,
     );
 
-    lending_setup.b_mock.set_block_timestamp(1_000);
+    lending_setup.b_mock.set_block_round(10);
 
     lending_setup
         .b_mock
-        .set_nft_balance(&user_addr, LEND_EGLD, 1, &rust_biguint!(5), &Empty);
+        .set_nft_balance(&user_addr, LEND_EGLD, 1, &rust_biguint!(10 * BP), &Empty);
 
     lending_setup
         .b_mock
@@ -259,7 +260,7 @@ fn repay_test() {
             &lending_setup.liquidity_pool_usdc_wrapper,
             LEND_EGLD,
             1,
-            &rust_biguint!(5),
+            &rust_biguint!(10 * BP),
             |sc| {
                 sc.borrow(managed_address!(&user_addr), managed_biguint!(500_000_000));
             },
@@ -270,7 +271,7 @@ fn repay_test() {
         &user_addr,
         BORROW_USDC_TOKEN_ID,
         1,
-        &rust_biguint!(500),
+        &rust_biguint!(1_000 * BP),
         Some(&Vec::<u8>::new()),
     );
 
@@ -278,28 +279,28 @@ fn repay_test() {
         &user_addr,
         USDC_TOKEN_ID,
         0,
-        &rust_biguint!(500),
+        &rust_biguint!(1_000 * BP),
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.set_block_timestamp(200_000);
+    lending_setup.b_mock.set_block_round(12);
 
     lending_setup
         .b_mock
-        .set_esdt_balance(&user_addr, USDC_TOKEN_ID, &rust_biguint!(503));
+        .set_esdt_balance(&user_addr, USDC_TOKEN_ID, &rust_biguint!(1_025 * BP));
 
     let mut payments = Vec::with_capacity(2);
 
     payments.push(TxInputESDT {
         token_identifier: BORROW_USDC_TOKEN_ID.to_vec(),
         nonce: 1,
-        value: rust_biguint!(500),
+        value: rust_biguint!(1_000 * BP),
     });
 
     payments.push(TxInputESDT {
         token_identifier: USDC_TOKEN_ID.to_vec(),
         nonce: 0,
-        value: rust_biguint!(503),
+        value: rust_biguint!(1_025 * BP),
     });
 
     lending_setup
@@ -322,19 +323,17 @@ fn repay_test() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.check_nft_balance(
+    lending_setup.b_mock.check_esdt_balance(
         &user_addr,
         USDC_TOKEN_ID,
-        0,
         &rust_biguint!(0),
-        Some(&Vec::<u8>::new()),
     );
 
     lending_setup.b_mock.check_nft_balance(
         &user_addr,
         LEND_EGLD,
         1,
-        &rust_biguint!(5),
+        &rust_biguint!(10 * BP),
         Some(&Vec::<u8>::new()),
     );
 }

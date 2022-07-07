@@ -16,7 +16,7 @@ pub trait MathModule {
     ) -> BigUint {
         let bp = BigUint::from(BP);
 
-        if u_current < u_optimal {
+        if u_current <= u_optimal {
             let utilisation_ratio = &(u_current * r_slope1) / u_optimal;
             r_base + &utilisation_ratio
         } else {
@@ -44,7 +44,11 @@ pub trait MathModule {
         total_reserves: &BigUint,
     ) -> BigUint {
         let bp = BigUint::from(BP);
-        &(borrowed_amount * &bp) / total_reserves
+        if *total_reserves == BigUint::zero() {
+            total_reserves.clone()
+        } else {
+            &(borrowed_amount * &bp) / total_reserves
+        }
     }
 
     // fn compute_debt(

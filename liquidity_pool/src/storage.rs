@@ -52,4 +52,8 @@ pub trait StorageModule {
     #[view(getSupplyIndex)]
     #[storage_mapper("supply_index")]
     fn supply_index(&self) -> SingleValueMapper<BigUint>;
+
+    #[view(borrowIndexLastUsed)]
+    #[storage_mapper("borrow_index_last_used")]
+    fn borrow_index_last_used(&self) -> SingleValueMapper<u64>;
 }
