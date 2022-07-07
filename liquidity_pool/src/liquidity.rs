@@ -145,7 +145,6 @@ pub trait LiquidityModule:
         self.reserves()
             .update(|total| *total -= &borrow_amount_in_tokens);
 
-
         self.send().direct(
             &initial_caller,
             &borrow_token_id,
@@ -247,11 +246,8 @@ pub trait LiquidityModule:
         self.update_borrow_index(self.borrow_index_last_used().get());
         self.update_borrow_index_last_used();
 
-
-        let accumulated_debt = self.get_debt_interest(
-            borrow_token_amount,
-            &borrow_position.initial_borrow_index,
-        );
+        let accumulated_debt =
+            self.get_debt_interest(borrow_token_amount, &borrow_position.initial_borrow_index);
         let total_owed = borrow_token_amount + &accumulated_debt;
 
         if asset_amount > &total_owed {
@@ -364,7 +360,6 @@ pub trait LiquidityModule:
             .update(|total| *total -= &borrow_position.borrowed_amount);
 
         self.reserves().update(|total| *total += &asset_amount);
-
 
         self.borrow_position(borrow_position_nonce).clear();
 

@@ -96,16 +96,12 @@ pub trait UtilsModule:
         let reserve_amount = self.reserves().get();
         let borrowed_amount = self.borrowed_amount().get();
         let total_amount = &reserve_amount + &borrowed_amount;
-        
+
         self.compute_capital_utilisation(&borrowed_amount, &total_amount)
     }
 
     #[view(getDebtInterest)]
-    fn get_debt_interest(
-        &self,
-        amount: &BigUint,
-        initial_borrow_index: &BigUint,
-    ) -> BigUint {
+    fn get_debt_interest(&self, amount: &BigUint, initial_borrow_index: &BigUint) -> BigUint {
         let borrow_index_diff = self.get_borrow_index_diff(initial_borrow_index);
         amount * &borrow_index_diff / BP
     }
@@ -142,9 +138,9 @@ pub trait UtilsModule:
         let capital_utilisation = self.get_capital_utilisation();
         let delta_rounds = self.get_round_diff(round_last_update);
 
-        self.borrow_index()
-            .set(self.borrow_index().get() + &borrow_rate * delta_rounds * &capital_utilisation / BP);
-        
+        self.borrow_index().set(
+            self.borrow_index().get() + &borrow_rate * delta_rounds * &capital_utilisation / BP,
+        );
     }
 
     fn update_rewards_reserves(&self, borrow_index_last_used: u64) {
@@ -158,7 +154,8 @@ pub trait UtilsModule:
     }
 
     fn update_borrow_index_last_used(&self) {
-        self.borrow_index_last_used().set(self.blockchain().get_block_round());
+        self.borrow_index_last_used()
+            .set(self.blockchain().get_block_round());
     }
 
     fn get_timestamp_diff(&self, timestamp: u64) -> u64 {
@@ -177,7 +174,10 @@ pub trait UtilsModule:
 
     fn get_borrow_index_diff(&self, initial_borrow_index: &BigUint) -> BigUint {
         let current_borrow_index = self.borrow_index().get();
-        require!(&current_borrow_index >= initial_borrow_index, "Invalid timestamp");
+        require!(
+            &current_borrow_index >= initial_borrow_index,
+            "Invalid timestamp"
+        );
 
         current_borrow_index - initial_borrow_index
     }

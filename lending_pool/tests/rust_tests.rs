@@ -323,11 +323,9 @@ fn repay_test() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.check_esdt_balance(
-        &user_addr,
-        USDC_TOKEN_ID,
-        &rust_biguint!(0),
-    );
+    lending_setup
+        .b_mock
+        .check_esdt_balance(&user_addr, USDC_TOKEN_ID, &rust_biguint!(0));
 
     lending_setup.b_mock.check_nft_balance(
         &user_addr,
