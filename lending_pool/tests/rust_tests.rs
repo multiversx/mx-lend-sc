@@ -423,8 +423,6 @@ fn partial_liquidate_without_bonus_test() {
         )
         .assert_ok();
 
-    // lending_setup.b_mock.dump_state_for_account_hex_attributes(&borrower_addr);
-
     // Check received BUSDC
     lending_setup.b_mock.check_nft_balance(
         &borrower_addr,
@@ -486,28 +484,6 @@ fn partial_liquidate_without_bonus_test() {
         Option::<&Empty>::None,
     );
 
-    lending_setup
-        .b_mock
-        .execute_esdt_transfer(
-            &liquidator_addr,
-            &lending_setup.liquidity_pool_egld_wrapper,
-            LEND_EGLD,
-            1,
-            &rust_biguint!(714),
-            |sc| {
-                sc.reduce_position_after_liquidation();
-            },
-        )
-        .assert_ok();
-
-    // Check Liquidity Pool - LEND_EGLD tokens
-    lending_setup.b_mock.check_nft_balance(
-        &lending_setup.liquidity_pool_usdc_wrapper.address_ref(),
-        LEND_EGLD,
-        1,
-        &rust_biguint!(286),
-        Option::<&Empty>::None,
-    );
 }
 
 #[test]
@@ -646,7 +622,7 @@ fn partial_liquidate_with_bonus_test() {
                 sc.liquidate(
                     managed_address!(&liquidator_addr),
                     1,
-                    managed_biguint!(5_000_000),
+                    managed_biguint!(50_000_000),
                 );
             },
         )
@@ -657,30 +633,7 @@ fn partial_liquidate_with_bonus_test() {
         &liquidator_addr,
         LEND_EGLD,
         1,
-        &rust_biguint!(717),
-        Option::<&Empty>::None,
-    );
-
-    lending_setup
-        .b_mock
-        .execute_esdt_transfer(
-            &liquidator_addr,
-            &lending_setup.liquidity_pool_egld_wrapper,
-            LEND_EGLD,
-            1,
-            &rust_biguint!(717),
-            |sc| {
-                sc.reduce_position_after_liquidation();
-            },
-        )
-        .assert_ok();
-
-    // Check Liquidity Pool - LEND_EGLD tokens
-    lending_setup.b_mock.check_nft_balance(
-        &lending_setup.liquidity_pool_usdc_wrapper.address_ref(),
-        LEND_EGLD,
-        1,
-        &rust_biguint!(283),
+        &rust_biguint!(750),
         Option::<&Empty>::None,
     );
 }
