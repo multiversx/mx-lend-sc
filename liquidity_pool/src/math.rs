@@ -2,8 +2,6 @@ elrond_wasm::imports!();
 
 const BP: u32 = 1_000_000_000;
 
-const SECONDS_IN_YEAR: u32 = 31_556_926;
-
 #[elrond_wasm::module]
 pub trait MathModule {
     fn compute_borrow_rate(
@@ -35,6 +33,7 @@ pub trait MathModule {
         let bp = BigUint::from(BP);
         let loan_ratio = u_current * borrow_rate;
         let deposit_rate = &(u_current * &loan_ratio) * &(&bp - reserve_factor);
+
         deposit_rate / (&bp * &bp * bp)
     }
 
@@ -70,14 +69,18 @@ pub trait MathModule {
     fn compute_withdrawal_amount(
         &self,
         amount: &BigUint,
-        time_diff: &BigUint,
-        deposit_rate: &BigUint,
+        current_supply_index: &BigUint,
+        initial_supply_index: &BigUint,
     ) -> BigUint {
         let bp = BigUint::from(BP);
-        let secs_year = BigUint::from(SECONDS_IN_YEAR);
-        let percentage = &(time_diff * deposit_rate) / &secs_year;
-        let interest = &percentage * amount / bp;
+        let interest = (current_supply_index - initial_supply_index) * amount / bp;
 
+        sc_print!(
+            "interest = {}, current_supply_index = {}, initial_supply_index = {}",
+            interest,
+            current_supply_index,
+            initial_supply_index
+        );
         amount + &interest
     }
 
