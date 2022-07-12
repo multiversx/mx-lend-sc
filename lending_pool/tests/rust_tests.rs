@@ -1073,3 +1073,528 @@ fn scenario2() {
         Some(&Empty),
     );
 }
+
+#[test]
+fn scenario3() {
+    let mut lending_setup = LendingSetup::deploy_lending(
+        lending_pool::contract_obj,
+        liquidity_pool::contract_obj,
+        aggregator_mock::contract_obj,
+    );
+    let supplier_addr = lending_setup.first_user_addr.clone();
+    let borrower_addr = lending_setup.second_user_addr.clone();
+
+    // Supply/Deposit
+    lending_setup.b_mock.set_esdt_balance(
+        &supplier_addr,
+        USDC_TOKEN_ID,
+        &rust_biguint!(2_000 * BP),
+    );
+
+    lending_setup
+        .b_mock
+        .execute_esdt_transfer(
+            &supplier_addr,
+            &lending_setup.liquidity_pool_usdc_wrapper,
+            USDC_TOKEN_ID,
+            0,
+            &rust_biguint!(2_000 * BP),
+            |sc| {
+                sc.deposit_asset(managed_address!(&supplier_addr));
+            },
+        )
+        .assert_ok();
+
+    lending_setup.b_mock.check_nft_balance(
+        &supplier_addr,
+        LEND_USDC_TOKEN_ID,
+        1,
+        &rust_biguint!(2_000 * BP),
+        Option::<&Empty>::None,
+    );
+
+    lending_setup.b_mock.set_block_round(10);
+
+    // Borrow
+    lending_setup.b_mock.set_nft_balance(
+        &borrower_addr,
+        LEND_EGLD,
+        1,
+        &rust_biguint!(10 * BP),
+        &Empty,
+    );
+
+    lending_setup
+        .b_mock
+        .execute_esdt_transfer(
+            &borrower_addr,
+            &lending_setup.liquidity_pool_usdc_wrapper,
+            LEND_EGLD,
+            1,
+            &rust_biguint!(10 * BP),
+            |sc| {
+                sc.borrow(
+                    managed_address!(&borrower_addr),
+                    managed_biguint!(500_000_000),
+                );
+            },
+        )
+        .assert_ok();
+
+    lending_setup.b_mock.check_nft_balance(
+        &borrower_addr,
+        BORROW_USDC_TOKEN_ID,
+        1,
+        &rust_biguint!(1_000 * BP),
+        Some(&Vec::<u8>::new()),
+    );
+
+    lending_setup.b_mock.check_nft_balance(
+        &borrower_addr,
+        USDC_TOKEN_ID,
+        0,
+        &rust_biguint!(1_000 * BP),
+        Some(&Vec::<u8>::new()),
+    );
+
+    lending_setup.b_mock.set_block_round(12);
+
+    // Repay
+    lending_setup.b_mock.set_esdt_balance(
+        &borrower_addr,
+        USDC_TOKEN_ID,
+        &rust_biguint!(1_050 * BP),
+    );
+
+    let mut payments = Vec::with_capacity(2);
+
+    payments.push(TxInputESDT {
+        token_identifier: BORROW_USDC_TOKEN_ID.to_vec(),
+        nonce: 1,
+        value: rust_biguint!(1_000 * BP),
+    });
+
+    payments.push(TxInputESDT {
+        token_identifier: USDC_TOKEN_ID.to_vec(),
+        nonce: 0,
+        value: rust_biguint!(1_050 * BP),
+    });
+
+    lending_setup
+        .b_mock
+        .execute_esdt_multi_transfer(
+            &borrower_addr,
+            &lending_setup.liquidity_pool_usdc_wrapper,
+            &payments,
+            |sc| {
+                sc.repay(managed_address!(&borrower_addr));
+            },
+        )
+        .assert_ok();
+
+    lending_setup.b_mock.check_nft_balance(
+        &borrower_addr,
+        BORROW_USDC_TOKEN_ID,
+        1,
+        &rust_biguint!(0),
+        Some(&Vec::<u8>::new()),
+    );
+
+    lending_setup
+        .b_mock
+        .check_esdt_balance(&borrower_addr, USDC_TOKEN_ID, &rust_biguint!(0));
+
+    lending_setup.b_mock.check_nft_balance(
+        &borrower_addr,
+        LEND_EGLD,
+        1,
+        &rust_biguint!(10 * BP),
+        Some(&Vec::<u8>::new()),
+    );
+
+    // Withdraw (400 USDC) - round 1
+    lending_setup
+        .b_mock
+        .execute_esdt_transfer(
+            &supplier_addr,
+            &lending_setup.liquidity_pool_usdc_wrapper,
+            LEND_USDC_TOKEN_ID,
+            1,
+            &rust_biguint!(400 * BP),
+            |sc| {
+                sc.withdraw(managed_address!(&supplier_addr));
+            },
+        )
+        .assert_ok();
+
+    lending_setup.b_mock.check_nft_balance(
+        &supplier_addr,
+        LEND_USDC_TOKEN_ID,
+        1,
+        &rust_biguint!(1600 * BP),
+        Option::<&Empty>::None,
+    );
+
+    lending_setup.b_mock.check_nft_balance(
+        &supplier_addr,
+        USDC_TOKEN_ID,
+        0,
+        &rust_biguint!(410 * BP),
+        Some(&Empty),
+    );
+
+    // Withdraw (400 USDC) - round 2
+    lending_setup
+        .b_mock
+        .execute_esdt_transfer(
+            &supplier_addr,
+            &lending_setup.liquidity_pool_usdc_wrapper,
+            LEND_USDC_TOKEN_ID,
+            1,
+            &rust_biguint!(400 * BP),
+            |sc| {
+                sc.withdraw(managed_address!(&supplier_addr));
+            },
+        )
+        .assert_ok();
+
+    lending_setup.b_mock.check_nft_balance(
+        &supplier_addr,
+        LEND_USDC_TOKEN_ID,
+        1,
+        &rust_biguint!(1200 * BP),
+        Option::<&Empty>::None,
+    );
+
+    lending_setup.b_mock.check_nft_balance(
+        &supplier_addr,
+        USDC_TOKEN_ID,
+        0,
+        &rust_biguint!(820 * BP),
+        Some(&Empty),
+    );
+
+    // Withdraw (400 USDC) - round 3
+    lending_setup
+        .b_mock
+        .execute_esdt_transfer(
+            &supplier_addr,
+            &lending_setup.liquidity_pool_usdc_wrapper,
+            LEND_USDC_TOKEN_ID,
+            1,
+            &rust_biguint!(400 * BP),
+            |sc| {
+                sc.withdraw(managed_address!(&supplier_addr));
+            },
+        )
+        .assert_ok();
+
+    lending_setup.b_mock.check_nft_balance(
+        &supplier_addr,
+        LEND_USDC_TOKEN_ID,
+        1,
+        &rust_biguint!(800 * BP),
+        Option::<&Empty>::None,
+    );
+
+    lending_setup.b_mock.check_nft_balance(
+        &supplier_addr,
+        USDC_TOKEN_ID,
+        0,
+        &rust_biguint!(1230 * BP),
+        Some(&Empty),
+    );
+
+    // Withdraw (400 USDC) - round 4
+    lending_setup
+        .b_mock
+        .execute_esdt_transfer(
+            &supplier_addr,
+            &lending_setup.liquidity_pool_usdc_wrapper,
+            LEND_USDC_TOKEN_ID,
+            1,
+            &rust_biguint!(400 * BP),
+            |sc| {
+                sc.withdraw(managed_address!(&supplier_addr));
+            },
+        )
+        .assert_ok();
+
+    lending_setup.b_mock.check_nft_balance(
+        &supplier_addr,
+        LEND_USDC_TOKEN_ID,
+        1,
+        &rust_biguint!(400 * BP),
+        Option::<&Empty>::None,
+    );
+
+    lending_setup.b_mock.check_nft_balance(
+        &supplier_addr,
+        USDC_TOKEN_ID,
+        0,
+        &rust_biguint!(1640 * BP),
+        Some(&Empty),
+    );
+
+    // Withdraw (400 USDC) - round 5
+    lending_setup
+        .b_mock
+        .execute_esdt_transfer(
+            &supplier_addr,
+            &lending_setup.liquidity_pool_usdc_wrapper,
+            LEND_USDC_TOKEN_ID,
+            1,
+            &rust_biguint!(400 * BP),
+            |sc| {
+                sc.withdraw(managed_address!(&supplier_addr));
+            },
+        )
+        .assert_ok();
+
+    lending_setup.b_mock.check_nft_balance(
+        &supplier_addr,
+        LEND_USDC_TOKEN_ID,
+        1,
+        &rust_biguint!(0),
+        Option::<&Empty>::None,
+    );
+
+    lending_setup.b_mock.check_nft_balance(
+        &supplier_addr,
+        USDC_TOKEN_ID,
+        0,
+        &rust_biguint!(2050 * BP),
+        Some(&Empty),
+    );
+}
+
+#[test]
+fn scenario4() {
+    let mut lending_setup = LendingSetup::deploy_lending(
+        lending_pool::contract_obj,
+        liquidity_pool::contract_obj,
+        aggregator_mock::contract_obj,
+    );
+    let supplier_addr = lending_setup.first_user_addr.clone();
+    let supplier2_addr = lending_setup.second_user_addr.clone();
+    let borrower_addr = lending_setup.third_user_addr.clone();
+
+    // Supply/Deposit
+    lending_setup.b_mock.set_esdt_balance(
+        &supplier_addr,
+        USDC_TOKEN_ID,
+        &rust_biguint!(1_000 * BP),
+    );
+
+    lending_setup
+        .b_mock
+        .execute_esdt_transfer(
+            &supplier_addr,
+            &lending_setup.liquidity_pool_usdc_wrapper,
+            USDC_TOKEN_ID,
+            0,
+            &rust_biguint!(1_000 * BP),
+            |sc| {
+                sc.deposit_asset(managed_address!(&supplier_addr));
+            },
+        )
+        .assert_ok();
+
+    lending_setup.b_mock.check_nft_balance(
+        &supplier_addr,
+        LEND_USDC_TOKEN_ID,
+        1,
+        &rust_biguint!(1_000 * BP),
+        Option::<&Empty>::None,
+    );
+
+    // Supply/Deposit
+    lending_setup.b_mock.set_esdt_balance(
+        &supplier2_addr,
+        USDC_TOKEN_ID,
+        &rust_biguint!(1_000 * BP),
+    );
+
+    lending_setup
+        .b_mock
+        .execute_esdt_transfer(
+            &supplier2_addr,
+            &lending_setup.liquidity_pool_usdc_wrapper,
+            USDC_TOKEN_ID,
+            0,
+            &rust_biguint!(1_000 * BP),
+            |sc| {
+                sc.deposit_asset(managed_address!(&supplier2_addr));
+            },
+        )
+        .assert_ok();
+
+    lending_setup.b_mock.check_nft_balance(
+        &supplier2_addr,
+        LEND_USDC_TOKEN_ID,
+        2,
+        &rust_biguint!(1_000 * BP),
+        Option::<&Empty>::None,
+    );
+
+    lending_setup.b_mock.set_block_round(10);
+
+    // Borrow
+    lending_setup.b_mock.set_nft_balance(
+        &borrower_addr,
+        LEND_EGLD,
+        1,
+        &rust_biguint!(10 * BP),
+        &Empty,
+    );
+
+    lending_setup
+        .b_mock
+        .execute_esdt_transfer(
+            &borrower_addr,
+            &lending_setup.liquidity_pool_usdc_wrapper,
+            LEND_EGLD,
+            1,
+            &rust_biguint!(10 * BP),
+            |sc| {
+                sc.borrow(
+                    managed_address!(&borrower_addr),
+                    managed_biguint!(500_000_000),
+                );
+            },
+        )
+        .assert_ok();
+
+    lending_setup.b_mock.check_nft_balance(
+        &borrower_addr,
+        BORROW_USDC_TOKEN_ID,
+        1,
+        &rust_biguint!(1_000 * BP),
+        Some(&Vec::<u8>::new()),
+    );
+
+    lending_setup.b_mock.check_nft_balance(
+        &borrower_addr,
+        USDC_TOKEN_ID,
+        0,
+        &rust_biguint!(1_000 * BP),
+        Some(&Vec::<u8>::new()),
+    );
+
+    lending_setup.b_mock.set_block_round(12);
+
+    // Repay
+    lending_setup.b_mock.set_esdt_balance(
+        &borrower_addr,
+        USDC_TOKEN_ID,
+        &rust_biguint!(1_050 * BP),
+    );
+
+    let mut payments = Vec::with_capacity(2);
+
+    payments.push(TxInputESDT {
+        token_identifier: BORROW_USDC_TOKEN_ID.to_vec(),
+        nonce: 1,
+        value: rust_biguint!(1_000 * BP),
+    });
+
+    payments.push(TxInputESDT {
+        token_identifier: USDC_TOKEN_ID.to_vec(),
+        nonce: 0,
+        value: rust_biguint!(1_050 * BP),
+    });
+
+    lending_setup
+        .b_mock
+        .execute_esdt_multi_transfer(
+            &borrower_addr,
+            &lending_setup.liquidity_pool_usdc_wrapper,
+            &payments,
+            |sc| {
+                sc.repay(managed_address!(&borrower_addr));
+            },
+        )
+        .assert_ok();
+
+    lending_setup.b_mock.check_nft_balance(
+        &borrower_addr,
+        BORROW_USDC_TOKEN_ID,
+        1,
+        &rust_biguint!(0),
+        Some(&Vec::<u8>::new()),
+    );
+
+    lending_setup
+        .b_mock
+        .check_esdt_balance(&borrower_addr, USDC_TOKEN_ID, &rust_biguint!(0));
+
+    lending_setup.b_mock.check_nft_balance(
+        &borrower_addr,
+        LEND_EGLD,
+        1,
+        &rust_biguint!(10 * BP),
+        Some(&Vec::<u8>::new()),
+    );
+
+    // Withdraw - Supplier1
+    lending_setup
+        .b_mock
+        .execute_esdt_transfer(
+            &supplier_addr,
+            &lending_setup.liquidity_pool_usdc_wrapper,
+            LEND_USDC_TOKEN_ID,
+            1,
+            &rust_biguint!(1_000 * BP),
+            |sc| {
+                sc.withdraw(managed_address!(&supplier_addr));
+            },
+        )
+        .assert_ok();
+
+    lending_setup.b_mock.check_nft_balance(
+        &supplier_addr,
+        LEND_USDC_TOKEN_ID,
+        1,
+        &rust_biguint!(0),
+        Option::<&Empty>::None,
+    );
+
+    lending_setup.b_mock.check_nft_balance(
+        &supplier_addr,
+        USDC_TOKEN_ID,
+        0,
+        &rust_biguint!(1_025 * BP),
+        Some(&Empty),
+    );
+
+    // Withdraw - Supplier 2
+    lending_setup
+        .b_mock
+        .execute_esdt_transfer(
+            &supplier2_addr,
+            &lending_setup.liquidity_pool_usdc_wrapper,
+            LEND_USDC_TOKEN_ID,
+            2,
+            &rust_biguint!(1_000 * BP),
+            |sc| {
+                sc.withdraw(managed_address!(&supplier2_addr));
+            },
+        )
+        .assert_ok();
+
+    lending_setup.b_mock.check_nft_balance(
+        &supplier2_addr,
+        LEND_USDC_TOKEN_ID,
+        1,
+        &rust_biguint!(0),
+        Option::<&Empty>::None,
+    );
+
+    lending_setup.b_mock.check_nft_balance(
+        &supplier2_addr,
+        USDC_TOKEN_ID,
+        0,
+        &rust_biguint!(1_025 * BP),
+        Some(&Empty),
+    );
+}

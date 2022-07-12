@@ -96,12 +96,6 @@ pub trait UtilsModule:
         let reserve_amount = self.reserves().get();
         let borrowed_amount = self.borrowed_amount().get();
         let rewards_reserves = self.rewards_reserves().get();
-        sc_print!(
-            "reserve_amount = {}, borrowed_amount = {}, rewards_reserves = {}",
-            reserve_amount,
-            borrowed_amount,
-            rewards_reserves
-        );
         let total_amount = &reserve_amount + &borrowed_amount - rewards_reserves;
 
         self.compute_capital_utilisation(&borrowed_amount, &total_amount)
@@ -110,11 +104,7 @@ pub trait UtilsModule:
     #[view(getDebtInterest)]
     fn get_debt_interest(&self, amount: &BigUint, initial_borrow_index: &BigUint) -> BigUint {
         let borrow_index_diff = self.get_borrow_index_diff(initial_borrow_index);
-        sc_print!(
-            "borrow_index_diff = {}, amount = {}",
-            borrow_index_diff,
-            amount
-        );
+
         amount * &borrow_index_diff / BP
     }
 
@@ -147,7 +137,6 @@ pub trait UtilsModule:
 
     fn update_borrow_index(&self, round_last_update: u64) {
         let borrow_rate = self.get_borrow_rate();
-        // let capital_utilisation = self.get_capital_utilisation();
         let delta_rounds = self.get_round_diff(round_last_update);
 
         self.borrow_index()
@@ -162,21 +151,13 @@ pub trait UtilsModule:
             &reserve_amount + &borrowed_amount - rewards_reserves + &rewards_increase;
 
         if total_amount != BigUint::zero() {
-            sc_print!(
-                "!!!!rewards_increase = {}, total_amount = {}",
-                rewards_increase,
-                total_amount
-            );
             self.supply_index()
                 .set(self.supply_index().get() + rewards_increase * BP / total_amount);
-
-            sc_print!("supply_index = {}", self.supply_index().get());
         }
     }
 
     fn update_rewards_reserves(&self, borrow_index_last_used: u64) -> BigUint {
         let borrow_rate = self.get_borrow_rate();
-        // let capital_utilisation = self.get_capital_utilisation();
         let delta_rounds = self.get_round_diff(borrow_index_last_used);
         let borrowed_amount = self.borrowed_amount().get();
         let initial_rewards_reserves = self.rewards_reserves().get();
@@ -210,11 +191,6 @@ pub trait UtilsModule:
 
     fn get_borrow_index_diff(&self, initial_borrow_index: &BigUint) -> BigUint {
         let current_borrow_index = self.borrow_index().get();
-        sc_print!(
-            "current_borrow_index = {} initial_borrow_index = {}",
-            current_borrow_index,
-            initial_borrow_index
-        );
         require!(
             &current_borrow_index >= initial_borrow_index,
             "Invalid timestamp"

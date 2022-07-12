@@ -25,11 +25,6 @@ pub trait LiquidityModule:
     fn deposit_asset(&self, initial_caller: ManagedAddress) -> EsdtTokenPayment<Self::Api> {
         let (amount, asset) = self.call_value().payment_token_pair();
 
-        sc_print!(
-            "-------------------- deposit -------------------------- {}",
-            0
-        );
-
         let pool_asset = self.pool_asset().get();
         require!(
             asset == pool_asset,
@@ -44,9 +39,7 @@ pub trait LiquidityModule:
             DepositPosition::new(round_no, amount.clone(), self.supply_index().get());
         self.deposit_position(new_nonce).set(&deposit_position);
 
-        // let rewards_increase = self.update_rewards_reserves(self.borrow_index_last_used().get());
         self.update_borrow_index(self.get_round_diff(self.borrow_index_last_used().get()));
-        // self.update_supply_index(rewards_increase);
         self.update_index_last_used();
 
         self.reserves().update(|x| *x += &amount);
@@ -99,11 +92,6 @@ pub trait LiquidityModule:
         let (payment_lend_amount, payment_lend_token_id) = self.call_value().payment_token_pair();
         let payment_lend_token_nonce = self.call_value().esdt_token_nonce();
 
-        sc_print!(
-            "-------------------- borrow -------------------------- {}",
-            0
-        );
-
         self.require_amount_greater_than_zero(&payment_lend_amount);
         self.require_non_zero_address(&initial_caller);
         let lend_tokens = TokenAmountPair::new(
@@ -147,9 +135,7 @@ pub trait LiquidityModule:
 
         self.borrow_position(new_nonce).set(&borrow_position);
 
-        // let rewards_increase = self.update_rewards_reserves(self.borrow_index_last_used().get());
         self.update_borrow_index(self.get_round_diff(self.borrow_index_last_used().get()));
-        // self.update_supply_index(rewards_increase);
         self.update_index_last_used();
 
         self.borrowed_amount()
@@ -182,11 +168,6 @@ pub trait LiquidityModule:
         let (amount, lend_token) = self.call_value().payment_token_pair();
         let token_nonce = self.call_value().esdt_token_nonce();
 
-        sc_print!(
-            "-------------------- withdraw -------------------------- {}",
-            0
-        );
-
         require!(
             lend_token == self.lend_token().get(),
             "lend token not supported"
@@ -195,9 +176,7 @@ pub trait LiquidityModule:
         let pool_asset = self.pool_asset().get();
         let mut deposit = self.deposit_position(token_nonce).get();
 
-        // let rewards_increase = self.update_rewards_reserves(self.borrow_index_last_used().get());
         self.update_borrow_index(self.get_round_diff(self.borrow_index_last_used().get()));
-        // self.update_supply_index(self.rewards_reserves().get());
         self.update_index_last_used();
 
         let withdrawal_amount = self.compute_withdrawal_amount(
@@ -206,8 +185,10 @@ pub trait LiquidityModule:
             &deposit.initial_supply_index,
         );
 
-        sc_print!("withdraw = {}", &withdrawal_amount);
+        let interest = &withdrawal_amount - &amount;
 
+        self.rewards_reserves()
+            .set(self.rewards_reserves().get() - interest);
         self.reserves().update(|asset_reserve| {
             require!(*asset_reserve >= withdrawal_amount, "insufficient funds");
             *asset_reserve -= &withdrawal_amount;
@@ -232,11 +213,6 @@ pub trait LiquidityModule:
     #[endpoint]
     fn repay(&self, initial_caller: ManagedAddress) {
         self.require_non_zero_address(&initial_caller);
-
-        sc_print!(
-            "-------------------- repay --------------------------, {}",
-            0
-        );
 
         let payments = self.call_value().all_esdt_transfers();
         require!(
@@ -278,8 +254,6 @@ pub trait LiquidityModule:
         self.rewards_reserves()
             .set(self.rewards_reserves().get() + &accumulated_debt);
 
-        // let rewards_increase = self.update_rewards_reserves(self.borrow_index_last_used().get());
-        sc_print!("###rewards_increase = {}", accumulated_debt);
         self.update_supply_index(accumulated_debt);
         self.update_index_last_used();
 
@@ -385,9 +359,7 @@ pub trait LiquidityModule:
             "insufficient funds for liquidation"
         );
 
-        // let rewards_increase = self.update_rewards_reserves(self.borrow_index_last_used().get());
         self.update_borrow_index(self.get_round_diff(self.borrow_index_last_used().get()));
-        // self.update_supply_index(rewards_increase);
         self.update_index_last_used();
 
         self.borrowed_amount()

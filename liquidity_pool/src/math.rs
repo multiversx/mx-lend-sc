@@ -50,22 +50,6 @@ pub trait MathModule {
         }
     }
 
-    // fn compute_debt(
-    //     &self,
-    //     amount: &BigUint,
-    //     time_diff: &BigUint,
-    //     current_borrow_index: &BigUint,
-    // ) -> BigUint {
-    //     let bp = BigUint::from(BP);
-    //     self.
-
-    //     let secs_year = BigUint::from(SECONDS_IN_YEAR);
-    //     let time_unit_percentage = (time_diff * &bp) / secs_year;
-    //     let debt_percetange = &(&time_unit_percentage * borrow_rate) / &bp;
-
-    //     (&debt_percetange * amount) / bp
-    // }
-
     fn compute_withdrawal_amount(
         &self,
         amount: &BigUint,
@@ -75,12 +59,6 @@ pub trait MathModule {
         let bp = BigUint::from(BP);
         let interest = (current_supply_index - initial_supply_index) * amount / bp;
 
-        sc_print!(
-            "interest = {}, current_supply_index = {}, initial_supply_index = {}",
-            interest,
-            current_supply_index,
-            initial_supply_index
-        );
         amount + &interest
     }
 
