@@ -3,7 +3,7 @@
 ## Introduction
 
 As the next stage in the evolution of DeFi, decentralized lending brings more opportunities.
-In contrast to decentralized exchanges, lending involves two parties: the *borrower* and the *provider*.
+In contrast to decentralized exchanges, lending involves two parties: the *borrower* and the *supplier*.
 Suppliers deposit assets into a pool to earn interest.
 Borrowers can obtain an asset by placing other assets as collateral.
 For the borrowed asset, the borrower pays interest *over time* to the suppliers.
@@ -17,7 +17,7 @@ Therefore, users can now earn yield *without* the limitation of *impermanent los
 
 These benefits are not risk-free.
 Borrowers have the risk of *liquidation*, when the borrowing balance exceeds the total collateral value.
-Supplieres have the risk of *short fall*, which happens when the liquidation does not recover sufficient obligation. 
+Suppliers have the risk of *short fall*, which happens when the liquidation does not recover sufficient obligation. 
 
 The main idea behind the lending/borrowing collateral in a p2p way is that of utilisation ratios.
 This means that contracts don’t need to hold state about rates, or enforce rates statically. 
@@ -67,7 +67,7 @@ This is the opposite of Deposit scenario.
 
 The flow is as follows:
 1. The user calls `withdraw` endpoint from the *Lending Pool SC*, which calls the `withdraw` endpoint from the *Liquidity Pool*;
-2. The *Liquidity Pool SC* computes the witdrawal amount (capital deposited + interest accrueled);
+2. The *Liquidity Pool SC* computes the witdrawal amount (capital deposited + accumulated interest);
 3. The *Liquidity Pool SC* updates the reservers and the DepositPosition (the user may have withdraw only a part of the amount deposited)
 4. The *Liquidity Pool SC* burns the MetaEsdt tokens sent by the user;
 5. The *Liquidity Pool SC* send the original tokens directly to the user;
