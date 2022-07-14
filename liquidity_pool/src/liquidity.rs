@@ -213,6 +213,96 @@ pub trait LiquidityModule:
 
     #[only_owner]
     #[payable("*")]
+    #[endpoint(addCollateral)]
+    fn add_collateral(&self, initial_caller: ManagedAddress, loan_to_value: BigUint) {
+        self.require_non_zero_address(&initial_caller);
+
+        let payments = self.call_value().all_esdt_transfers();
+        require!(
+            payments.len() == REPAY_PAYMENTS_LEN,
+            "Invalid number of payments"
+        );
+
+        let first_payment = payments.get(0);
+        let second_payment = payments.get(1);
+
+        require!(
+            first_payment.token_identifier == self.borrow_token().get(),
+            "First payment should be the borrow SFTs"
+        );
+        let borrow_token_id = &first_payment.token_identifier;
+        let borrow_token_amount = &first_payment.amount;
+        let borrow_token_nonce = first_payment.token_nonce;
+        let mut borrow_position = self.borrow_position(borrow_token_nonce).get();
+
+        require!(
+            second_payment.token_identifier == borrow_position.collateral_token_id,
+            "Second payment should be Collateral Token ID"
+        );
+
+        let collateral_token_id = &second_payment.token_identifier;
+        let extra_collateral_amount = &second_payment.amount;
+        let collateral_data = self.get_token_price_data_lending(collateral_token_id);
+
+        let pool_token_id = self.pool_asset().get();
+        let pool_asset_data = self.get_token_price_data(&pool_token_id);
+
+        require!(
+            !self.borrow_position(borrow_token_nonce).is_empty(),
+            "liquidated position"
+        );
+
+        self.update_borrow_index(self.borrow_index_last_used().get());
+        let rewards_increase = self.update_rewards_reserves(self.borrow_index_last_used().get());
+        self.update_supply_index(rewards_increase);
+        self.update_index_last_used();
+
+        borrow_position.lend_tokens.amount += extra_collateral_amount;
+
+        let new_collateral_amount_in_dollars = self.compute_borrowable_amount(
+            &borrow_position.lend_tokens.amount,
+            &collateral_data.price,
+            &loan_to_value,
+            collateral_data.decimals,
+        );
+
+        sc_print!(
+            "extra_collateral_amount_in_dollars = {}, borrow_position.lend_tokens.amount = {}",
+            &new_collateral_amount_in_dollars,
+            borrow_position.lend_tokens.amount
+        );
+
+        let new_collateral_amount_in_tokens = (&new_collateral_amount_in_dollars
+            / &pool_asset_data.price)
+            * BigUint::from(10u64).pow(pool_asset_data.decimals as u32);
+
+        let round_no = self.blockchain().get_block_round();
+        let new_nonce =
+            self.mint_position_tokens(borrow_token_id, &new_collateral_amount_in_tokens);
+        let new_borrow_position = BorrowPosition::new(
+            round_no,
+            borrow_position.lend_tokens,
+            borrow_position.borrowed_amount,
+            collateral_token_id.clone(),
+            borrow_position.initial_borrow_index,
+        );
+
+        self.borrow_position(new_nonce).set(&new_borrow_position);
+
+        self.send()
+            .esdt_local_burn(borrow_token_id, borrow_token_nonce, borrow_token_amount);
+
+        self.send().direct(
+            &initial_caller,
+            borrow_token_id,
+            new_nonce,
+            &new_collateral_amount_in_tokens,
+            &[],
+        );
+    }
+
+    #[only_owner]
+    #[payable("*")]
     #[endpoint]
     fn repay(&self, initial_caller: ManagedAddress) {
         self.require_non_zero_address(&initial_caller);

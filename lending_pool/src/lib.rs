@@ -78,6 +78,29 @@ pub trait LendingPool:
     }
 
     #[payable("*")]
+    #[endpoint(addCollateral)]
+    fn add_collateral(
+        &self,
+        asset_to_add_collateral: TokenIdentifier,
+        caller: OptionalValue<ManagedAddress>,
+    ) {
+        let transfers = self.call_value().all_esdt_transfers();
+        let initial_caller = self.caller_from_option_or_sender(caller);
+
+        let asset_address = self.get_pool_address(&asset_to_add_collateral);
+        require!(
+            self.pools_map().contains_key(&asset_to_add_collateral),
+            "asset not supported"
+        );
+        let loan_to_value = self.get_loan_to_value_exists_and_non_zero(&asset_to_add_collateral);
+
+        self.liquidity_pool_proxy(asset_address)
+            .add_collateral(initial_caller, loan_to_value)
+            .with_multi_token_transfer(transfers)
+            .execute_on_dest_context_ignore_result();
+    }
+
+    #[payable("*")]
     #[endpoint]
     fn repay(&self, asset_to_repay: TokenIdentifier, caller: OptionalValue<ManagedAddress>) {
         let transfers = self.call_value().all_esdt_transfers();
