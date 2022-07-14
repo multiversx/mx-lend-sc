@@ -46,6 +46,7 @@ pub trait LiquidityPool:
         self.borrow_index().set(BigUint::from(BP));
         self.supply_index().set(BigUint::from(BP));
         self.rewards_reserves().set(BigUint::zero());
+        self.rewards_reserves_paid().set(BigUint::zero());
         self.borrow_index_last_used().set(0);
         self.supply_index_last_used().set(0);
     }

@@ -95,8 +95,8 @@ pub trait UtilsModule:
     fn get_capital_utilisation(&self) -> BigUint {
         let reserve_amount = self.reserves().get();
         let borrowed_amount = self.borrowed_amount().get();
-        let rewards_reserves = self.rewards_reserves().get();
-        let total_amount = &reserve_amount + &borrowed_amount - rewards_reserves;
+        let rewards_reserves_paid = self.rewards_reserves_paid().get();
+        let total_amount = &reserve_amount + &borrowed_amount - rewards_reserves_paid;
 
         self.compute_capital_utilisation(&borrowed_amount, &total_amount)
     }
@@ -146,9 +146,8 @@ pub trait UtilsModule:
     fn update_supply_index(&self, rewards_increase: BigUint) {
         let reserve_amount = self.reserves().get();
         let borrowed_amount = self.borrowed_amount().get();
-        let rewards_reserves = self.rewards_reserves().get();
-        let total_amount =
-            &reserve_amount + &borrowed_amount - rewards_reserves + &rewards_increase;
+        let rewards_reserves_paid = self.rewards_reserves_paid().get();
+        let total_amount = &reserve_amount + &borrowed_amount - rewards_reserves_paid;
 
         if total_amount != BigUint::zero() {
             self.supply_index()

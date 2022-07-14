@@ -24,7 +24,6 @@ pub trait LiquidityModule:
     #[endpoint(depositAsset)]
     fn deposit_asset(&self, initial_caller: ManagedAddress) -> EsdtTokenPayment<Self::Api> {
         let (amount, asset) = self.call_value().payment_token_pair();
-
         let pool_asset = self.pool_asset().get();
         require!(
             asset == pool_asset,
@@ -35,12 +34,15 @@ pub trait LiquidityModule:
         let new_nonce = self.mint_position_tokens(&lend_token_id, &amount);
 
         let round_no = self.blockchain().get_block_round();
+
+        self.update_borrow_index(self.borrow_index_last_used().get());
+        let rewards_increase = self.update_rewards_reserves(self.borrow_index_last_used().get());
+        self.update_supply_index(rewards_increase);
+        self.update_index_last_used();
+
         let deposit_position =
             DepositPosition::new(round_no, amount.clone(), self.supply_index().get());
         self.deposit_position(new_nonce).set(&deposit_position);
-
-        self.update_borrow_index(self.get_round_diff(self.borrow_index_last_used().get()));
-        self.update_index_last_used();
 
         self.reserves().update(|x| *x += &amount);
 
@@ -135,7 +137,9 @@ pub trait LiquidityModule:
 
         self.borrow_position(new_nonce).set(&borrow_position);
 
-        self.update_borrow_index(self.get_round_diff(self.borrow_index_last_used().get()));
+        self.update_borrow_index(self.borrow_index_last_used().get());
+        let rewards_increase = self.update_rewards_reserves(self.borrow_index_last_used().get());
+        self.update_supply_index(rewards_increase);
         self.update_index_last_used();
 
         self.borrowed_amount()
@@ -176,8 +180,7 @@ pub trait LiquidityModule:
         let pool_asset = self.pool_asset().get();
         let mut deposit = self.deposit_position(token_nonce).get();
 
-        self.update_borrow_index(self.get_round_diff(self.borrow_index_last_used().get()));
-        self.update_index_last_used();
+        self.update_borrow_index(self.borrow_index_last_used().get());
 
         let withdrawal_amount = self.compute_withdrawal_amount(
             &amount,
@@ -185,10 +188,10 @@ pub trait LiquidityModule:
             &deposit.initial_supply_index,
         );
 
-        let interest = &withdrawal_amount - &amount;
+        let rewards_increase = self.update_rewards_reserves(self.borrow_index_last_used().get());
+        self.update_supply_index(rewards_increase);
+        self.update_index_last_used();
 
-        self.rewards_reserves()
-            .set(self.rewards_reserves().get() - interest);
         self.reserves().update(|asset_reserve| {
             require!(*asset_reserve >= withdrawal_amount, "insufficient funds");
             *asset_reserve -= &withdrawal_amount;
@@ -251,17 +254,17 @@ pub trait LiquidityModule:
             self.get_debt_interest(borrow_token_amount, &borrow_position.initial_borrow_index);
         let total_owed = borrow_token_amount + &accumulated_debt;
 
-        self.rewards_reserves()
-            .set(self.rewards_reserves().get() + &accumulated_debt);
-
-        self.update_supply_index(accumulated_debt);
-        self.update_index_last_used();
-
         if asset_amount > &total_owed {
             let extra_asset_paid = asset_amount - &total_owed;
             self.send()
                 .direct(&initial_caller, asset_token_id, 0, &extra_asset_paid, &[]);
         }
+
+        let rewards_increase = self.update_rewards_reserves(self.borrow_index_last_used().get());
+        self.update_supply_index(rewards_increase);
+        self.rewards_reserves_paid()
+            .set(self.rewards_reserves_paid().get() + &accumulated_debt);
+        self.update_index_last_used();
 
         let lend_token_amount_to_send_back: BigUint;
         if self.is_full_repay(&borrow_position, borrow_token_amount) {
@@ -359,7 +362,9 @@ pub trait LiquidityModule:
             "insufficient funds for liquidation"
         );
 
-        self.update_borrow_index(self.get_round_diff(self.borrow_index_last_used().get()));
+        self.update_borrow_index(self.borrow_index_last_used().get());
+        let rewards_increase = self.update_rewards_reserves(self.borrow_index_last_used().get());
+        self.update_supply_index(rewards_increase);
         self.update_index_last_used();
 
         self.borrowed_amount()
