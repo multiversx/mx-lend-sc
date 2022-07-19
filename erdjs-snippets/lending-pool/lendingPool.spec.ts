@@ -257,6 +257,7 @@ describe("lending snippet", async function () {
         session.saveBreadcrumb({name: "borrowedNonceABC", value: returnBorrowNonce})
     });
 
+
     it("generate report", async function () {
         await session.generateReport();
     });
