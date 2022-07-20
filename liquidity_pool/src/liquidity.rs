@@ -230,10 +230,16 @@ pub trait LiquidityModule:
             first_payment.token_identifier == self.borrow_token().get(),
             "First payment should be the borrow SFTs"
         );
+
         let borrow_token_id = &first_payment.token_identifier;
         let borrow_token_amount = &first_payment.amount;
         let borrow_token_nonce = first_payment.token_nonce;
-        let mut borrow_position = self.borrow_position(borrow_token_nonce).get();
+        let borrow_position = self.borrow_position(borrow_token_nonce).get();
+
+        require!(
+            borrow_token_amount == &borrow_position.borrowed_amount,
+            "Borrower should send all BTokens he has"
+        );
 
         require!(
             second_payment.token_identifier == borrow_position.collateral_token_id,
@@ -257,19 +263,13 @@ pub trait LiquidityModule:
         self.update_supply_index(rewards_increase);
         self.update_index_last_used();
 
-        borrow_position.lend_tokens.amount += extra_collateral_amount;
+        let total_collateral_amount = &borrow_position.lend_tokens.amount + extra_collateral_amount;
 
         let new_collateral_amount_in_dollars = self.compute_borrowable_amount(
-            &borrow_position.lend_tokens.amount,
+            &total_collateral_amount,
             &collateral_data.price,
             &loan_to_value,
             collateral_data.decimals,
-        );
-
-        sc_print!(
-            "extra_collateral_amount_in_dollars = {}, borrow_position.lend_tokens.amount = {}",
-            &new_collateral_amount_in_dollars,
-            borrow_position.lend_tokens.amount
         );
 
         let new_collateral_amount_in_tokens = (&new_collateral_amount_in_dollars
