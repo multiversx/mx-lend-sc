@@ -215,7 +215,7 @@ describe("lending snippet", async function () {
         let tokenXYZ = await session.loadToken("tokenXYZ");
         let liquidityAddress = await lendingInteractor.getLiquidityAddress(tokenXYZ.identifier);
         let liquidityInteractorXYZ = await createLiquidityInteractor(session, liquidityAddress)
-        let lendTokenXYZ = await liquidityInteractorXYZ.getLendingToken();
+        let lendTokenXYZ = await liquidityInteractorXYZ.getLendToken();
 
         let paymentXYZ = TokenPayment.metaEsdtFromAmount(lendTokenXYZ, depositNonceXYZ, 7, tokenXYZ.decimals)
 
@@ -243,11 +243,11 @@ describe("lending snippet", async function () {
         // await liquidityInteractorXYZ.getAggregatorAddress();
         // await liquidityInteractorXYZ.getReserves();
 
-        let lendTokenXYZ = await liquidityInteractorXYZ.getLendingToken();
+        let lendTokenXYZ = await liquidityInteractorXYZ.getLendToken();
         let assetToBorrowABC = await liquidityInteractorABC.getPoolAsset();
 
-        await lendingInteractor.getAssetLoanToValue(tokenABC.identifier);
-        await lendingInteractor.getAssetLoanToValue(tokenXYZ.identifier);
+        // await lendingInteractor.getAssetLoanToValue(tokenABC.identifier);
+        // await lendingInteractor.getAssetLoanToValue(tokenXYZ.identifier);
 
         let collateralPayment = TokenPayment.metaEsdtFromAmount(lendTokenXYZ, depositNonceXYZ, 5, tokenXYZ.decimals)
 
@@ -257,6 +257,40 @@ describe("lending snippet", async function () {
         session.saveBreadcrumb({name: "borrowedNonceABC", value: returnBorrowNonce})
     });
 
+
+    it("repay ABC token - collateral XYZ", async function () {
+        this.timeout(FiveMinutesInMilliseconds);
+        await session.syncUsers([firstUser, secondUser]);
+        let tokenABC = await session.loadToken("tokenABC");
+        let tokenXYZ = await session.loadToken("tokenXYZ");
+        let borrowedNonceABC = await session.loadBreadcrumb("borrowedNonceABC");
+
+        let lendingAddress = await session.loadAddress("lendingAddr");
+        let lendingInteractor = await createLendingInteractor(session, lendingAddress);
+
+        let liquidityAddressABC = await lendingInteractor.getLiquidityAddress(tokenABC.identifier);
+        let liquidityInteractorABC = await createLiquidityInteractor(session, liquidityAddressABC);
+        // await liquidityInteractorABC.getAggregatorAddress();
+        // await liquidityInteractorABC.getReserves();
+
+        let liquidityAddressXYZ = await lendingInteractor.getLiquidityAddress(tokenXYZ.identifier);
+        let liquidityInteractorXYZ = await createLiquidityInteractor(session, liquidityAddressXYZ);
+        // await liquidityInteractorXYZ.getAggregatorAddress();
+        // await liquidityInteractorXYZ.getReserves();
+
+        let borrowedTokenABC = await liquidityInteractorABC.getBorrowToken();
+        let assetToRepayABC = await liquidityInteractorABC.getPoolAsset();
+
+        // await lendingInteractor.getAssetLoanToValue(tokenABC.identifier);
+        // await lendingInteractor.getAssetLoanToValue(tokenXYZ.identifier);
+
+        let paymentOne = TokenPayment.metaEsdtFromAmount(borrowedTokenABC, borrowedNonceABC, 3.21, tokenXYZ.decimals);
+        let paymentTwo = TokenPayment.fungibleFromAmount(assetToRepayABC, 5, tokenXYZ.decimals);
+        let repayment = [paymentOne, paymentTwo];
+
+        let returnCode = await lendingInteractor.repay(firstUser, repayment, assetToRepayABC);
+        assert.isTrue(returnCode.isSuccess());
+    });
 
     it("generate report", async function () {
         await session.generateReport();

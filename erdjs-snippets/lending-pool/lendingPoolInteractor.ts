@@ -379,6 +379,34 @@ export class LendingPoolInteractor {
         return { returnCode, borrowNonce };
     }
 
+    async repay(user: ITestUser, repayment: TokenPayment[], assetToRepay: string): Promise<ReturnCode> {
+        console.log(`LendingPoolInteractor.repay(): borrower = ${user.address}, BToken = ${repayment[0].toPrettyString()}, 
+                    Token = ${repayment[1].toPrettyString} `);
+
+        // Prepare the interaction
+        let interaction = <Interaction>this.contract.methods
+            .repay([assetToRepay])
+            .withGasLimit(150000000)
+            .withMultiESDTNFTTransfer(repayment, user.address)
+            .withNonce(user.account.getNonceThenIncrement())
+            .withChainID(this.networkConfig.ChainID);
+
+        // Let's check the interaction, then build the transaction object.
+        let transaction = interaction.check().buildTransaction();
+
+        // Let's sign the transaction. For dApps, use a wallet provider instead.
+        await user.signer.sign(transaction);
+
+        // Let's broadcast the transaction and await its completion:
+        await this.networkProvider.sendTransaction(transaction);
+        let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
+
+        // In the end, parse the results:
+        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+
+        return returnCode;
+    }
+
     async getLiquidityAddress(tokenIdentifier: string): Promise<IAddress> {
         // Prepare the interaction, check it, then build the query:
         let interaction = <Interaction>this.contract.methods.getPoolAddress([tokenIdentifier]);
