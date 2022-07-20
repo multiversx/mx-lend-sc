@@ -32,9 +32,23 @@ export class LiquidityPoolInteractor {
         this.audit = audit;
     }
 
-    async getLendingToken(): Promise<string> {
+    async getLendToken(): Promise<string> {
         // Prepare the interaction, check it, then build the query:
         let interaction = <Interaction>this.contract.methods.getLendToken();
+        let query = interaction.check().buildQuery();
+
+        // Let's run the query and parse the results:
+        await this.networkProvider.queryContract(query);
+        let queryResponse = await this.networkProvider.queryContract(query);
+        let { firstValue } = this.resultsParser.parseQueryResponse(queryResponse, interaction.getEndpoint());
+
+        // Now let's interpret the results.
+        return firstValue!.valueOf().toString();
+    }
+
+    async getBorrowToken(): Promise<string> {
+        // Prepare the interaction, check it, then build the query:
+        let interaction = <Interaction>this.contract.methods.borrowToken();
         let query = interaction.check().buildQuery();
 
         // Let's run the query and parse the results:
