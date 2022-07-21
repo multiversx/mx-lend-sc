@@ -192,7 +192,7 @@ pub trait UtilsModule:
         let current_borrow_index = self.borrow_index().get();
         require!(
             &current_borrow_index >= initial_borrow_index,
-            "Invalid timestamp"
+            "Invalid borrow index"
         );
 
         current_borrow_index - initial_borrow_index
