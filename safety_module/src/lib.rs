@@ -151,7 +151,7 @@ pub trait SafetyModule {
         let nft_metadata = nft_info.decode_attributes::<DepositPosition<Self::Api>>();
         let rounds_in_pool = self.blockchain().get_block_round() - nft_metadata.round_no;
 
-        require!(rounds_in_pool > 0, "invalid timestamp");
+        require!(rounds_in_pool > 0, "Invalid round");
 
         let withdraw_amount =
             self.calculate_amount_for_withdrawal(amount.clone(), BigUint::from(rounds_in_pool));
