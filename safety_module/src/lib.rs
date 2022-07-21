@@ -38,8 +38,8 @@ pub trait SafetyModule {
             .into_option()
             .unwrap_or_else(|| self.blockchain().get_caller());
 
-        let round_no = self.blockchain().get_block_round();
-        let deposit_metadata = DepositPosition::new(round_no, payment.clone(), BigUint::from(1u64));
+        let round = self.blockchain().get_block_round();
+        let deposit_metadata = DepositPosition::new(round, payment.clone(), BigUint::from(1u64));
 
         let nft_token = self.nft_token().get();
         let nft_nonce = self.mint_deposit_nft(&deposit_metadata, payment.clone());
@@ -149,7 +149,7 @@ pub trait SafetyModule {
         );
 
         let nft_metadata = nft_info.decode_attributes::<DepositPosition<Self::Api>>();
-        let rounds_in_pool = self.blockchain().get_block_round() - nft_metadata.round_no;
+        let rounds_in_pool = self.blockchain().get_block_round() - nft_metadata.round;
 
         require!(rounds_in_pool > 0, "Invalid round");
 

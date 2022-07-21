@@ -33,15 +33,12 @@ pub trait LiquidityModule:
         let lend_token_id = self.lend_token().get();
         let new_nonce = self.mint_position_tokens(&lend_token_id, &amount);
 
-        let round_no = self.blockchain().get_block_round();
+        let round = self.blockchain().get_block_round();
 
-        self.update_borrow_index(self.borrow_index_last_used().get());
-        let rewards_increase = self.update_rewards_reserves(self.borrow_index_last_used().get());
-        self.update_supply_index(rewards_increase);
-        self.update_index_last_used();
+        self.update_interest_indexes();
 
         let deposit_position =
-            DepositPosition::new(round_no, amount.clone(), self.supply_index().get());
+            DepositPosition::new(round, amount.clone(), self.supply_index().get());
         self.deposit_position(new_nonce).set(&deposit_position);
 
         self.reserves().update(|x| *x += &amount);
@@ -125,10 +122,12 @@ pub trait LiquidityModule:
             "insufficient funds to perform loan"
         );
 
+        self.update_interest_indexes();
+
         let new_nonce = self.mint_position_tokens(&borrow_token_id, &borrow_amount_in_tokens);
-        let round_no = self.blockchain().get_block_round();
+        let round = self.blockchain().get_block_round();
         let borrow_position = BorrowPosition::new(
-            round_no,
+            round,
             lend_tokens,
             borrow_amount_in_tokens.clone(),
             payment_lend_token_id,
@@ -136,11 +135,6 @@ pub trait LiquidityModule:
         );
 
         self.borrow_position(new_nonce).set(&borrow_position);
-
-        self.update_borrow_index(self.borrow_index_last_used().get());
-        let rewards_increase = self.update_rewards_reserves(self.borrow_index_last_used().get());
-        self.update_supply_index(rewards_increase);
-        self.update_index_last_used();
 
         self.borrowed_amount()
             .update(|total| *total += &borrow_amount_in_tokens);
@@ -180,17 +174,13 @@ pub trait LiquidityModule:
         let pool_asset = self.pool_asset().get();
         let mut deposit = self.deposit_position(token_nonce).get();
 
-        self.update_borrow_index(self.borrow_index_last_used().get());
+        self.update_interest_indexes();
 
         let withdrawal_amount = self.compute_withdrawal_amount(
             &amount,
             &self.supply_index().get(),
             &deposit.initial_supply_index,
         );
-
-        let rewards_increase = self.update_rewards_reserves(self.borrow_index_last_used().get());
-        self.update_supply_index(rewards_increase);
-        self.update_index_last_used();
 
         self.reserves().update(|asset_reserve| {
             require!(*asset_reserve >= withdrawal_amount, "insufficient funds");
@@ -248,7 +238,7 @@ pub trait LiquidityModule:
         );
         let mut borrow_position = self.borrow_position(borrow_token_nonce).get();
 
-        self.update_borrow_index(self.borrow_index_last_used().get());
+        self.update_interest_indexes();
 
         let accumulated_debt =
             self.get_debt_interest(borrow_token_amount, &borrow_position.initial_borrow_index);
@@ -260,11 +250,8 @@ pub trait LiquidityModule:
                 .direct(&initial_caller, asset_token_id, 0, &extra_asset_paid, &[]);
         }
 
-        let rewards_increase = self.update_rewards_reserves(self.borrow_index_last_used().get());
-        self.update_supply_index(rewards_increase);
         self.rewards_reserves_paid()
             .set(self.rewards_reserves_paid().get() + &accumulated_debt);
-        self.update_index_last_used();
 
         let lend_token_amount_to_send_back: BigUint;
         if self.is_full_repay(&borrow_position, borrow_token_amount) {
@@ -362,10 +349,7 @@ pub trait LiquidityModule:
             "insufficient funds for liquidation"
         );
 
-        self.update_borrow_index(self.borrow_index_last_used().get());
-        let rewards_increase = self.update_rewards_reserves(self.borrow_index_last_used().get());
-        self.update_supply_index(rewards_increase);
-        self.update_index_last_used();
+        self.update_interest_indexes();
 
         self.borrowed_amount()
             .update(|total| *total -= &borrow_position.borrowed_amount);
