@@ -93,12 +93,19 @@ pub trait UtilsModule:
 
     #[view(getCapitalUtilisation)]
     fn get_capital_utilisation(&self) -> BigUint {
+        let borrowed_amount = self.borrowed_amount().get();
+        let total_amount = self.get_total_supplied_capital();
+
+        self.compute_capital_utilisation(&borrowed_amount, &total_amount)
+    }
+
+    #[view(getTotalSuppliedCapital)]
+    fn get_total_supplied_capital(&self) -> BigUint {
         let reserve_amount = self.reserves().get();
         let borrowed_amount = self.borrowed_amount().get();
         let rewards_reserves_paid = self.rewards_reserves_paid().get();
-        let total_amount = &reserve_amount + &borrowed_amount - rewards_reserves_paid;
 
-        self.compute_capital_utilisation(&borrowed_amount, &total_amount)
+        &reserve_amount + &borrowed_amount - rewards_reserves_paid
     }
 
     #[view(getDebtInterest)]
@@ -135,19 +142,13 @@ pub trait UtilsModule:
         )
     }
 
-    fn update_borrow_index(&self, round_last_update: u64) {
-        let borrow_rate = self.get_borrow_rate();
-        let delta_rounds = self.get_round_diff(round_last_update);
-
+    fn update_borrow_index(&self, borrow_rate: &BigUint, delta_rounds: u64) {
         self.borrow_index()
-            .set(self.borrow_index().get() + &borrow_rate * delta_rounds);
+            .set(self.borrow_index().get() + borrow_rate * delta_rounds);
     }
 
     fn update_supply_index(&self, rewards_increase: BigUint) {
-        let reserve_amount = self.reserves().get();
-        let borrowed_amount = self.borrowed_amount().get();
-        let rewards_reserves_paid = self.rewards_reserves_paid().get();
-        let total_amount = &reserve_amount + &borrowed_amount - rewards_reserves_paid;
+        let total_amount = self.get_total_supplied_capital();
 
         if total_amount != BigUint::zero() {
             self.supply_index()
@@ -155,30 +156,19 @@ pub trait UtilsModule:
         }
     }
 
-    fn update_rewards_reserves(&self, borrow_index_last_used: u64) -> BigUint {
-        let borrow_rate = self.get_borrow_rate();
-        let delta_rounds = self.get_round_diff(borrow_index_last_used);
+    fn update_rewards_reserves(&self, borrow_rate: &BigUint, delta_rounds: u64) -> BigUint {
         let borrowed_amount = self.borrowed_amount().get();
-        let initial_rewards_reserves = self.rewards_reserves().get();
-
-        self.rewards_reserves().set(
-            self.rewards_reserves().get() + &borrow_rate * &borrowed_amount * delta_rounds / BP,
-        );
-        self.rewards_reserves().get() - initial_rewards_reserves
+        let rewards_increase = borrow_rate * &borrowed_amount * delta_rounds / BP;
+        self.rewards_reserves().update(|rewards_reserves| {
+            *rewards_reserves += &rewards_increase;
+        });
+        rewards_increase
     }
 
     fn update_index_last_used(&self) {
-        self.borrow_index_last_used()
-            .set(self.blockchain().get_block_round());
-        self.supply_index_last_used()
-            .set(self.blockchain().get_block_round());
-    }
-
-    fn get_timestamp_diff(&self, timestamp: u64) -> u64 {
-        let current_time = self.blockchain().get_block_timestamp();
-        require!(current_time >= timestamp, "Invalid timestamp");
-
-        current_time - timestamp
+        let current_block_round = self.blockchain().get_block_round();
+        self.borrow_index_last_update_round()
+            .set(current_block_round);
     }
 
     fn get_round_diff(&self, initial_round: u64) -> u64 {
@@ -196,6 +186,20 @@ pub trait UtilsModule:
         );
 
         current_borrow_index - initial_borrow_index
+    }
+
+    fn update_interest_indexes(&self) {
+        let borrow_index_last_update_round = self.borrow_index_last_update_round().get();
+        let delta_rounds = self.get_round_diff(borrow_index_last_update_round);
+
+        if delta_rounds > 0 {
+            let borrow_rate = self.get_borrow_rate();
+
+            self.update_borrow_index(&borrow_rate, delta_rounds);
+            let rewards_increase = self.update_rewards_reserves(&borrow_rate, delta_rounds);
+            self.update_supply_index(rewards_increase);
+            self.update_index_last_used();
+        }
     }
 
     #[inline]
