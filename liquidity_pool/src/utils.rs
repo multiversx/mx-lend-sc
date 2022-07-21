@@ -183,7 +183,7 @@ pub trait UtilsModule:
 
     fn get_round_diff(&self, initial_round: u64) -> u64 {
         let current_round = self.blockchain().get_block_round();
-        require!(current_round >= initial_round, "Invalid timestamp");
+        require!(current_round >= initial_round, "Invalid round");
 
         current_round - initial_round
     }
