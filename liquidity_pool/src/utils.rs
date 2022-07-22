@@ -144,7 +144,7 @@ pub trait UtilsModule:
 
     fn update_borrow_index(&self, borrow_rate: &BigUint, delta_rounds: u64) {
         self.borrow_index()
-            .set(self.borrow_index().get() + borrow_rate * delta_rounds);
+            .update(|new_index| *new_index += borrow_rate * delta_rounds);
     }
 
     fn update_supply_index(&self, rewards_increase: BigUint) {
@@ -152,7 +152,7 @@ pub trait UtilsModule:
 
         if total_amount != BigUint::zero() {
             self.supply_index()
-                .set(self.supply_index().get() + rewards_increase * BP / total_amount);
+                .update(|new_index| *new_index += rewards_increase * BP / total_amount);
         }
     }
 
