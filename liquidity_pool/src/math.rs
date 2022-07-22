@@ -1,5 +1,6 @@
 elrond_wasm::imports!();
 
+/* Base precision */
 const BP: u32 = 1_000_000_000;
 
 #[elrond_wasm::module]
