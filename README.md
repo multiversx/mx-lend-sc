@@ -160,7 +160,9 @@ The interest rate *Rt* formulas depending on the capital utilisation of the pool
 
 ![image](https://user-images.githubusercontent.com/3630188/160089036-63f00d49-4a4c-4de0-8a5a-d4be220d9004.png)
 
-*R0*, *Rslope1* and *Rslope2* are predefined values
+*R0*, *Rslope1* and *Rslope2* are predefined values.
+
+The interest rate is applied only to the borrowed value, not to the entire debt.
 
 ### Simulations
 
