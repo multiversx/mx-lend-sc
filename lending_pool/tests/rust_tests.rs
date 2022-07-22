@@ -847,11 +847,13 @@ fn scenario1() {
         Option::<&Empty>::None,
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1000000000);
-
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1000000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(5);
 
@@ -897,11 +899,13 @@ fn scenario1() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1000000000);
-
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1000000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(7);
 
@@ -958,10 +962,13 @@ fn scenario1() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1050000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1050000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(11);
 
@@ -1038,10 +1045,13 @@ fn scenario2() {
         Option::<&Empty>::None,
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1000000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1000000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(5);
 
@@ -1087,10 +1097,13 @@ fn scenario2() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1000000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1000000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(7);
 
@@ -1145,10 +1158,13 @@ fn scenario2() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1050000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1050000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(9);
 
@@ -1202,11 +1218,13 @@ fn scenario2() {
         &rust_biguint!(10 * BP),
         Some(&Vec::<u8>::new()),
     );
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1070000000);
-    }).assert_ok();
-
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1070000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(11);
 
@@ -1241,11 +1259,13 @@ fn scenario2() {
         Some(&Empty),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1070000000);
-    }).assert_ok();
-
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1070000000);
+        })
+        .assert_ok();
 }
 
 #[test]
@@ -1258,9 +1278,7 @@ fn scenario3() {
     let supplier_addr = lending_setup.first_user_addr.clone();
     let borrower_addr = lending_setup.second_user_addr.clone();
 
-
     lending_setup.b_mock.set_block_round(3);
-
 
     // Supply/Deposit
     lending_setup.b_mock.set_esdt_balance(
@@ -1291,10 +1309,13 @@ fn scenario3() {
         Option::<&Empty>::None,
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1000000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1000000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(5);
 
@@ -1340,11 +1361,13 @@ fn scenario3() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1000000000);
-    }).assert_ok();
-
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1000000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(7);
 
@@ -1401,10 +1424,13 @@ fn scenario3() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1050000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1050000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(11);
 
@@ -1439,10 +1465,13 @@ fn scenario3() {
         Some(&Empty),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1050000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1050000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(15);
 
@@ -1477,10 +1506,13 @@ fn scenario3() {
         Some(&Empty),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1050000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1050000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(23);
 
@@ -1515,10 +1547,13 @@ fn scenario3() {
         Some(&Empty),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1050000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1050000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(28);
 
@@ -1553,10 +1588,13 @@ fn scenario3() {
         Some(&Empty),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1050000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1050000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(32);
 
@@ -1591,11 +1629,13 @@ fn scenario3() {
         Some(&Empty),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1050000000);
-    }).assert_ok();
-
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1050000000);
+        })
+        .assert_ok();
 }
 
 #[test]
@@ -1640,10 +1680,13 @@ fn scenario4() {
         Option::<&Empty>::None,
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1000000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1000000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(5);
 
@@ -1676,10 +1719,13 @@ fn scenario4() {
         Option::<&Empty>::None,
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1000000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1000000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(7);
 
@@ -1725,10 +1771,13 @@ fn scenario4() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1000000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1000000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(9);
 
@@ -1785,10 +1834,13 @@ fn scenario4() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1050000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1050000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(11);
 
@@ -1823,10 +1875,13 @@ fn scenario4() {
         Some(&Empty),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1050000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1050000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(13);
 
@@ -1861,11 +1916,13 @@ fn scenario4() {
         Some(&Empty),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1050000000);
-    }).assert_ok();
-
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1050000000);
+        })
+        .assert_ok();
 }
 
 #[test]
@@ -1880,10 +1937,13 @@ fn scenario5() {
     let borrower_addr = lending_setup.third_user_addr.clone();
 
     lending_setup.b_mock.set_block_round(3);
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1000000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1000000000);
+        })
+        .assert_ok();
 
     // Supply/Deposit
     lending_setup.b_mock.set_esdt_balance(
@@ -1914,10 +1974,13 @@ fn scenario5() {
         Option::<&Empty>::None,
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1000000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1000000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(5);
 
@@ -1963,10 +2026,13 @@ fn scenario5() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1000000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1000000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(7);
 
@@ -1999,11 +2065,14 @@ fn scenario5() {
         Option::<&Empty>::None,
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1020000000);
-    }).assert_ok();
-    
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1020000000);
+        })
+        .assert_ok();
+
     lending_setup.b_mock.set_block_round(9);
 
     // Repay
@@ -2057,10 +2126,13 @@ fn scenario5() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1030000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1030000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(11);
 
@@ -2095,10 +2167,13 @@ fn scenario5() {
         Some(&Empty),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1030000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1030000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(13);
 
@@ -2133,10 +2208,13 @@ fn scenario5() {
         Some(&Empty),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1030000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1030000000);
+        })
+        .assert_ok();
 }
 
 #[test]
@@ -2153,10 +2231,13 @@ fn scenario6() {
     let eve_addr = lending_setup.fifth_user_addr.clone();
 
     lending_setup.b_mock.set_block_round(3);
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1000000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1000000000);
+        })
+        .assert_ok();
 
     // Supply/Deposit - Alice
     lending_setup
@@ -2185,10 +2266,13 @@ fn scenario6() {
         Option::<&Empty>::None,
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1000000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1000000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(5);
 
@@ -2219,10 +2303,13 @@ fn scenario6() {
         Option::<&Empty>::None,
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1000000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1000000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(7);
 
@@ -2268,10 +2355,13 @@ fn scenario6() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1000000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1000000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(9);
 
@@ -2310,10 +2400,13 @@ fn scenario6() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1025000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1025000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(11);
 
@@ -2352,10 +2445,13 @@ fn scenario6() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1060000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1060000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(13);
 
@@ -2410,10 +2506,13 @@ fn scenario6() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1115000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1115000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(15);
 
@@ -2468,10 +2567,13 @@ fn scenario6() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1150000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1150000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(17);
 
@@ -2526,10 +2628,13 @@ fn scenario6() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1180000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1180000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(19);
 
@@ -2584,10 +2689,13 @@ fn scenario6() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1205000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1205000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(21);
 
@@ -2644,10 +2752,13 @@ fn scenario6() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1225000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1225000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(23);
 
@@ -2682,10 +2793,13 @@ fn scenario6() {
         Some(&Empty),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1225000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1225000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(25);
 
@@ -2720,12 +2834,14 @@ fn scenario6() {
         Some(&Empty),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1225000000);
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1225000000);
+        })
+        .assert_ok();
 }
-
 
 #[test]
 fn scenario7() {
@@ -2738,7 +2854,6 @@ fn scenario7() {
     let supplier2_addr = lending_setup.second_user_addr.clone();
     let borrower_addr = lending_setup.third_user_addr.clone();
     let borrower2_addr = lending_setup.fourth_user_addr.clone();
-
 
     // Supply/Deposit
     lending_setup.b_mock.set_esdt_balance(
@@ -2769,14 +2884,15 @@ fn scenario7() {
         Option::<&Empty>::None,
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1000000000);
-
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1000000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(5);
-
 
     // Supply/Deposit
     lending_setup.b_mock.set_esdt_balance(
@@ -2807,11 +2923,13 @@ fn scenario7() {
         Option::<&Empty>::None,
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1000000000);
-
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1000000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(7);
 
@@ -2857,14 +2975,15 @@ fn scenario7() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1000000000);
-
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1000000000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(8);
-
 
     // Borrow
     lending_setup.b_mock.set_nft_balance(
@@ -2908,11 +3027,13 @@ fn scenario7() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1007500000);
-
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1007500000);
+        })
+        .assert_ok();
 
     // Repay - Charlie (1000 USD)
     lending_setup.b_mock.set_esdt_balance(
@@ -2967,14 +3088,15 @@ fn scenario7() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1007500000);
-
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1007500000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(11);
-
 
     // Repay - Dave (2400 USD)
     lending_setup.b_mock.set_esdt_balance(
@@ -3029,14 +3151,15 @@ fn scenario7() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1052500000);
-
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1052500000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(13);
-
 
     // Withdraw - Supplier1
     lending_setup
@@ -3069,11 +3192,13 @@ fn scenario7() {
         Some(&Empty),
     );
 
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1052500000);
-
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1052500000);
+        })
+        .assert_ok();
 
     lending_setup.b_mock.set_block_round(15);
 
@@ -3108,10 +3233,11 @@ fn scenario7() {
         Some(&Empty),
     );
 
-
-    lending_setup.b_mock.execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
-        let borrow_index = sc.borrow_index().get();
-        assert_eq!(borrow_index, 1052500000);
-
-    }).assert_ok();
+    lending_setup
+        .b_mock
+        .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
+            let borrow_index = sc.borrow_index().get();
+            assert_eq!(borrow_index, 1052500000);
+        })
+        .assert_ok();
 }
