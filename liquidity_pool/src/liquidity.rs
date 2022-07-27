@@ -187,6 +187,15 @@ pub trait LiquidityModule:
             *asset_reserve -= &withdrawal_amount;
         });
 
+        let interest = &withdrawal_amount - &amount;
+
+        self.rewards_reserves_accumulated_not_distributed()
+            .update(|rewards| {
+                require!(*rewards >= interest, "rewards accumulated not sufficient");
+
+                *rewards -= interest;
+            });
+
         deposit.amount -= &amount;
         if deposit.amount == 0 {
             self.deposit_position(token_nonce).clear();
@@ -250,8 +259,10 @@ pub trait LiquidityModule:
                 .direct(&initial_caller, asset_token_id, 0, &extra_asset_paid, &[]);
         }
 
-        self.rewards_reserves_paid()
-            .set(self.rewards_reserves_paid().get() + &accumulated_debt);
+        self.rewards_reserves_accumulated_not_distributed()
+            .update(|rewards| {
+                *rewards += &accumulated_debt;
+            });
 
         let lend_token_amount_to_send_back: BigUint;
         if self.is_full_repay(&borrow_position, borrow_token_amount) {

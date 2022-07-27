@@ -103,9 +103,10 @@ pub trait UtilsModule:
     fn get_total_supplied_capital(&self) -> BigUint {
         let reserve_amount = self.reserves().get();
         let borrowed_amount = self.borrowed_amount().get();
-        let rewards_reserves_paid = self.rewards_reserves_paid().get();
+        let rewards_reserves_accumulated_not_distributed =
+            self.rewards_reserves_accumulated_not_distributed().get();
 
-        &reserve_amount + &borrowed_amount - rewards_reserves_paid
+        &reserve_amount + &borrowed_amount - rewards_reserves_accumulated_not_distributed
     }
 
     #[view(getDebtInterest)]
