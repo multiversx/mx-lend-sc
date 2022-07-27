@@ -233,6 +233,12 @@ pub trait LiquidityModule:
         let borrow_token_id = &first_payment.token_identifier;
         let borrow_token_amount = &first_payment.amount;
         let borrow_token_nonce = first_payment.token_nonce;
+
+        require!(
+            !self.borrow_position(borrow_token_nonce).is_empty(),
+            "liquidated position"
+        );
+
         let borrow_position = self.borrow_position(borrow_token_nonce).get();
 
         require!(
@@ -252,15 +258,7 @@ pub trait LiquidityModule:
         let pool_token_id = self.pool_asset().get();
         let pool_asset_data = self.get_token_price_data(&pool_token_id);
 
-        require!(
-            !self.borrow_position(borrow_token_nonce).is_empty(),
-            "liquidated position"
-        );
-
-        self.update_borrow_index(self.borrow_index_last_used().get());
-        let rewards_increase = self.update_rewards_reserves(self.borrow_index_last_used().get());
-        self.update_supply_index(rewards_increase);
-        self.update_index_last_used();
+        self.update_interest_indexes();
 
         let total_collateral_amount = &borrow_position.lend_tokens.amount + extra_collateral_amount;
 
