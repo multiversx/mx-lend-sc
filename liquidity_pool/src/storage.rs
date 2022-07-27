@@ -17,9 +17,9 @@ pub trait StorageModule {
     #[storage_mapper("rewards_reserves")]
     fn rewards_reserves(&self) -> SingleValueMapper<BigUint>;
 
-    #[view(getRewardsReservesPaid)]
-    #[storage_mapper("rewards_reserves_paid")]
-    fn rewards_reserves_paid(&self) -> SingleValueMapper<BigUint>;
+    #[view(getRewardsReservesAccumulatedNotDistributed)]
+    #[storage_mapper("rewards_reserves_accumulated_not_distributed")]
+    fn rewards_reserves_accumulated_not_distributed(&self) -> SingleValueMapper<BigUint>;
 
     #[view(getLendToken)]
     #[storage_mapper("lend_token")]
