@@ -1146,9 +1146,11 @@ fn scenario2() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup
-        .b_mock
-        .check_esdt_balance(&borrower_addr, USDC_TOKEN_ID, &rust_biguint!(0));
+    lending_setup.b_mock.check_esdt_balance(
+        &borrower_addr,
+        USDC_TOKEN_ID,
+        &rust_biguint!(118227200),
+    );
 
     lending_setup.b_mock.check_nft_balance(
         &borrower_addr,
@@ -1222,7 +1224,7 @@ fn scenario2() {
         .b_mock
         .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
             let borrow_index = sc.borrow_index().get();
-            assert_eq!(borrow_index, 1070000000);
+            assert_eq!(borrow_index, 1069704432);
         })
         .assert_ok();
 
@@ -1255,7 +1257,7 @@ fn scenario2() {
         &supplier_addr,
         USDC_TOKEN_ID,
         0,
-        &rust_biguint!(2_058 * BP),
+        &rust_biguint!(2_057_765_292_000),
         Some(&Empty),
     );
 
@@ -1263,7 +1265,7 @@ fn scenario2() {
         .b_mock
         .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
             let borrow_index = sc.borrow_index().get();
-            assert_eq!(borrow_index, 1070000000);
+            assert_eq!(borrow_index, 1069704432);
         })
         .assert_ok();
 }
@@ -2517,9 +2519,11 @@ fn scenario6() {
     lending_setup.b_mock.set_block_round(15);
 
     // Repay - Dave (1)
-    lending_setup
-        .b_mock
-        .set_esdt_balance(&dave_addr, USDC_TOKEN_ID, &rust_biguint!(3_375 * BP));
+    lending_setup.b_mock.set_esdt_balance(
+        &dave_addr,
+        USDC_TOKEN_ID,
+        &rust_biguint!(3_373_857_564_000),
+    );
 
     let mut payments = Vec::with_capacity(2);
 
@@ -2532,7 +2536,7 @@ fn scenario6() {
     payments.push(TxInputESDT {
         token_identifier: USDC_TOKEN_ID.to_vec(),
         nonce: 0,
-        value: rust_biguint!(3_375 * BP),
+        value: rust_biguint!(3_373_857_564_000),
     });
 
     lending_setup
@@ -2571,16 +2575,18 @@ fn scenario6() {
         .b_mock
         .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
             let borrow_index = sc.borrow_index().get();
-            assert_eq!(borrow_index, 1150000000);
+            assert_eq!(borrow_index, 1149619188);
         })
         .assert_ok();
 
     lending_setup.b_mock.set_block_round(17);
 
     // Repay - Dave (2)
-    lending_setup
-        .b_mock
-        .set_esdt_balance(&dave_addr, USDC_TOKEN_ID, &rust_biguint!(3_465 * BP));
+    lending_setup.b_mock.set_esdt_balance(
+        &dave_addr,
+        USDC_TOKEN_ID,
+        &rust_biguint!(3_462_333_042_000),
+    );
 
     let mut payments = Vec::with_capacity(2);
 
@@ -2593,7 +2599,7 @@ fn scenario6() {
     payments.push(TxInputESDT {
         token_identifier: USDC_TOKEN_ID.to_vec(),
         nonce: 0,
-        value: rust_biguint!(3_465 * BP),
+        value: rust_biguint!(3_462_333_042_000),
     });
 
     lending_setup
@@ -2632,16 +2638,18 @@ fn scenario6() {
         .b_mock
         .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
             let borrow_index = sc.borrow_index().get();
-            assert_eq!(borrow_index, 1180000000);
+            assert_eq!(borrow_index, 1179111014);
         })
         .assert_ok();
 
     lending_setup.b_mock.set_block_round(19);
 
     // Repay - Charlie (1)
-    lending_setup
-        .b_mock
-        .set_esdt_balance(&charlie_addr, USDC_TOKEN_ID, &rust_biguint!(3_615 * BP));
+    lending_setup.b_mock.set_esdt_balance(
+        &charlie_addr,
+        USDC_TOKEN_ID,
+        &rust_biguint!(3_610_508_304_000),
+    );
 
     let mut payments = Vec::with_capacity(2);
 
@@ -2654,7 +2662,7 @@ fn scenario6() {
     payments.push(TxInputESDT {
         token_identifier: USDC_TOKEN_ID.to_vec(),
         nonce: 0,
-        value: rust_biguint!(3_615 * BP),
+        value: rust_biguint!(3_610_508_304_000),
     });
 
     lending_setup
@@ -2693,7 +2701,7 @@ fn scenario6() {
         .b_mock
         .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
             let borrow_index = sc.borrow_index().get();
-            assert_eq!(borrow_index, 1205000000);
+            assert_eq!(borrow_index, 1203502768);
         })
         .assert_ok();
 
@@ -2703,7 +2711,7 @@ fn scenario6() {
     lending_setup.b_mock.set_esdt_balance(
         &charlie_addr,
         USDC_TOKEN_ID,
-        &rust_biguint!(14_700 * BP),
+        &rust_biguint!(14_673_892_248_000),
     );
 
     let mut payments = Vec::with_capacity(2);
@@ -2717,7 +2725,7 @@ fn scenario6() {
     payments.push(TxInputESDT {
         token_identifier: USDC_TOKEN_ID.to_vec(),
         nonce: 0,
-        value: rust_biguint!(14_700 * BP),
+        value: rust_biguint!(14_673_892_248_000),
     });
 
     lending_setup
@@ -2756,7 +2764,7 @@ fn scenario6() {
         .b_mock
         .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
             let borrow_index = sc.borrow_index().get();
-            assert_eq!(borrow_index, 1225000000);
+            assert_eq!(borrow_index, 1222824354);
         })
         .assert_ok();
 
@@ -2789,7 +2797,7 @@ fn scenario6() {
         &bob_addr,
         USDC_TOKEN_ID,
         0,
-        &rust_biguint!(21_605 * BP),
+        &rust_biguint!(21_582_307_460_000),
         Some(&Empty),
     );
 
@@ -2797,7 +2805,7 @@ fn scenario6() {
         .b_mock
         .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
             let borrow_index = sc.borrow_index().get();
-            assert_eq!(borrow_index, 1225000000);
+            assert_eq!(borrow_index, 1222824354);
         })
         .assert_ok();
 
@@ -2830,7 +2838,7 @@ fn scenario6() {
         &alice_addr,
         USDC_TOKEN_ID,
         0,
-        &rust_biguint!(43_210 * BP),
+        &rust_biguint!(43_164_614_920_000),
         Some(&Empty),
     );
 
@@ -2838,7 +2846,7 @@ fn scenario6() {
         .b_mock
         .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
             let borrow_index = sc.borrow_index().get();
-            assert_eq!(borrow_index, 1225000000);
+            assert_eq!(borrow_index, 1222824354);
         })
         .assert_ok();
 }
@@ -3102,7 +3110,7 @@ fn scenario7() {
     lending_setup.b_mock.set_esdt_balance(
         &borrower2_addr,
         USDC_TOKEN_ID,
-        &rust_biguint!(2508 * BP),
+        &rust_biguint!(2507878629600),
     );
 
     let mut payments = Vec::with_capacity(2);
@@ -3116,7 +3124,7 @@ fn scenario7() {
     payments.push(TxInputESDT {
         token_identifier: USDC_TOKEN_ID.to_vec(),
         nonce: 0,
-        value: rust_biguint!(2508 * BP),
+        value: rust_biguint!(2507878629600),
     });
 
     lending_setup
@@ -3155,7 +3163,7 @@ fn scenario7() {
         .b_mock
         .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
             let borrow_index = sc.borrow_index().get();
-            assert_eq!(borrow_index, 1052500000);
+            assert_eq!(borrow_index, 1052449429);
         })
         .assert_ok();
 
@@ -3188,7 +3196,7 @@ fn scenario7() {
         &supplier_addr,
         USDC_TOKEN_ID,
         0,
-        &rust_biguint!(8_117 * BP / 2),
+        &rust_biguint!(4058378700000),
         Some(&Empty),
     );
 
@@ -3196,7 +3204,7 @@ fn scenario7() {
         .b_mock
         .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
             let borrow_index = sc.borrow_index().get();
-            assert_eq!(borrow_index, 1052500000);
+            assert_eq!(borrow_index, 1052449429);
         })
         .assert_ok();
 
@@ -3229,7 +3237,7 @@ fn scenario7() {
         &supplier2_addr,
         USDC_TOKEN_ID,
         0,
-        &rust_biguint!(8_117 * BP / 2),
+        &rust_biguint!(4058378700000),
         Some(&Empty),
     );
 
@@ -3237,7 +3245,7 @@ fn scenario7() {
         .b_mock
         .execute_query(&lending_setup.liquidity_pool_usdc_wrapper, |sc| {
             let borrow_index = sc.borrow_index().get();
-            assert_eq!(borrow_index, 1052500000);
+            assert_eq!(borrow_index, 1052449429);
         })
         .assert_ok();
 }
