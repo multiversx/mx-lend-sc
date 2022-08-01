@@ -1146,11 +1146,9 @@ fn scenario2() {
         Some(&Vec::<u8>::new()),
     );
 
-    lending_setup.b_mock.check_esdt_balance(
-        &borrower_addr,
-        USDC_TOKEN_ID,
-        &rust_biguint!(118227200),
-    );
+    lending_setup
+        .b_mock
+        .check_esdt_balance(&borrower_addr, USDC_TOKEN_ID, &rust_biguint!(0));
 
     lending_setup.b_mock.check_nft_balance(
         &borrower_addr,
@@ -1171,9 +1169,11 @@ fn scenario2() {
     lending_setup.b_mock.set_block_round(9);
 
     // repay the rest of 400 USDC
-    lending_setup
-        .b_mock
-        .set_esdt_balance(&borrower_addr, USDC_TOKEN_ID, &rust_biguint!(428 * BP));
+    lending_setup.b_mock.set_esdt_balance(
+        &borrower_addr,
+        USDC_TOKEN_ID,
+        &rust_biguint!(427_881_772_800),
+    );
 
     let mut payments = Vec::with_capacity(2);
 
@@ -1186,7 +1186,7 @@ fn scenario2() {
     payments.push(TxInputESDT {
         token_identifier: USDC_TOKEN_ID.to_vec(),
         nonce: 0,
-        value: rust_biguint!(428 * BP),
+        value: rust_biguint!(427_881_772_800),
     });
 
     lending_setup
