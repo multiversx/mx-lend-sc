@@ -8,7 +8,7 @@ mod proxy;
 pub mod router;
 
 pub use common_structs::*;
-use liquidity_pool::liquidity::ProxyTrait as _;
+use liquidity_pool::{endpoints::borrowToken, liquidity::ProxyTrait as _};
 
 #[elrond_wasm::contract]
 pub trait LendingPool:
@@ -19,9 +19,39 @@ pub trait LendingPool:
         self.liq_pool_template_address().set(&lp_template_address);
     }
 
+    #[endpoint]
+    fn enter_market(&self, caller: OptionalValue<ManagedAddress>) -> AccountPosition<Self::Api> {
+        let initial_caller = self.caller_from_option_or_sender(caller);
+
+        let account_token_id = TokenIdentifier::from("LAccount"); //change this
+        let new_account_nonce = self.mint_account_token(account_token_id);
+        // let deposit_positions_array = ManagedVec::from_raw_handle(empty_buffer.get_raw_handle());
+        // let borrow_positions_array = ManagedVec::from_raw_handle(empty_buffer.get_raw_handle());
+
+        // let account_position = AccountPosition::new(
+        //     // new_account_nonce,
+        //     deposit_positions_array,
+        //     borrow_positions_array,
+        // );
+
+        self.account_list().insert(new_account_nonce);
+
+        self.send().direct(
+            &initial_caller,
+            &account_token_id,
+            new_account_nonce,
+            1,
+            &[],
+        );
+    }
+
     #[payable("*")]
     #[endpoint]
-    fn deposit(&self, caller: OptionalValue<ManagedAddress>) -> EsdtTokenPayment<Self::Api> {
+    fn deposit(
+        &self,
+        caller: OptionalValue<ManagedAddress>,
+        account_nonce: u64,
+    ) {
         let (amount, asset) = self.call_value().payment_token_pair();
         let initial_caller = self.caller_from_option_or_sender(caller);
 
@@ -30,27 +60,43 @@ pub trait LendingPool:
 
         let pool_address = self.get_pool_address(&asset);
 
-        self.liquidity_pool_proxy(pool_address)
-            .deposit_asset(initial_caller)
+        self.liquidity_pool_proxy(pool_address, account_nonce)
+            .deposit_asset(initial_caller, account_nonce)
             .add_token_transfer(asset, 0, amount)
-            .execute_on_dest_context()
+            .execute_on_dest_context();
     }
 
     #[payable("*")]
     #[endpoint]
-    fn withdraw(&self, caller: OptionalValue<ManagedAddress>) {
-        let (amount, lend_token) = self.call_value().payment_token_pair();
-        let token_nonce = self.call_value().esdt_token_nonce();
+    fn withdraw(
+        &self,
+        token_id: TokenIdentifier,
+        amount: BigUint,
+        caller: OptionalValue<ManagedAddress>,
+        account_position: AccountPosition<Self::Api>,
+    ) {
+        // let (amount, lend_token) = self.call_value().payment_token_pair();
+        // let token_nonce = self.call_value().esdt_token_nonce();
         let initial_caller = self.caller_from_option_or_sender(caller);
 
         self.require_amount_greater_than_zero(&amount);
         self.require_non_zero_address(&initial_caller);
 
-        let pool_address = self.get_pool_address(&lend_token);
-        self.liquidity_pool_proxy(pool_address)
-            .withdraw(initial_caller)
-            .add_token_transfer(lend_token, token_nonce, amount)
+        self.supplied_positions(account_position.nonce, token_nonce)
+            .get();
+
+        let pool_address = self.get_pool_address(&token_id);
+        let returned_deposit_position = self
+            .liquidity_pool_proxy(pool_address)
+            .withdraw(initial_caller, amount, account_position)
+            // .add_token_transfer(lend_token, token_nonce, amount)
             .execute_on_dest_context_ignore_result();
+
+        // if DP withdrawn, delete from array
+        // Maybe better do this in Liquidity Pool
+        // if !returned_deposit_position && deposit_position {
+        //     account_position.supplied_positions.remove(i);
+        // }
     }
 
     #[payable("*")]
@@ -59,7 +105,8 @@ pub trait LendingPool:
         &self,
         asset_to_borrow: TokenIdentifier,
         caller: OptionalValue<ManagedAddress>,
-    ) -> EsdtTokenPayment<Self::Api> {
+        account_position: AccountPosition<Self::Api>,
+    ) {
         let (payment_amount, payment_lend_id) = self.call_value().payment_token_pair();
         let payment_nonce = self.call_value().esdt_token_nonce();
         let initial_caller = self.caller_from_option_or_sender(caller);
@@ -71,46 +118,48 @@ pub trait LendingPool:
         let loan_to_value = self.get_loan_to_value_exists_and_non_zero(&asset_to_borrow);
 
         //L tokens for a specific token X are 1:1 with deposited X tokens
-        self.liquidity_pool_proxy(borrow_token_pool_address)
-            .borrow(initial_caller, loan_to_value)
-            .add_token_transfer(payment_lend_id, payment_nonce, payment_amount)
-            .execute_on_dest_context()
-    }
+        let (borrowTokenPayment, borrowPosition) = self
+            .liquidity_pool_proxy(borrow_token_pool_address)
+            .borrow(initial_caller, amount, account_position, loan_to_value)
+            // .add_token_transfer(payment_lend_id, payment_nonce, payment_amount)
+            .execute_on_dest_context();
 
-    #[payable("*")]
-    #[endpoint(addCollateral)]
-    fn add_collateral(
-        &self,
-        asset_to_add_collateral: TokenIdentifier,
-        caller: OptionalValue<ManagedAddress>,
-    ) {
-        let transfers = self.call_value().all_esdt_transfers();
-        let initial_caller = self.caller_from_option_or_sender(caller);
+        // account_position.borrowed_positions.try_push(borrowPosition);
 
-        let asset_address = self.get_pool_address(&asset_to_add_collateral);
-        let loan_to_value = self.get_loan_to_value_exists_and_non_zero(&asset_to_add_collateral);
-
-        self.liquidity_pool_proxy(asset_address)
-            .add_collateral(initial_caller, loan_to_value)
-            .with_multi_token_transfer(transfers)
-            .execute_on_dest_context_ignore_result();
+        // borrowTokenPayment
     }
 
     #[payable("*")]
     #[endpoint]
-    fn repay(&self, asset_to_repay: TokenIdentifier, caller: OptionalValue<ManagedAddress>) {
-        let transfers = self.call_value().all_esdt_transfers();
+    fn repay(
+        &self,
+        asset_to_repay: TokenIdentifier,
+        caller: OptionalValue<ManagedAddress>,
+        account_position: AccountPosition<Self::Api>,
+    ) {
+        let (amount, asset) = self.call_value().payment_token_pair();
         let initial_caller = self.caller_from_option_or_sender(caller);
 
-        let asset_address = self.get_pool_address(&asset_to_repay);
+        self.require_amount_greater_than_zero(&amount);
+        self.require_non_zero_address(&initial_caller);
+
+        // let asset_address = self.get_pool_address(&asset_to_repay);
         require!(
             self.pools_map().contains_key(&asset_to_repay),
             "asset not supported"
         );
 
-        self.liquidity_pool_proxy(asset_address)
-            .repay(initial_caller)
-            .with_multi_token_transfer(transfers)
+        // for i in 0..account_position.borrowed_positions.len() {
+        //     if account_position.borrowed_positions[i]. == token_nonce {
+        //         // deposit_position = account_position.supplied_positions[i]
+        //         break;
+        //     }
+        // }
+
+        let borrow_position = self
+            .liquidity_pool_proxy(asset_address)
+            .repay(initial_caller, account_position)
+            .add_token_transfer(asset_to_repay, 0, amount)
             .execute_on_dest_context_ignore_result();
     }
 

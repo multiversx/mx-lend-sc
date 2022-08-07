@@ -1,7 +1,7 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use common_structs::{BorrowPosition, DepositPosition, PoolParams};
+use common_structs::{BorrowPosition, DepositPosition, PoolParams, AccountPosition};
 
 #[elrond_wasm::module]
 pub trait StorageModule {
@@ -31,11 +31,28 @@ pub trait StorageModule {
 
     #[view(getDepositPosition)]
     #[storage_mapper("deposit_position")]
-    fn deposit_position(&self, nonce: u64) -> SingleValueMapper<DepositPosition<Self::Api>>;
+    fn deposit_position(&self) -> UnorderedSetMapper<DepositPosition<Self::Api>>;
 
     #[view(getBorrowMetadata)]
     #[storage_mapper("borrow_position")]
-    fn borrow_position(&self, nonce: u64) -> SingleValueMapper<BorrowPosition<Self::Api>>;
+    fn borrow_position(&self) -> UnorderedSetMapper<BorrowPosition<Self::Api>>;
+
+    // #[view(getAccountPosition)]
+    // #[storage_mapper("account_position")]
+    // fn account_position(&self, account_nonce: u64) -> UnorderedSetMapper<AccountPosition<Self::Api>>;
+
+    #[view(getAccountList)]
+    #[storage_mapper("account_list")]
+    fn account_list(&self) -> NonFungibleTokenMapper<Self::Api>;
+
+    // #[view(getSuppliedPosition)]
+    // #[storage_mapper("supplied_positions")]
+    // fn supplied_positions(&self, account_nonce: u64, nonce_deposit_position: u64) -> UnorderedSetMapper<DepositPosition<M>;
+
+    // #[view(getSuppliedPosition)]
+    // #[storage_mapper("supplied_positions")]
+    // fn supplied_positions(&self, account_nonce: u64, nonce_deposit_position: u64) -> SingleValueMapper<ManagedVec(BorrowPosition<M>)<Self::Api>>;
+
 
     #[view(getPoolParams)]
     #[storage_mapper("pool_params")]

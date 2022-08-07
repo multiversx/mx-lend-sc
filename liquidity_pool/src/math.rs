@@ -63,6 +63,18 @@ pub trait MathModule {
         amount + &interest
     }
 
+    fn compute_interest(
+        &self,
+        amount: &BigUint,
+        current_supply_index: &BigUint,
+        initial_supply_index: &BigUint,
+    ) -> BigUint {
+        let bp = BigUint::from(BP);
+        
+        (current_supply_index - initial_supply_index) * amount / bp
+    }
+
+
     fn compute_borrowable_amount(
         &self,
         amount: &BigUint,

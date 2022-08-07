@@ -31,21 +31,30 @@ pub struct TokenAmountPair<M: ManagedTypeApi> {
     pub amount: BigUint<M>,
 }
 
-#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi)]
+#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi, PartialEq, Clone)]
 pub struct DepositPosition<M: ManagedTypeApi> {
-    pub round: u64,
+    pub token_id: TokenIdentifier<M>,
     pub amount: BigUint<M>,
+    pub owner_nonce: u64,
+    pub round: u64,
     pub initial_supply_index: BigUint<M>,
 }
 
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi, PartialEq, Clone)]
 pub struct BorrowPosition<M: ManagedTypeApi> {
+    pub token_id: TokenIdentifier<M>,
+    pub amount: BigUint<M>,
+    pub owner_nonce: u64,
     pub round: u64,
-    pub lend_tokens: TokenAmountPair<M>,
-    pub borrowed_amount: BigUint<M>,
-    pub collateral_token_id: TokenIdentifier<M>,
     pub initial_borrow_index: BigUint<M>,
 }
+
+// #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi, PartialEq, Clone)]
+// pub struct AccountPosition<M: ManagedTypeApi> {
+//     // pub nonce: u64,
+//     pub supplied_positions: ArrayVec<u64>, 1024>,
+//     pub borrowed_positions: ArrayVec<u64>, 1024>,
+// }
 
 impl<M: ManagedTypeApi> TokenAmountPair<M> {
     pub fn new(token_id: TokenIdentifier<M>, nonce: u64, amount: BigUint<M>) -> Self {
@@ -58,10 +67,18 @@ impl<M: ManagedTypeApi> TokenAmountPair<M> {
 }
 
 impl<M: ManagedTypeApi> DepositPosition<M> {
-    pub fn new(round: u64, amount: BigUint<M>, initial_supply_index: BigUint<M>) -> Self {
+    pub fn new(
+        token_id: TokenIdentifier<M>,
+        amount: BigUint<M>,
+        owner_nonce: u64,
+        round: u64,
+        initial_supply_index: BigUint<M>,
+    ) -> Self {
         DepositPosition {
-            round,
+            token_id,
             amount,
+            owner_nonce,
+            round,
             initial_supply_index,
         }
     }
@@ -69,17 +86,17 @@ impl<M: ManagedTypeApi> DepositPosition<M> {
 
 impl<M: ManagedTypeApi> BorrowPosition<M> {
     pub fn new(
+        token_id: TokenIdentifier<M>,
+        amount: BigUint<M>,
+        owner_nonce: u64,
         round: u64,
-        lend_tokens: TokenAmountPair<M>,
-        borrowed_amount: BigUint<M>,
-        collateral_token_id: TokenIdentifier<M>,
         initial_borrow_index: BigUint<M>,
     ) -> Self {
         BorrowPosition {
+            token_id,
+            amount,
+            owner_nonce,
             round,
-            lend_tokens,
-            borrowed_amount,
-            collateral_token_id,
             initial_borrow_index,
         }
     }
