@@ -47,11 +47,7 @@ pub trait LendingPool:
 
     #[payable("*")]
     #[endpoint]
-    fn deposit(
-        &self,
-        caller: OptionalValue<ManagedAddress>,
-        account_nonce: u64,
-    ) {
+    fn deposit(&self, caller: OptionalValue<ManagedAddress>, account_nonce: u64) {
         let (amount, asset) = self.call_value().payment_token_pair();
         let initial_caller = self.caller_from_option_or_sender(caller);
 

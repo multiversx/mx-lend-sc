@@ -1,7 +1,7 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use common_structs::{BorrowPosition, DepositPosition, PoolParams, AccountPosition};
+use common_structs::{AccountPosition, BorrowPosition, DepositPosition, PoolParams};
 
 #[elrond_wasm::module]
 pub trait StorageModule {
@@ -52,7 +52,6 @@ pub trait StorageModule {
     // #[view(getSuppliedPosition)]
     // #[storage_mapper("supplied_positions")]
     // fn supplied_positions(&self, account_nonce: u64, nonce_deposit_position: u64) -> SingleValueMapper<ManagedVec(BorrowPosition<M>)<Self::Api>>;
-
 
     #[view(getPoolParams)]
     #[storage_mapper("pool_params")]

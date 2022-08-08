@@ -210,7 +210,6 @@ pub trait UtilsModule:
         &borrow_position.amount == borrow_token_repaid
     }
 
-
     fn get_collateral_available(&self, account_position: u64, loan_to_value: BigUint) -> BigUint {
         let collateral_available = BigUint::zero();
         let deposit_position_iter = self
@@ -266,7 +265,7 @@ pub trait UtilsModule:
         merged_deposit_position
     }
 
-    fn merge_borrow_positions(&self, account_position: u64) -> BorrowPosition<Self::Api>  {
+    fn merge_borrow_positions(&self, account_position: u64) -> BorrowPosition<Self::Api> {
         let pool_asset = self.pool_asset().get();
         let round = self.blockchain().get_block_round();
         let borrow_index = self.borrow_index().get();
@@ -297,5 +296,4 @@ pub trait UtilsModule:
 
         merged_borrow_position
     }
-
 }

@@ -212,7 +212,11 @@ pub trait LiquidityModule:
     #[only_owner]
     #[payable("*")]
     #[endpoint]
-    fn repay(&self, initial_caller: ManagedAddress, account_position: u64) -> BorrowPosition<Self::Api> {
+    fn repay(
+        &self,
+        initial_caller: ManagedAddress,
+        account_position: u64,
+    ) -> BorrowPosition<Self::Api> {
         let (amount_to_be_repaid, asset_token_id) = self.call_value().payment_token_pair();
         let pool_asset = self.pool_asset().get();
         require!(
@@ -238,8 +242,10 @@ pub trait LiquidityModule:
 
         self.update_interest_indexes();
 
-        let accumulated_debt =
-            self.get_debt_interest(&borrow_position.amount, &borrow_position.initial_borrow_index);
+        let accumulated_debt = self.get_debt_interest(
+            &borrow_position.amount,
+            &borrow_position.initial_borrow_index,
+        );
         let total_owed = borrow_position.amount + &accumulated_debt;
 
         if amount_to_be_repaid > total_owed {
@@ -251,7 +257,7 @@ pub trait LiquidityModule:
         // let lend_token_amount_to_send_back: BigUint;
         self.borrow_position().swap_remove(&borrow_position);
         if !self.is_full_repay(&borrow_position, &amount_to_be_repaid) {
-            // // Issue here: 
+            // // Issue here:
             // lend_token_amount_to_send_back = self.rule_of_three(
             //     &borrow_position.lend_tokens.amount,
             //     amount_to_be_repaid,
@@ -265,8 +271,7 @@ pub trait LiquidityModule:
 
             borrow_position.amount -= amount_to_be_repaid;
             // borrow_position.lend_tokens.amount -= &lend_token_amount_to_send_back;
-            self.borrow_position()
-                .insert(borrow_position);
+            self.borrow_position().insert(borrow_position);
         }
 
         self.borrowed_amount()
