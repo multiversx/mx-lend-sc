@@ -3,10 +3,11 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-pub const BP: u64 = 1_000_000_000;
+pub const BP: u64 = 1_000_000_000_000_000_000;
 pub const SECONDS_PER_YEAR: u64 = 31_536_000;
 pub const LEND_TOKEN_PREFIX: u8 = b'L';
 pub const BORROW_TOKEN_PREFIX: u8 = b'B';
+pub const ACCOUNT_TOKEN: &[u8] = b"Account";
 
 #[derive(TopEncode, TopDecode, TypeAbi)]
 pub struct PoolParams<M: ManagedTypeApi> {
@@ -48,13 +49,6 @@ pub struct BorrowPosition<M: ManagedTypeApi> {
     pub round: u64,
     pub initial_borrow_index: BigUint<M>,
 }
-
-// #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi, PartialEq, Clone)]
-// pub struct AccountPosition<M: ManagedTypeApi> {
-//     // pub nonce: u64,
-//     pub supplied_positions: ArrayVec<u64>, 1024>,
-//     pub borrowed_positions: ArrayVec<u64>, 1024>,
-// }
 
 impl<M: ManagedTypeApi> TokenAmountPair<M> {
     pub fn new(token_id: TokenIdentifier<M>, nonce: u64, amount: BigUint<M>) -> Self {

@@ -1,7 +1,9 @@
+use common_structs::BP;
+
 elrond_wasm::imports!();
 
-/* Base precision */
-const BP: u32 = 1_000_000_000;
+// /* Base precision */
+// const BP: u32 = 1_000_000_000;
 
 #[elrond_wasm::module]
 pub trait MathModule {
@@ -76,15 +78,13 @@ pub trait MathModule {
 
     fn compute_borrowable_amount(
         &self,
-        amount: &BigUint,
-        price: &BigUint,
+        total_collateral: &BigUint,
         loan_to_value: &BigUint,
         decimals: u8,
     ) -> BigUint {
         let bp = BigUint::from(BP);
-        let total_collateral = amount * price;
 
-        ((&total_collateral * loan_to_value) / bp) / BigUint::from(10u64).pow(decimals as u32)
+        ((total_collateral * loan_to_value) / bp) / BigUint::from(10u64).pow(decimals as u32)
     }
 
     fn compute_health_factor(

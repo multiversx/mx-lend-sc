@@ -1,7 +1,7 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use common_structs::{AccountPosition, BorrowPosition, DepositPosition, PoolParams};
+use common_structs::{BorrowPosition, DepositPosition, PoolParams};
 
 #[elrond_wasm::module]
 pub trait StorageModule {
@@ -16,10 +16,6 @@ pub trait StorageModule {
     #[view(getRewardsReserves)]
     #[storage_mapper("rewards_reserves")]
     fn rewards_reserves(&self) -> SingleValueMapper<BigUint>;
-
-    #[view(getRewardsReservesAccumulatedNotDistributed)]
-    #[storage_mapper("rewards_reserves_accumulated_not_distributed")]
-    fn rewards_reserves_accumulated_not_distributed(&self) -> SingleValueMapper<BigUint>;
 
     #[view(getLendToken)]
     #[storage_mapper("lend_token")]

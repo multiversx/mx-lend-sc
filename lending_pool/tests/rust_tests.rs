@@ -608,7 +608,6 @@ fn partial_liquidate_without_bonus_test() {
         &rust_biguint!(714),
         Option::<&Empty>::None,
     );
-
 }
 
 #[test]

@@ -210,26 +210,82 @@ pub trait UtilsModule:
         &borrow_position.amount == borrow_token_repaid
     }
 
-    fn get_collateral_available(&self, account_position: u64, loan_to_value: BigUint) -> BigUint {
-        let collateral_available = BigUint::zero();
-        let deposit_position_iter = self
-            .deposit_position()
+    #[inline]
+    fn get_collateral_available(&self, account_position: u64) -> BigUint {
+        let mut deposited_amount_in_dollars = BigUint::zero();
+        let deposit_positions = self.deposit_position();
+        let deposit_position_iter = deposit_positions
             .iter()
             .filter(|dp| dp.owner_nonce == account_position);
 
         for dp in deposit_position_iter {
             let dp_data = self.get_token_price_data_lending(&dp.token_id);
-            let collateral_amount_in_dollars = self.compute_borrowable_amount(
-                &dp.amount,
-                &dp_data.price,
-                &loan_to_value,
-                dp_data.decimals,
-            );
-
-            collateral_available += collateral_amount_in_dollars
+            deposited_amount_in_dollars += dp.amount * dp_data.price;
         }
 
-        collateral_available
+        deposited_amount_in_dollars
+    }
+
+    fn send_amount_in_dollars_to_liquidator(
+        &self,
+        initial_caller: ManagedAddress,
+        liquidatee_account_position: u64,
+        amount_to_return_in_dollars: BigUint,
+    ) {
+        let mut amount_to_send = amount_to_return_in_dollars;
+        let deposit_positions = self.deposit_position();
+        let deposit_position_iter = deposit_positions
+            .iter()
+            .filter(|dp| dp.owner_nonce == liquidatee_account_position);
+
+        // Send amount_to_return_in_dollars to initial_caller
+        for mut dp in deposit_position_iter {
+            let dp_data = self.get_token_price_data_lending(&dp.token_id);
+            let amount_in_dollars_available_for_this_bp = &dp.amount * &dp_data.price;
+
+            if amount_to_send == 0 {
+                break;
+            }
+
+            if amount_in_dollars_available_for_this_bp <= amount_to_send {
+                // Send all tokens and remove DepositPosition
+
+                self.send()
+                    .direct(&initial_caller, &dp.token_id, 0, &dp.amount, &[]);
+                amount_to_send -= amount_in_dollars_available_for_this_bp;
+                self.deposit_position().swap_remove(&dp);
+            } else {
+                // Send part of the tokens and update DepositPosition
+                let partial_amount_to_send = &amount_to_send / &dp_data.price;
+                self.send().direct(
+                    &initial_caller,
+                    &dp.token_id,
+                    0,
+                    &partial_amount_to_send,
+                    &[],
+                );
+
+                // Update DepositPosition
+                self.deposit_position().swap_remove(&dp);
+                dp.amount -= partial_amount_to_send;
+                self.deposit_position().insert(dp);
+            }
+        }
+    }
+
+    fn get_total_borrowed_amount(&self, account_position: u64) -> BigUint {
+        let mut total_borrowed_amount = BigUint::zero();
+        let borrow_positions = self.borrow_position();
+        let borrow_position_iter = borrow_positions
+            .iter()
+            .filter(|bp| bp.owner_nonce == account_position);
+
+        for bp in borrow_position_iter {
+            let accumulated_debt = self.get_debt_interest(&bp.amount, &bp.initial_borrow_index);
+            total_borrowed_amount += bp.amount + accumulated_debt;
+        }
+
+        total_borrowed_amount
     }
 
     fn merge_deposit_positions(&self, account_position: u64) -> DepositPosition<Self::Api> {
@@ -237,18 +293,18 @@ pub trait UtilsModule:
         let round = self.blockchain().get_block_round();
         let supply_index = self.supply_index().get();
         let zero_amount = BigUint::zero();
-        let deposit_position_iter = self
-            .deposit_position()
+        let deposit_positions = self.deposit_position();
+        let deposit_position_iter = deposit_positions
             .iter()
             .filter(|dp| dp.owner_nonce == account_position);
 
         // Create new DP
-        let merged_deposit_position = DepositPosition::new(
+        let mut merged_deposit_position = DepositPosition::new(
             pool_asset,
             zero_amount,
             account_position,
             round,
-            supply_index,
+            supply_index.clone(),
         );
 
         for dp in deposit_position_iter {
@@ -256,11 +312,12 @@ pub trait UtilsModule:
             let interest_accrued =
                 self.compute_interest(&dp.amount, &supply_index, &dp.initial_supply_index);
 
-            merged_deposit_position.amount += dp.amount + interest_accrued;
+            merged_deposit_position.amount += &dp.amount + &interest_accrued;
             self.deposit_position().swap_remove(&dp);
         }
         // Add DP to self.deposit_position()
-        self.deposit_position().insert(merged_deposit_position);
+        self.deposit_position()
+            .insert(merged_deposit_position.clone());
 
         merged_deposit_position
     }
@@ -270,13 +327,13 @@ pub trait UtilsModule:
         let round = self.blockchain().get_block_round();
         let borrow_index = self.borrow_index().get();
         let zero_amount = BigUint::zero();
-        let borrow_position_iter = self
-            .borrow_position()
+        let borrow_positions = self.borrow_position();
+        let borrow_position_iter = borrow_positions
             .iter()
             .filter(|bp| bp.owner_nonce == account_position);
 
         // Create new DP
-        let merged_borrow_position = BorrowPosition::new(
+        let mut merged_borrow_position = BorrowPosition::new(
             pool_asset,
             zero_amount,
             account_position,
@@ -288,11 +345,12 @@ pub trait UtilsModule:
             // Add old DP to new DP
             let accumulated_debt = self.get_debt_interest(&bp.amount, &bp.initial_borrow_index);
 
-            merged_borrow_position.amount += bp.amount + accumulated_debt;
+            merged_borrow_position.amount += &bp.amount + &accumulated_debt;
             self.borrow_position().swap_remove(&bp);
         }
         // Add DP to self.borrow_position()
-        self.borrow_position().insert(merged_borrow_position);
+        self.borrow_position()
+            .insert(merged_borrow_position.clone());
 
         merged_borrow_position
     }

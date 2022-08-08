@@ -38,14 +38,14 @@ pub trait SafetyModule {
             .into_option()
             .unwrap_or_else(|| self.blockchain().get_caller());
 
-        let round = self.blockchain().get_block_round();
-        let deposit_metadata = DepositPosition::new(round, payment.clone(), BigUint::from(1u64));
+        // let round = self.blockchain().get_block_round();
+        // let deposit_metadata = DepositPosition::new(token, payment.clone(), account_position, round, BigUint::from(1u64));
 
         let nft_token = self.nft_token().get();
-        let nft_nonce = self.mint_deposit_nft(&deposit_metadata, payment.clone());
+        // let nft_nonce = self.mint_deposit_nft(&deposit_metadata, payment.clone());
 
         self.send()
-            .direct(&caller_address, &nft_token, nft_nonce, &payment, &[]);
+            .direct(&caller_address, &nft_token, 0, &payment, &[]);
     }
 
     #[only_owner]

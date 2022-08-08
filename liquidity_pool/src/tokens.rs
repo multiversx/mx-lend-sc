@@ -110,14 +110,14 @@ pub trait TokensModule:
         )
     }
 
-    fn mint_account_token(&self, token_id: &TokenIdentifier) -> u64 {
+    fn mint_account_token(&self, token_id: TokenIdentifier) -> u64 {
         let big_zero = BigUint::zero();
         let big_one = BigUint::from(1u64);
         let empty_buffer = ManagedBuffer::new();
         let empty_vec = ManagedVec::from_raw_handle(empty_buffer.get_raw_handle());
 
         self.send().esdt_nft_create(
-            token_id,
+            &token_id,
             &big_one,
             &empty_buffer,
             &big_zero,
