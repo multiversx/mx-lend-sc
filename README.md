@@ -122,6 +122,23 @@ The flow is as follows:
 TL;DR: User sends *BTOKEN_B* and *TOKEN_B* (initial borrowed amount + interest) and receives *BTOKEN_A*.
 
 
+#### Add Collateral
+
+A borrow position *Health Factor* fluctuates with the value of collateral. If the price of the collateral token decreases, the value of the collateral decreases and hence the the health factor decreases. This leads to the risk of liquidation (if health factors is lower than 1).
+Therefore, to increase the borrow's health factor, a borrower can add more collateral.
+
+![Add Collateral Scenario (2)](https://user-images.githubusercontent.com/3630188/179549183-e165a135-1009-4486-a697-209dadb079b1.png)
+
+
+The flow is as follows:
+
+1. The borrower calls `addCollateral` endpoint from *Lending Pool SC*. (This scenario requires *multi token transfer*). The tokens are the BTOKEN_B (received at borrow time) and LTOKEN_A (collateral token);
+2. The *Lending Pool SC* calls the `add_collateral` endpoint from the *Liquidity Pool SC*;
+3. The *Liquidity Pool SC* burns the old BTOKEN_B (with the initial nonce), and mints new BOTKEN_B with a new nonce and the updated value (old value + number of LTOKENS_A sent);
+4. The *Lending Pool SC* updates the contract's reserves (number of LTOKENS_A deposited);
+5. The *Lending Pool SC* sends to the borrower BTOKENS_B (with the new nonce and new quantity).
+
+
 #### Liquidate
 
 If a borrower’s **borrowing balance exceeds** their total collateral value, it means that the protocol is at risk of suffering a loss if the borrower defaults on repayment.
@@ -160,7 +177,9 @@ The interest rate *Rt* formulas depending on the capital utilisation of the pool
 
 ![image](https://user-images.githubusercontent.com/3630188/160089036-63f00d49-4a4c-4de0-8a5a-d4be220d9004.png)
 
-*R0*, *Rslope1* and *Rslope2* are predefined values
+*R0*, *Rslope1* and *Rslope2* are predefined values.
+
+The interest rate is applied only to the borrowed value, not to the entire debt.
 
 ### Simulations
 

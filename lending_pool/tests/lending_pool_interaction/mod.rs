@@ -26,6 +26,9 @@ where
     pub owner_addr: Address,
     pub first_user_addr: Address,
     pub second_user_addr: Address,
+    pub third_user_addr: Address,
+    pub fourth_user_addr: Address,
+    pub fifth_user_addr: Address,
     pub price_aggregator_wrapper:
         ContractObjWrapper<aggregator_mock::ContractObj<DebugApi>, PriceAggregatorObjBuilder>,
     pub b_mock: BlockchainStateWrapper,
@@ -55,6 +58,9 @@ where
         let owner_addr = b_mock.create_user_account(&rust_zero);
         let first_user_addr = b_mock.create_user_account(&rust_biguint!(100_000_000));
         let second_user_addr = b_mock.create_user_account(&rust_biguint!(100_000_000));
+        let third_user_addr = b_mock.create_user_account(&rust_biguint!(100_000_000));
+        let fourth_user_addr = b_mock.create_user_account(&rust_biguint!(100_000_000));
+        let fifth_user_addr = b_mock.create_user_account(&rust_biguint!(100_000_000));
 
         let price_aggregator_wrapper =
             setup_price_aggregator(&owner_addr, &mut b_mock, price_aggregator_builder);
@@ -229,6 +235,9 @@ where
             owner_addr,
             first_user_addr,
             second_user_addr,
+            third_user_addr,
+            fourth_user_addr,
+            fifth_user_addr,
             price_aggregator_wrapper,
             b_mock,
             lending_pool_wrapper,

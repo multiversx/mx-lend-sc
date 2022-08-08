@@ -1,7 +1,6 @@
 import path from "path";
-import { AddressValue, BigIntValue, CodeMetadata, IAddress, Interaction, ResultsParser, ReturnCode, SmartContract, SmartContractAbi, TokenIdentifierValue, TokenPayment, TransactionWatcher } from "@elrondnetwork/erdjs";
+import { AddressValue, BigIntValue, CodeMetadata, IAddress, Interaction, ResultsParser, ReturnCode, SmartContract, SmartContractAbi, Struct, TokenIdentifierValue, TokenPayment, TransactionWatcher } from "@elrondnetwork/erdjs";
 import { IAudit, INetworkConfig, INetworkProvider, ITestSession, ITestUser, loadAbiRegistry, loadCode } from "@elrondnetwork/erdjs-snippets";
-import { NetworkConfig } from "@elrondnetwork/erdjs-network-providers";
 
 const PathToWasm = path.resolve(__dirname, "..", "..", "lending_pool", "output", "lending-pool.wasm");
 const PathToAbi = path.resolve(__dirname, "..", "..", "lending_pool", "output", "lending-pool.abi.json");
@@ -199,8 +198,6 @@ export class LendingPoolInteractor {
 
 
     async setLendRoles(user: ITestUser, tokenIdentifier: string): Promise<ReturnCode> {
-        console.log(`LendingPoolInteractor.issueBorrow(): address = ${user.address}`);
-
         // Prepare the interaction
         let interaction = <Interaction>this.contract.methods
             .setLendRoles([tokenIdentifier])
@@ -225,8 +222,6 @@ export class LendingPoolInteractor {
 
 
     async setBorrowRoles(user: ITestUser, tokenIdentifier: string): Promise<ReturnCode> {
-        console.log(`LendingPoolInteractor.issueBorrow(): address = ${user.address}`);
-
         // Prepare the interaction
         let interaction = <Interaction>this.contract.methods
             .setBorrowRoles([tokenIdentifier])
@@ -250,7 +245,7 @@ export class LendingPoolInteractor {
     }
 
     async setAssetLoanToValue(user: ITestUser, tokenIdentifier: string, ltv: number): Promise<ReturnCode> {
-        console.log(`LendingPoolInteractor.setAssetLoanToValue(): address = ${user.address}`);
+        console.log(`LendingPoolInteractor.setAssetLoanToValue(): tokenIdentifier = ${tokenIdentifier} to ltv = ${ltv}`);
 
         // Prepare the interaction
         let interaction = <Interaction>this.contract.methods
@@ -275,7 +270,7 @@ export class LendingPoolInteractor {
     }
 
     async setAssetLiquidationBonus(user: ITestUser, tokenIdentifier: string, liqBonus: number): Promise<ReturnCode> {
-        console.log(`LendingPoolInteractor.setAssetLiquidationBonus(): address = ${user.address}`);
+        console.log(`LendingPoolInteractor.setAssetLiquidationBonus(): tokenIdentifier = ${tokenIdentifier}, liqBonus = ${liqBonus}`);
 
         // Prepare the interaction
         let interaction = <Interaction>this.contract.methods
@@ -300,7 +295,7 @@ export class LendingPoolInteractor {
     }
 
     async deposit(user: ITestUser, tokenPayment: TokenPayment): Promise<{ returnCode: ReturnCode, depositNonce: number }> {
-        console.log(`LendingPoolInteractor.deposit(): address = ${user.address}, amount = ${tokenPayment.toPrettyString()}`);
+        console.log(`LendingPoolInteractor.deposit(): user = ${user.address}, Token = ${tokenPayment.toPrettyString()}`);
 
         // Prepare the interaction
         let interaction = <Interaction>this.contract.methods
@@ -323,15 +318,14 @@ export class LendingPoolInteractor {
         // In the end, parse the results:
         let { returnCode, firstValue } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
 
-        console.log(`LendingPoolInteractor.deposit(): contract = ${this.contract.getAddress()} Received SDT with nonce = ${returnCode} ${firstValue}`);
-        let depositNonce = firstValue!.valueOf();
+        let depositNonce: number = +(<Struct>firstValue).getFieldValue("token_nonce").toNumber();
 
         return { returnCode, depositNonce };
     }
 
 
     async withdraw(user: ITestUser, tokenPayment: TokenPayment): Promise<ReturnCode> {
-        console.log(`LendingPoolInteractor.deposit(): address = ${user.address}, amount = ${tokenPayment.toPrettyString()}`);
+        console.log(`LendingPoolInteractor.deposit(): user = ${user.address}, Token = ${tokenPayment.toPrettyString()}`);
 
         // Prepare the interaction
         let interaction = <Interaction>this.contract.methods
@@ -352,9 +346,63 @@ export class LendingPoolInteractor {
         let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
 
         // In the end, parse the results:
+        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+        return returnCode;
+    }
+
+    async borrow(user: ITestUser, collateralPayment: TokenPayment, assetToBorrow: string): Promise<{ returnCode: ReturnCode, borrowNonce: number }> {
+        console.log(`LendingPoolInteractor.borrow(): borrower = ${user.address}, collateralToken = ${collateralPayment.toPrettyString()}, 
+                    nonce = ${collateralPayment.nonce} assetToBorrow = ${assetToBorrow}`);
+
+        // Prepare the interaction
+        let interaction = <Interaction>this.contract.methods
+            .borrow([assetToBorrow])
+            .withGasLimit(150000000)
+            .withSingleESDTNFTTransfer(collateralPayment, user.address)
+            .withNonce(user.account.getNonceThenIncrement())
+            .withChainID(this.networkConfig.ChainID);
+
+        // Let's check the interaction, then build the transaction object.
+        let transaction = interaction.check().buildTransaction();
+
+        // Let's sign the transaction. For dApps, use a wallet provider instead.
+        await user.signer.sign(transaction);
+
+        // Let's broadcast the transaction and await its completion:
+        await this.networkProvider.sendTransaction(transaction);
+        let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
+
+        // In the end, parse the results:
         let { returnCode, firstValue } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
 
-        console.log(`LendingPoolInteractor.withdraw(): contract = ${this.contract.getAddress()}  returnCode = ${returnCode} Received metaESDT with nonce = ${firstValue}`);
+        let borrowNonce: number = +(<Struct>firstValue).getFieldValue("token_nonce").toNumber();
+        return { returnCode, borrowNonce };
+    }
+
+    async repay(user: ITestUser, repayment: TokenPayment[], assetToRepay: string): Promise<ReturnCode> {
+        console.log(`LendingPoolInteractor.repay(): borrower = ${user.address}, BToken = ${repayment[0].toPrettyString()}, 
+                    Token = ${repayment[1].toPrettyString} `);
+
+        // Prepare the interaction
+        let interaction = <Interaction>this.contract.methods
+            .repay([assetToRepay])
+            .withGasLimit(150000000)
+            .withMultiESDTNFTTransfer(repayment, user.address)
+            .withNonce(user.account.getNonceThenIncrement())
+            .withChainID(this.networkConfig.ChainID);
+
+        // Let's check the interaction, then build the transaction object.
+        let transaction = interaction.check().buildTransaction();
+
+        // Let's sign the transaction. For dApps, use a wallet provider instead.
+        await user.signer.sign(transaction);
+
+        // Let's broadcast the transaction and await its completion:
+        await this.networkProvider.sendTransaction(transaction);
+        let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
+
+        // In the end, parse the results:
+        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
 
         return returnCode;
     }
@@ -371,6 +419,47 @@ export class LendingPoolInteractor {
 
         // Now let's interpret the results.
         return firstValue!.valueOf();
+    }
+
+    async getAssetLoanToValue(tokenIdentifier: string): Promise<IAddress> {
+        // Prepare the interaction, check it, then build the query:
+        let interaction = <Interaction>this.contract.methods.getAssetLoanToValue([tokenIdentifier]);
+
+        let query = interaction.check().buildQuery();
+
+        // Let's run the query and parse the results:
+        let queryResponse = await this.networkProvider.queryContract(query);
+        let { firstValue } = this.resultsParser.parseQueryResponse(queryResponse, interaction.getEndpoint());
+
+        console.log(`Asset ${tokenIdentifier} are LTV ${firstValue!.valueOf()}`)
+        // Now let's interpret the results.
+        return firstValue!.valueOf();
+    }
+
+
+    async setAggregator(user: ITestUser, poolAsset: string, priceAggregatorAddress: IAddress) {
+        console.log(`LiquidityInteractor.setPriceAggregatorAddress(): priceAggregatorAddres = ${priceAggregatorAddress}, poolAsset = ${poolAsset}`);
+
+        // Prepare the interaction
+        let interaction = <Interaction>this.contract.methods
+            .setAggregator([poolAsset, priceAggregatorAddress])
+            .withGasLimit(10000000)
+            .withNonce(user.account.getNonceThenIncrement())
+            .withChainID(this.networkConfig.ChainID);
+
+        // Let's check the interaction, then build the transaction object.
+        let transaction = interaction.check().buildTransaction();
+
+        // Let's sign the transaction. For dApps, use a wallet provider instead.
+        await user.signer.sign(transaction);
+
+        // Let's broadcast the transaction and await its completion:
+        await this.networkProvider.sendTransaction(transaction);
+        let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
+
+        // In the end, parse the results:
+        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+        return returnCode;
     }
 
 }

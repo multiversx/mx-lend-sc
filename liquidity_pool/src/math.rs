@@ -1,8 +1,7 @@
 elrond_wasm::imports!();
 
+/* Base precision */
 const BP: u32 = 1_000_000_000;
-
-const SECONDS_IN_YEAR: u32 = 31_556_926;
 
 #[elrond_wasm::module]
 pub trait MathModule {
@@ -16,7 +15,7 @@ pub trait MathModule {
     ) -> BigUint {
         let bp = BigUint::from(BP);
 
-        if u_current < u_optimal {
+        if u_current <= u_optimal {
             let utilisation_ratio = &(u_current * r_slope1) / u_optimal;
             r_base + &utilisation_ratio
         } else {
@@ -35,6 +34,7 @@ pub trait MathModule {
         let bp = BigUint::from(BP);
         let loan_ratio = u_current * borrow_rate;
         let deposit_rate = &(u_current * &loan_ratio) * &(&bp - reserve_factor);
+
         deposit_rate / (&bp * &bp * bp)
     }
 
@@ -44,33 +44,21 @@ pub trait MathModule {
         total_reserves: &BigUint,
     ) -> BigUint {
         let bp = BigUint::from(BP);
-        &(borrowed_amount * &bp) / total_reserves
-    }
-
-    fn compute_debt(
-        &self,
-        amount: &BigUint,
-        time_diff: &BigUint,
-        borrow_rate: &BigUint,
-    ) -> BigUint {
-        let bp = BigUint::from(BP);
-        let secs_year = BigUint::from(SECONDS_IN_YEAR);
-        let time_unit_percentage = (time_diff * &bp) / secs_year;
-        let debt_percetange = &(&time_unit_percentage * borrow_rate) / &bp;
-
-        (&debt_percetange * amount) / bp
+        if *total_reserves == BigUint::zero() {
+            total_reserves.clone()
+        } else {
+            &(borrowed_amount * &bp) / total_reserves
+        }
     }
 
     fn compute_withdrawal_amount(
         &self,
         amount: &BigUint,
-        time_diff: &BigUint,
-        deposit_rate: &BigUint,
+        current_supply_index: &BigUint,
+        initial_supply_index: &BigUint,
     ) -> BigUint {
         let bp = BigUint::from(BP);
-        let secs_year = BigUint::from(SECONDS_IN_YEAR);
-        let percentage = &(time_diff * deposit_rate) / &secs_year;
-        let interest = &percentage * amount / bp;
+        let interest = (current_supply_index - initial_supply_index) * amount / bp;
 
         amount + &interest
     }
