@@ -30,7 +30,7 @@ pub trait RouterModule:
             !self.pools_map().contains_key(&base_asset),
             "asset already supported"
         );
-        // require!(base_asset.is_esdt(), "non-ESDT asset provided");
+        require!(base_asset.is_valid(), "invalid ticker provided");
 
         let address = self.create_pool(
             base_asset.clone(),

@@ -27,28 +27,13 @@ pub trait LendingPool:
         self.liq_pool_template_address().set(&lp_template_address);
     }
 
-    // #[endpoint]
-    // fn enter_market(&self, caller: OptionalValue<ManagedAddress>) -> u64 {
-    //     let initial_caller = self.caller_from_option_or_sender(caller);
-
-    //     let account_token_id = TokenIdentifier::from(ACCOUNT_TOKEN);
-    //     let new_account_nonce = self.mint_account_token(account_token_id);
-
-    //     self.account_list().nft_add_quantity_and_send(
-    //         &initial_caller,
-    //         new_account_nonce,
-    //         BigUint::from(1u64),
-    //     );
-
-    //     new_account_nonce
-    // }
-
     #[payable("*")]
     #[endpoint]
     fn deposit(&self, caller: OptionalValue<ManagedAddress>, account_nonce: u64) {
         let (asset, amount) = self.call_value().egld_or_single_fungible_esdt();
         let initial_caller = self.caller_from_option_or_sender(caller);
 
+        require!(asset.is_valid(), "invalid ticker provided");
         self.require_amount_greater_than_zero(&amount);
         self.require_non_zero_address(&initial_caller);
 
@@ -71,6 +56,7 @@ pub trait LendingPool:
     ) {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
+        require!(token_id.is_valid(), "invalid ticker provided");
         self.require_amount_greater_than_zero(&amount);
         self.require_non_zero_address(&initial_caller);
 
@@ -91,6 +77,7 @@ pub trait LendingPool:
     ) {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
+        require!(asset_to_borrow.is_valid(), "invalid ticker provided");
         self.require_amount_greater_than_zero(&amount);
         self.require_non_zero_address(&initial_caller);
 
@@ -113,6 +100,7 @@ pub trait LendingPool:
         let (asset, amount) = self.call_value().egld_or_single_fungible_esdt();
         let initial_caller = self.caller_from_option_or_sender(caller);
 
+        require!(asset.is_valid(), "invalid ticker provided");
         self.require_amount_greater_than_zero(&amount);
         self.require_non_zero_address(&initial_caller);
 
@@ -134,6 +122,7 @@ pub trait LendingPool:
         let (asset, amount) = self.call_value().egld_or_single_fungible_esdt();
         let initial_caller = self.caller_from_option_or_sender(caller);
 
+        require!(asset.is_valid(), "invalid ticker provided");
         self.require_asset_supported(&asset);
         self.require_amount_greater_than_zero(&amount);
         self.require_non_zero_address(&initial_caller);
