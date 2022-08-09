@@ -18,7 +18,7 @@ pub trait RouterModule:
     #[endpoint(createLiquidityPool)]
     fn create_liquidity_pool(
         &self,
-        base_asset: TokenIdentifier,
+        base_asset: EgldOrEsdtTokenIdentifier,
         r_base: BigUint,
         r_slope1: BigUint,
         r_slope2: BigUint,
@@ -30,7 +30,7 @@ pub trait RouterModule:
             !self.pools_map().contains_key(&base_asset),
             "asset already supported"
         );
-        require!(base_asset.is_esdt(), "non-ESDT asset provided");
+        // require!(base_asset.is_esdt(), "non-ESDT asset provided");
 
         let address = self.create_pool(
             base_asset.clone(),
@@ -54,7 +54,7 @@ pub trait RouterModule:
     #[endpoint(upgradeLiquidityPool)]
     fn upgrade_liquidity_pool(
         &self,
-        base_asset: TokenIdentifier,
+        base_asset: EgldOrEsdtTokenIdentifier,
         r_base: BigUint,
         r_slope1: BigUint,
         r_slope2: BigUint,
@@ -83,20 +83,20 @@ pub trait RouterModule:
     #[only_owner]
     #[payable("EGLD")]
     #[endpoint(issueLendToken)]
-    fn issue_lend_token(&self, pool_asset_id: TokenIdentifier, token_ticker: ManagedBuffer) {
+    fn issue_lend_token(&self, pool_asset_id: EgldOrEsdtTokenIdentifier, token_ticker: ManagedBuffer) {
         self.issue_common(pool_asset_id, LEND_TOKEN_PREFIX, token_ticker);
     }
 
     #[only_owner]
     #[payable("EGLD")]
     #[endpoint(issueBorrowToken)]
-    fn issue_borrow_token(&self, pool_asset_id: TokenIdentifier, token_ticker: ManagedBuffer) {
+    fn issue_borrow_token(&self, pool_asset_id: EgldOrEsdtTokenIdentifier, token_ticker: ManagedBuffer) {
         self.issue_common(pool_asset_id, BORROW_TOKEN_PREFIX, token_ticker);
     }
 
     fn issue_common(
         &self,
-        pool_asset_id: TokenIdentifier,
+        pool_asset_id: EgldOrEsdtTokenIdentifier,
         token_prefix: u8,
         token_ticker: ManagedBuffer,
     ) {
@@ -113,7 +113,7 @@ pub trait RouterModule:
 
     #[only_owner]
     #[endpoint(setLendRoles)]
-    fn set_lend_roles(&self, pool_asset_id: TokenIdentifier) {
+    fn set_lend_roles(&self, pool_asset_id: EgldOrEsdtTokenIdentifier) {
         let pool_address = self.get_pool_address(&pool_asset_id);
         let gas_limit = self.resolve_nested_async_gas_limit();
 
@@ -125,7 +125,7 @@ pub trait RouterModule:
 
     #[only_owner]
     #[endpoint(setBorrowRoles)]
-    fn set_borrow_roles(&self, pool_asset_id: TokenIdentifier) {
+    fn set_borrow_roles(&self, pool_asset_id: EgldOrEsdtTokenIdentifier) {
         let pool_address = self.get_pool_address(&pool_asset_id);
         let gas_limit = self.resolve_nested_async_gas_limit();
 
@@ -137,7 +137,7 @@ pub trait RouterModule:
 
     #[only_owner]
     #[endpoint(setAggregator)]
-    fn set_aggregator(&self, pool_asset_id: TokenIdentifier, aggregator: ManagedAddress) {
+    fn set_aggregator(&self, pool_asset_id: EgldOrEsdtTokenIdentifier, aggregator: ManagedAddress) {
         let pool_address = self.get_pool_address(&pool_asset_id);
 
         self.liquidity_pool_proxy(pool_address)
@@ -147,44 +147,44 @@ pub trait RouterModule:
 
     #[only_owner]
     #[endpoint(setAssetLoanToValue)]
-    fn set_asset_loan_to_value(&self, asset: TokenIdentifier, loan_to_value: BigUint) {
+    fn set_asset_loan_to_value(&self, asset: EgldOrEsdtTokenIdentifier, loan_to_value: BigUint) {
         self.asset_loan_to_value(&asset).set(&loan_to_value);
     }
 
     #[only_owner]
     #[endpoint(setAssetLiquidationBonus)]
-    fn set_asset_liquidation_bonus(&self, asset: TokenIdentifier, liq_bonus: BigUint) {
+    fn set_asset_liquidation_bonus(&self, asset: EgldOrEsdtTokenIdentifier, liq_bonus: BigUint) {
         self.asset_liquidation_bonus(&asset).set(&liq_bonus);
     }
 
     #[endpoint(setTokenIdAfterIssue)]
-    fn set_token_id_after_issue(&self, token_id: TokenIdentifier) {
+    fn set_token_id_after_issue(&self, token_id: EgldOrEsdtTokenIdentifier) {
         let caller = self.blockchain().get_caller();
         let is_pool_allowed = self.pools_allowed().contains(&caller);
         require!(is_pool_allowed, "access restricted: unknown caller address");
         require!(
-            token_id.is_valid_esdt_identifier(),
+            token_id.is_valid(),
             "invalid ticker provided"
         );
         self.pools_map().insert(token_id, caller);
     }
 
     #[view(getPoolAddress)]
-    fn get_pool_address(&self, asset: &TokenIdentifier) -> ManagedAddress {
+    fn get_pool_address(&self, asset: &EgldOrEsdtTokenIdentifier) -> ManagedAddress {
         match self.pools_map().get(asset) {
             Some(addr) => addr,
             None => sc_panic!("no pool address for asset"),
         }
     }
 
-    fn get_liquidation_bonus_non_zero(&self, token_id: &TokenIdentifier) -> BigUint {
+    fn get_liquidation_bonus_non_zero(&self, token_id: &EgldOrEsdtTokenIdentifier) -> BigUint {
         let liq_bonus = self.asset_liquidation_bonus(token_id).get();
         require!(liq_bonus > 0, "no liquidation_bonus present for asset");
 
         liq_bonus
     }
 
-    fn get_loan_to_value_exists_and_non_zero(&self, token_id: &TokenIdentifier) -> BigUint {
+    fn get_loan_to_value_exists_and_non_zero(&self, token_id: &EgldOrEsdtTokenIdentifier) -> BigUint {
         require!(
             !self.asset_loan_to_value(token_id).is_empty(),
             "no loan_to_value value present for asset"
@@ -201,7 +201,7 @@ pub trait RouterModule:
     }
 
     #[storage_mapper("pools_map")]
-    fn pools_map(&self) -> MapMapper<TokenIdentifier, ManagedAddress>;
+    fn pools_map(&self) -> MapMapper<EgldOrEsdtTokenIdentifier, ManagedAddress>;
 
     #[view(getPoolAllowed)]
     #[storage_mapper("pool_allowed")]
@@ -209,9 +209,9 @@ pub trait RouterModule:
 
     #[view(getAssetLoanToValue)]
     #[storage_mapper("asset_loan_to_value")]
-    fn asset_loan_to_value(&self, asset: &TokenIdentifier) -> SingleValueMapper<BigUint>;
+    fn asset_loan_to_value(&self, asset: &EgldOrEsdtTokenIdentifier) -> SingleValueMapper<BigUint>;
 
     #[view(getAssetLiquidationBonus)]
     #[storage_mapper("asset_liquidation_bonus")]
-    fn asset_liquidation_bonus(&self, asset: &TokenIdentifier) -> SingleValueMapper<BigUint>;
+    fn asset_liquidation_bonus(&self, asset: &EgldOrEsdtTokenIdentifier) -> SingleValueMapper<BigUint>;
 }

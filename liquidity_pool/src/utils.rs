@@ -42,7 +42,7 @@ pub trait UtilsModule:
         issue_data
     }
 
-    fn get_token_price_data(&self, token_id: &TokenIdentifier) -> AggregatorResult<Self::Api> {
+    fn get_token_price_data(&self, token_id: EgldOrEsdtTokenIdentifier) -> AggregatorResult<Self::Api> {
         let from_ticker = self.get_token_ticker(token_id);
         let result = self
             .get_full_result_for_pair(from_ticker, ManagedBuffer::new_from_bytes(DOLLAR_TICKER));
@@ -55,7 +55,7 @@ pub trait UtilsModule:
 
     fn get_token_price_data_lending(
         &self,
-        token_id: &TokenIdentifier,
+        token_id: EgldOrEsdtTokenIdentifier,
     ) -> AggregatorResult<Self::Api> {
         let from_ticker = self.get_token_ticker_from_lending(token_id);
         let result = self
@@ -67,11 +67,11 @@ pub trait UtilsModule:
         }
     }
 
-    fn get_token_ticker(&self, token_id: &TokenIdentifier) -> ManagedBuffer {
+    fn get_token_ticker(&self, token_id: EgldOrEsdtTokenIdentifier) -> ManagedBuffer {
         if token_id.is_egld() {
             return ManagedBuffer::new_from_bytes(b"EGLD");
         }
-        let as_buffer = token_id.as_managed_buffer();
+        let as_buffer = token_id.into_name();
         let ticker_start_index = 0;
         let ticker_end_index = as_buffer.len() - TOKEN_ID_SUFFIX_LEN;
 
@@ -81,8 +81,8 @@ pub trait UtilsModule:
     }
 
     // Each lent/borrowed token has an L/B prefix, so we start from index 1
-    fn get_token_ticker_from_lending(&self, token_id: &TokenIdentifier) -> ManagedBuffer {
-        let as_buffer = token_id.as_managed_buffer();
+    fn get_token_ticker_from_lending(&self, token_id: EgldOrEsdtTokenIdentifier) -> ManagedBuffer {
+        let as_buffer = token_id.into_name();
         let ticker_start_index = 1;
         let ticker_end_index = as_buffer.len() - TOKEN_ID_SUFFIX_LEN - 1;
 
@@ -219,7 +219,7 @@ pub trait UtilsModule:
             .filter(|dp| dp.owner_nonce == account_position);
 
         for dp in deposit_position_iter {
-            let dp_data = self.get_token_price_data_lending(&dp.token_id);
+            let dp_data = self.get_token_price_data_lending(dp.token_id);
             deposited_amount_in_dollars += dp.amount * dp_data.price;
         }
 
@@ -240,7 +240,7 @@ pub trait UtilsModule:
 
         // Send amount_to_return_in_dollars to initial_caller
         for mut dp in deposit_position_iter {
-            let dp_data = self.get_token_price_data_lending(&dp.token_id);
+            let dp_data = self.get_token_price_data_lending(dp.clone().token_id);
             let amount_in_dollars_available_for_this_bp = &dp.amount * &dp_data.price;
 
             if amount_to_send == 0 {
@@ -251,7 +251,7 @@ pub trait UtilsModule:
                 // Send all tokens and remove DepositPosition
 
                 self.send()
-                    .direct(&initial_caller, &dp.token_id, 0, &dp.amount, &[]);
+                    .direct(&initial_caller, &dp.token_id, 0, &dp.amount);
                 amount_to_send -= amount_in_dollars_available_for_this_bp;
                 self.deposit_position().swap_remove(&dp);
             } else {
@@ -262,7 +262,6 @@ pub trait UtilsModule:
                     &dp.token_id,
                     0,
                     &partial_amount_to_send,
-                    &[],
                 );
 
                 // Update DepositPosition
