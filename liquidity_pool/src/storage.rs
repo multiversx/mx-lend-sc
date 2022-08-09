@@ -33,14 +33,6 @@ pub trait StorageModule {
     #[storage_mapper("borrow_position")]
     fn borrow_position(&self) -> UnorderedSetMapper<BorrowPosition<Self::Api>>;
 
-    // #[view(getAccountPosition)]
-    // #[storage_mapper("account_position")]
-    // fn account_position(&self, account_nonce: u64) -> UnorderedSetMapper<AccountPosition<Self::Api>>;
-
-    #[view(getAccountList)]
-    #[storage_mapper("account_list")]
-    fn account_list(&self) -> NonFungibleTokenMapper<Self::Api>;
-
     // #[view(getSuppliedPosition)]
     // #[storage_mapper("supplied_positions")]
     // fn supplied_positions(&self, account_nonce: u64, nonce_deposit_position: u64) -> UnorderedSetMapper<DepositPosition<M>;

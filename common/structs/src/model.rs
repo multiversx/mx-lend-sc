@@ -7,7 +7,9 @@ pub const BP: u64 = 1_000_000_000_000_000_000;
 pub const SECONDS_PER_YEAR: u64 = 31_536_000;
 pub const LEND_TOKEN_PREFIX: u8 = b'L';
 pub const BORROW_TOKEN_PREFIX: u8 = b'B';
-pub const ACCOUNT_TOKEN: &[u8] = b"Account";
+pub const ACCOUNT_TOKEN: &[u8] = b"LAccount";
+pub const ACCOUNT_TICKER: &[u8] = b"LACC";
+
 
 #[derive(TopEncode, TopDecode, TypeAbi)]
 pub struct PoolParams<M: ManagedTypeApi> {
