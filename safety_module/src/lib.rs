@@ -135,8 +135,7 @@ pub trait SafetyModule {
     #[payable("*")]
     #[endpoint(withdraw)]
     fn withdraw(&self) -> BigUint {
-        let (token_id, amount) = self.call_value().single_fungible_esdt();
-        let nft_nonce =  0; //TODO : self.call_value().esdt_token_nonce();
+        let (token_id, nft_nonce, amount) = self.call_value().single_esdt().into_tuple();
         let caller_address = self.blockchain().get_caller();
 
         require!(amount > 0, "amount must be greater than 0");
