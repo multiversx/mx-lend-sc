@@ -29,7 +29,7 @@ pub trait SafetyModule {
     #[payable("*")]
     #[endpoint(fund)]
     fn fund(self, caller: OptionalValue<ManagedAddress>) {
-        let (payment, token) = self.call_value().payment_token_pair();
+        let (token, payment) = self.call_value().egld_or_single_fungible_esdt();
 
         require!(payment > 0, "amount must be greater than 0");
         require!(token == self.wegld_token().get(), "invalid token");
@@ -45,7 +45,7 @@ pub trait SafetyModule {
         // let nft_nonce = self.mint_deposit_nft(&deposit_metadata, payment.clone());
 
         self.send()
-            .direct(&caller_address, &nft_token, 0, &payment, &[]);
+            .direct_esdt(&caller_address, &nft_token, 0, &payment);
     }
 
     #[only_owner]
@@ -91,10 +91,10 @@ pub trait SafetyModule {
             }
             ManagedAsyncCallResult::Err(message) => {
                 // return issue cost to the caller
-                let (returned_tokens, token_identifier) = self.call_value().payment_token_pair();
+                let (token_identifier, returned_tokens) = self.call_value().egld_or_single_fungible_esdt();
                 if token_identifier.is_egld() && returned_tokens > 0 {
                     self.send()
-                        .direct(&caller, &token_identifier, 0, &returned_tokens, &[]);
+                        .direct(&caller, &token_identifier, 0, &returned_tokens);
                 }
 
                 self.last_error_message().set(&message.err_msg);
@@ -105,7 +105,7 @@ pub trait SafetyModule {
     #[payable("*")]
     #[endpoint(fundFromPool)]
     fn fund_from_pool(&self) {
-        let (payment, token) = self.call_value().payment_token_pair();
+        let (token, payment) = self.call_value().egld_or_single_fungible_esdt();
         require!(payment > 0, "amount must be greater than 0");
 
         self.convert_to_wegld(token, payment);
@@ -129,14 +129,13 @@ pub trait SafetyModule {
         self.convert_wegld(pool_token.clone(), amount.clone());
 
         self.send()
-            .direct(&caller_address, &pool_token, 0, &amount, &[]);
+            .direct_esdt(&caller_address, &pool_token, 0, &amount);
     }
 
     #[payable("*")]
     #[endpoint(withdraw)]
     fn withdraw(&self) -> BigUint {
-        let (amount, token_id) = self.call_value().payment_token_pair();
-        let nft_nonce = self.call_value().esdt_token_nonce();
+        let (token_id, nft_nonce, amount) = self.call_value().single_esdt().into_tuple();
         let caller_address = self.blockchain().get_caller();
 
         require!(amount > 0, "amount must be greater than 0");
@@ -154,7 +153,7 @@ pub trait SafetyModule {
         require!(rounds_in_pool > 0, "Invalid round");
 
         let withdraw_amount =
-            self.calculate_amount_for_withdrawal(amount.clone(), BigUint::from(rounds_in_pool));
+            self.calculate_amount_for_withdrawal(amount, BigUint::from(rounds_in_pool));
 
         let wegld_token_id = &self.wegld_token().get();
         let contract_balance = self.blockchain().get_esdt_balance(
@@ -168,10 +167,8 @@ pub trait SafetyModule {
             "the amount withdrawn is too high"
         );
 
-        self.nft_burn(token_id, nft_nonce, amount);
-
         self.send()
-            .direct(&caller_address, wegld_token_id, 0, &withdraw_amount, &[]);
+            .direct_esdt(&caller_address, wegld_token_id, 0, &withdraw_amount);
 
         withdraw_amount
     }
@@ -241,7 +238,7 @@ pub trait SafetyModule {
         //TODO:  integration with dex
     }
 
-    fn convert_to_wegld(&self, _pool_token: TokenIdentifier, _amount: BigUint) {
+    fn convert_to_wegld(&self, _pool_token: EgldOrEsdtTokenIdentifier, _amount: BigUint) {
         //TODO:  integration with dex
     }
 

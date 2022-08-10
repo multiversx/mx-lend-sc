@@ -27,28 +27,13 @@ pub trait LendingPool:
         self.liq_pool_template_address().set(&lp_template_address);
     }
 
-    #[endpoint]
-    fn enter_market(&self, caller: OptionalValue<ManagedAddress>) -> u64 {
-        let initial_caller = self.caller_from_option_or_sender(caller);
-
-        let account_token_id = TokenIdentifier::from(ACCOUNT_TOKEN);
-        let new_account_nonce = self.mint_account_token(account_token_id);
-
-        self.account_list().nft_add_quantity_and_send(
-            &initial_caller,
-            new_account_nonce,
-            BigUint::from(1u64),
-        );
-
-        new_account_nonce
-    }
-
     #[payable("*")]
     #[endpoint]
     fn deposit(&self, caller: OptionalValue<ManagedAddress>, account_nonce: u64) {
-        let (amount, asset) = self.call_value().payment_token_pair();
+        let (asset, amount) = self.call_value().egld_or_single_fungible_esdt();
         let initial_caller = self.caller_from_option_or_sender(caller);
 
+        require!(asset.is_valid(), "invalid ticker provided");
         self.require_amount_greater_than_zero(&amount);
         self.require_non_zero_address(&initial_caller);
 
@@ -56,7 +41,7 @@ pub trait LendingPool:
 
         self.liquidity_pool_proxy(pool_address)
             .deposit_asset(account_nonce)
-            .add_token_transfer(asset, 0, amount)
+            .with_egld_or_single_esdt_token_transfer(asset, 0, amount)
             .execute_on_dest_context_ignore_result();
     }
 
@@ -64,13 +49,14 @@ pub trait LendingPool:
     #[endpoint]
     fn withdraw(
         &self,
-        token_id: TokenIdentifier,
+        token_id: EgldOrEsdtTokenIdentifier,
         amount: BigUint,
         account_position: u64,
         caller: OptionalValue<ManagedAddress>,
     ) {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
+        require!(token_id.is_valid(), "invalid ticker provided");
         self.require_amount_greater_than_zero(&amount);
         self.require_non_zero_address(&initial_caller);
 
@@ -84,13 +70,14 @@ pub trait LendingPool:
     #[endpoint]
     fn borrow(
         &self,
-        asset_to_borrow: TokenIdentifier,
+        asset_to_borrow: EgldOrEsdtTokenIdentifier,
         amount: BigUint,
         account_position: u64,
         caller: OptionalValue<ManagedAddress>,
     ) {
         let initial_caller = self.caller_from_option_or_sender(caller);
 
+        require!(asset_to_borrow.is_valid(), "invalid ticker provided");
         self.require_amount_greater_than_zero(&amount);
         self.require_non_zero_address(&initial_caller);
 
@@ -106,13 +93,14 @@ pub trait LendingPool:
     #[endpoint]
     fn repay(
         &self,
-        asset_to_repay: TokenIdentifier,
+        asset_to_repay: EgldOrEsdtTokenIdentifier,
         account_position: u64,
         caller: OptionalValue<ManagedAddress>,
     ) {
-        let (amount, asset) = self.call_value().payment_token_pair();
+        let (asset, amount) = self.call_value().egld_or_single_fungible_esdt();
         let initial_caller = self.caller_from_option_or_sender(caller);
 
+        require!(asset.is_valid(), "invalid ticker provided");
         self.require_amount_greater_than_zero(&amount);
         self.require_non_zero_address(&initial_caller);
 
@@ -124,16 +112,17 @@ pub trait LendingPool:
 
         self.liquidity_pool_proxy(asset_address)
             .repay(initial_caller, account_position)
-            .add_token_transfer(asset_to_repay, 0, amount)
+            .with_egld_or_single_esdt_token_transfer(asset_to_repay, 0, amount)
             .execute_on_dest_context_ignore_result();
     }
 
     #[payable("*")]
     #[endpoint(liquidate)]
     fn liquidate(&self, account_position: u64, caller: OptionalValue<ManagedAddress>) {
-        let (amount, asset) = self.call_value().payment_token_pair();
+        let (asset, amount) = self.call_value().egld_or_single_fungible_esdt();
         let initial_caller = self.caller_from_option_or_sender(caller);
 
+        require!(asset.is_valid(), "invalid ticker provided");
         self.require_asset_supported(&asset);
         self.require_amount_greater_than_zero(&amount);
         self.require_non_zero_address(&initial_caller);
@@ -143,7 +132,7 @@ pub trait LendingPool:
 
         self.liquidity_pool_proxy(asset_address)
             .liquidate(initial_caller, account_position, liq_bonus)
-            .add_token_transfer(asset, 0, amount)
+            .with_egld_or_single_esdt_token_transfer(asset, 0, amount)
             .execute_on_dest_context_ignore_result();
     }
 
@@ -156,7 +145,7 @@ pub trait LendingPool:
             .unwrap_or_else(|| self.blockchain().get_caller())
     }
 
-    fn require_asset_supported(&self, asset: &TokenIdentifier) {
+    fn require_asset_supported(&self, asset: &EgldOrEsdtTokenIdentifier) {
         require!(self.pools_map().contains_key(asset), "asset not supported");
     }
 }

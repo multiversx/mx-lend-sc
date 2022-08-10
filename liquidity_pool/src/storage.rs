@@ -7,7 +7,7 @@ use common_structs::{BorrowPosition, DepositPosition, PoolParams};
 pub trait StorageModule {
     #[view(getPoolAsset)]
     #[storage_mapper("pool_asset")]
-    fn pool_asset(&self) -> SingleValueMapper<TokenIdentifier>;
+    fn pool_asset(&self) -> SingleValueMapper<EgldOrEsdtTokenIdentifier>;
 
     #[view(getReserves)]
     #[storage_mapper("reserves")]

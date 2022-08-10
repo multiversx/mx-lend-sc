@@ -26,7 +26,7 @@ pub trait LiquidityPool:
     #[init]
     fn init(
         &self,
-        asset: TokenIdentifier,
+        asset: EgldOrEsdtTokenIdentifier,
         r_base: BigUint,
         r_slope1: BigUint,
         r_slope2: BigUint,

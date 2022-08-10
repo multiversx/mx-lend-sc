@@ -23,7 +23,7 @@ pub trait LiquidityModule:
     #[payable("*")]
     #[endpoint(depositAsset)]
     fn deposit_asset(&self, account_nonce: u64) {
-        let (amount, asset) = self.call_value().payment_token_pair();
+        let (asset, amount) = self.call_value().egld_or_single_fungible_esdt();
         let pool_asset = self.pool_asset().get();
         let round = self.blockchain().get_block_round();
         let supply_index = self.supply_index().get();
@@ -52,7 +52,7 @@ pub trait LiquidityModule:
     #[endpoint]
     fn borrow(&self, amount: BigUint, account_position: u64, loan_to_value: BigUint) {
         let pool_token_id = self.pool_asset().get();
-        let pool_asset_data = self.get_token_price_data(&pool_token_id);
+        let pool_asset_data = self.get_token_price_data(pool_token_id.clone());
         let collateral_amount = self.get_collateral_available(account_position);
         let borrowable_amount_in_dollars = self.compute_borrowable_amount(
             &collateral_amount,
@@ -118,14 +118,14 @@ pub trait LiquidityModule:
         }
 
         self.send()
-            .direct(&initial_caller, &pool_asset, 0, &withdrawal_amount, &[]);
+            .direct(&initial_caller, &pool_asset, 0, &withdrawal_amount);
     }
 
     #[only_owner]
     #[payable("*")]
     #[endpoint]
     fn repay(&self, initial_caller: ManagedAddress, account_position: u64) {
-        let (amount_to_be_repaid, asset_token_id) = self.call_value().payment_token_pair();
+        let (asset_token_id, amount_to_be_repaid) = self.call_value().egld_or_single_fungible_esdt();
         let pool_asset = self.pool_asset().get();
         let mut borrow_position = self.merge_borrow_positions(account_position);
 
@@ -146,7 +146,7 @@ pub trait LiquidityModule:
         if amount_to_be_repaid > total_owed {
             let extra_asset_paid = &amount_to_be_repaid - &total_owed;
             self.send()
-                .direct(&initial_caller, &asset_token_id, 0, &extra_asset_paid, &[]);
+                .direct(&initial_caller, &asset_token_id, 0, &extra_asset_paid);
         }
 
         self.borrow_position().swap_remove(&borrow_position);
@@ -170,7 +170,7 @@ pub trait LiquidityModule:
         account_position: u64,
         liquidation_bonus: BigUint,
     ) {
-        let (asset_amount, asset_token_id) = self.call_value().payment_token_pair();
+        let (asset_token_id, asset_amount) = self.call_value().egld_or_single_fungible_esdt();
 
         self.require_non_zero_address(&initial_caller);
         self.require_amount_greater_than_zero(&asset_amount);

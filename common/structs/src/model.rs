@@ -27,25 +27,25 @@ pub struct IssueData<M: ManagedTypeApi> {
     pub is_empty_ticker: bool,
 }
 
-#[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, TypeAbi, PartialEq, Clone)]
+#[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, TypeAbi, Clone)]
 pub struct TokenAmountPair<M: ManagedTypeApi> {
-    pub token_id: TokenIdentifier<M>,
+    pub token_id: EgldOrEsdtTokenIdentifier<M>,
     pub nonce: u64,
     pub amount: BigUint<M>,
 }
 
-#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi, PartialEq, Clone)]
+#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi, Clone)]
 pub struct DepositPosition<M: ManagedTypeApi> {
-    pub token_id: TokenIdentifier<M>,
+    pub token_id: EgldOrEsdtTokenIdentifier<M>,
     pub amount: BigUint<M>,
     pub owner_nonce: u64,
     pub round: u64,
     pub initial_supply_index: BigUint<M>,
 }
 
-#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi, PartialEq, Clone)]
+#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi, Clone)]
 pub struct BorrowPosition<M: ManagedTypeApi> {
-    pub token_id: TokenIdentifier<M>,
+    pub token_id: EgldOrEsdtTokenIdentifier<M>,
     pub amount: BigUint<M>,
     pub owner_nonce: u64,
     pub round: u64,
@@ -53,7 +53,7 @@ pub struct BorrowPosition<M: ManagedTypeApi> {
 }
 
 impl<M: ManagedTypeApi> TokenAmountPair<M> {
-    pub fn new(token_id: TokenIdentifier<M>, nonce: u64, amount: BigUint<M>) -> Self {
+    pub fn new(token_id: EgldOrEsdtTokenIdentifier<M>, nonce: u64, amount: BigUint<M>) -> Self {
         TokenAmountPair {
             token_id,
             nonce,
@@ -64,7 +64,7 @@ impl<M: ManagedTypeApi> TokenAmountPair<M> {
 
 impl<M: ManagedTypeApi> DepositPosition<M> {
     pub fn new(
-        token_id: TokenIdentifier<M>,
+        token_id: EgldOrEsdtTokenIdentifier<M>,
         amount: BigUint<M>,
         owner_nonce: u64,
         round: u64,
@@ -82,7 +82,7 @@ impl<M: ManagedTypeApi> DepositPosition<M> {
 
 impl<M: ManagedTypeApi> BorrowPosition<M> {
     pub fn new(
-        token_id: TokenIdentifier<M>,
+        token_id: EgldOrEsdtTokenIdentifier<M>,
         amount: BigUint<M>,
         owner_nonce: u64,
         round: u64,

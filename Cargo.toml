@@ -8,6 +8,7 @@ members = [
     "safety_module/meta",
     "common/structs",
     "common/checks",
+    "common/tokens",
     "aggregator_mock",
     "aggregator_mock/meta"
 ]
