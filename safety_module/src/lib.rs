@@ -150,7 +150,7 @@ pub trait SafetyModule {
         let nft_metadata = nft_info.decode_attributes::<DepositPosition<Self::Api>>();
         let rounds_in_pool = self.blockchain().get_block_round() - nft_metadata.round;
 
-        // require!(rounds_in_pool > 0, "Invalid round");
+        require!(rounds_in_pool > 0, "Invalid round");
 
         let withdraw_amount =
             self.calculate_amount_for_withdrawal(amount, BigUint::from(rounds_in_pool));
@@ -166,8 +166,6 @@ pub trait SafetyModule {
             withdraw_amount <= contract_balance,
             "the amount withdrawn is too high"
         );
-
-        // self.nft_burn(token_id, nft_nonce, amount);
 
         self.send()
             .direct_esdt(&caller_address, wegld_token_id, 0, &withdraw_amount);
