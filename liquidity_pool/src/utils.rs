@@ -240,7 +240,7 @@ pub trait UtilsModule:
 
         // Send amount_to_return_in_dollars to initial_caller
         for mut dp in deposit_position_iter {
-            let dp_data = self.get_token_price_data_lending(dp.clone().token_id);
+            let dp_data = self.get_token_price_data_lending(dp.token_id.clone());
             let amount_in_dollars_available_for_this_bp = &dp.amount * &dp_data.price;
 
             if amount_to_send == 0 {
