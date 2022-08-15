@@ -19,7 +19,6 @@ pub trait AccountTokenModule
         &self,
         token_display_name: ManagedBuffer,
         token_ticker: ManagedBuffer,
-        num_decimals: usize,
     ) {
         let payment_amount = self.call_value().egld_value();
         self.account_token().issue_and_set_all_roles(
@@ -27,28 +26,24 @@ pub trait AccountTokenModule
             payment_amount,
             token_display_name,
             token_ticker,
-            num_decimals,
+            0,
             None,
         );
     }
 
-    fn mint_account_token<T: TopEncode>(&self, attributes: &T) {
-        let big_zero = BigUint::zero();
+    fn mint_account_token<T: TopEncode>(&self, attributes: &T) -> u64 {
         let big_one = BigUint::from(1u64);
-        let empty_buffer = ManagedBuffer::new();
-        let empty_vec = ManagedVec::from_raw_handle(empty_buffer.get_raw_handle());
         let account_token_id = self.account_token().get_token_id();
 
-        let new_account_nonce = self.send().esdt_nft_create(
+        let new_account_nonce = self.send().esdt_nft_create_compact(
             &account_token_id,
             &big_one,
-            &empty_buffer,
-            &big_zero,
-            &empty_buffer,
             &attributes,
-            &empty_vec,
         );
         self.account_positions().insert(new_account_nonce);
+        sc_print!("Inserted new_account_nonce = {}, len = {}", new_account_nonce, self.account_positions().len());
+
+        new_account_nonce
     }
 
     fn burn_account_token(&self, token_id: &TokenIdentifier, account_nonce: u64) {

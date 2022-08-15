@@ -5,9 +5,9 @@ use common_structs::BORROW_TOKEN_PREFIX;
 use common_structs::LEND_TOKEN_PREFIX;
 use elrond_wasm::elrond_codec::Empty;
 
-use super::math;
-use super::storage;
-use super::utils;
+use super::liq_math;
+use super::liq_storage;
+use super::liq_utils;
 
 const REQUIRED_LOCAL_ROLES: [EsdtLocalRole; 3] = [
     EsdtLocalRole::NftCreate,
@@ -17,15 +17,15 @@ const REQUIRED_LOCAL_ROLES: [EsdtLocalRole; 3] = [
 
 #[elrond_wasm::module]
 pub trait TokensModule:
-    storage::StorageModule
-    + utils::UtilsModule
-    + math::MathModule
+    liq_storage::StorageModule
+    + liq_utils::UtilsModule
+    + liq_math::MathModule
     + price_aggregator_proxy::PriceAggregatorModule
 {
     #[only_owner]
     #[payable("EGLD")]
     #[endpoint]
-    fn issue(&self, pool_asset_id: EgldOrEsdtTokenIdentifier, token_prefix: u8, token_ticker: ManagedBuffer) {
+    fn issue(&self, pool_asset_id: TokenIdentifier, token_prefix: u8, token_ticker: ManagedBuffer) {
         let issue_cost = self.call_value().egld_value();
 
         require!(
@@ -102,23 +102,6 @@ pub trait TokensModule:
         self.send().esdt_nft_create(
             token_id,
             amount,
-            &empty_buffer,
-            &big_zero,
-            &empty_buffer,
-            &Empty,
-            &empty_vec,
-        )
-    }
-
-    fn mint_account_token(&self, token_id: TokenIdentifier) -> u64 {
-        let big_zero = BigUint::zero();
-        let big_one = BigUint::from(1u64);
-        let empty_buffer = ManagedBuffer::new();
-        let empty_vec = ManagedVec::from_raw_handle(empty_buffer.get_raw_handle());
-
-        self.send().esdt_nft_create(
-            &token_id,
-            &big_one,
             &empty_buffer,
             &big_zero,
             &empty_buffer,

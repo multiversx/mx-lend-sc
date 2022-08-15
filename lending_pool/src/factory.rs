@@ -11,7 +11,7 @@ pub mod liq_pool_proxy {
         #[init]
         fn init(
             &self,
-            asset: EgldOrEsdtTokenIdentifier,
+            asset: TokenIdentifier,
             r_base: BigUint,
             r_slope1: BigUint,
             r_slope2: BigUint,
@@ -26,7 +26,7 @@ pub mod liq_pool_proxy {
 pub trait FactoryModule {
     fn create_pool(
         &self,
-        base_asset: EgldOrEsdtTokenIdentifier,
+        base_asset: TokenIdentifier,
         r_base: BigUint,
         r_slope1: BigUint,
         r_slope2: BigUint,
@@ -61,7 +61,7 @@ pub trait FactoryModule {
     fn upgrade_pool(
         &self,
         lp_address: ManagedAddress,
-        base_asset: EgldOrEsdtTokenIdentifier,
+        base_asset: TokenIdentifier,
         r_base: BigUint,
         r_slope1: BigUint,
         r_slope2: BigUint,

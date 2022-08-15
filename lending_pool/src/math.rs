@@ -1,12 +1,12 @@
-use common_structs::BP;
-
 elrond_wasm::imports!();
+
+use common_structs::BP;
 
 // /* Base precision */
 // const BP: u32 = 1_000_000_000;
 
 #[elrond_wasm::module]
-pub trait MathModule {
+pub trait LendingMathModule {
     fn compute_borrow_rate(
         &self,
         r_base: &BigUint,
@@ -93,17 +93,10 @@ pub trait MathModule {
         borrowed_value_in_dollars: &BigUint,
         liquidation_threshold: &BigUint,
     ) -> BigUint {
-        let bp = self.get_base_precision();
-
         let allowed_collateral_in_dollars = collateral_value_in_dollars * liquidation_threshold;
-
         let health_factor = &allowed_collateral_in_dollars / borrowed_value_in_dollars;
 
-        health_factor / bp
-    }
-
-    fn get_base_precision(&self) -> BigUint {
-        BigUint::from(BP)
+        health_factor / BP
     }
 
     fn rule_of_three(&self, value: &BigUint, part: &BigUint, total: &BigUint) -> BigUint {

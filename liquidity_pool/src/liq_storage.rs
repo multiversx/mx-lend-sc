@@ -1,13 +1,13 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use common_structs::{BorrowPosition, DepositPosition, PoolParams};
+use common_structs::{PoolParams};
 
 #[elrond_wasm::module]
 pub trait StorageModule {
     #[view(getPoolAsset)]
     #[storage_mapper("pool_asset")]
-    fn pool_asset(&self) -> SingleValueMapper<EgldOrEsdtTokenIdentifier>;
+    fn pool_asset(&self) -> SingleValueMapper<TokenIdentifier>;
 
     #[view(getReserves)]
     #[storage_mapper("reserves")]
@@ -25,13 +25,13 @@ pub trait StorageModule {
     #[storage_mapper("borrow_token")]
     fn borrow_token(&self) -> SingleValueMapper<TokenIdentifier>;
 
-    #[view(getDepositPosition)]
-    #[storage_mapper("deposit_position")]
-    fn deposit_position(&self) -> UnorderedSetMapper<DepositPosition<Self::Api>>;
+    // #[view(getDepositPosition)]
+    // #[storage_mapper("deposit_position")]
+    // fn deposit_position(&self) -> UnorderedSetMapper<DepositPosition<Self::Api>>;
 
-    #[view(getBorrowMetadata)]
-    #[storage_mapper("borrow_position")]
-    fn borrow_position(&self) -> UnorderedSetMapper<BorrowPosition<Self::Api>>;
+    // #[view(getBorrowMetadata)]
+    // #[storage_mapper("borrow_position")]
+    // fn borrow_position(&self) -> UnorderedSetMapper<BorrowPosition<Self::Api>>;
 
     // #[view(getSuppliedPosition)]
     // #[storage_mapper("supplied_positions")]

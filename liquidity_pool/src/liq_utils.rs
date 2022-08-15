@@ -1,7 +1,7 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use crate::{math, storage};
+use crate::{liq_math, liq_storage};
 use price_aggregator_proxy::AggregatorResult;
 
 use common_structs::*;
@@ -13,7 +13,7 @@ const DOLLAR_TICKER: &[u8] = b"USD";
 
 #[elrond_wasm::module]
 pub trait UtilsModule:
-    math::MathModule + storage::StorageModule + price_aggregator_proxy::PriceAggregatorModule
+    liq_math::MathModule + liq_storage::StorageModule + price_aggregator_proxy::PriceAggregatorModule
 {
     fn prepare_issue_data(&self, prefix: u8, ticker: ManagedBuffer) -> IssueData<Self::Api> {
         let mut prefixed_ticker = ManagedBuffer::new_from_bytes(&[prefix]);
@@ -42,7 +42,7 @@ pub trait UtilsModule:
         issue_data
     }
 
-    fn get_token_price_data(&self, token_id: EgldOrEsdtTokenIdentifier) -> AggregatorResult<Self::Api> {
+    fn get_token_price_data(&self, token_id: TokenIdentifier) -> AggregatorResult<Self::Api> {
         let from_ticker = self.get_token_ticker(token_id);
         let result = self
             .get_full_result_for_pair(from_ticker, ManagedBuffer::new_from_bytes(DOLLAR_TICKER));
@@ -55,7 +55,7 @@ pub trait UtilsModule:
 
     fn get_token_price_data_lending(
         &self,
-        token_id: EgldOrEsdtTokenIdentifier,
+        token_id: TokenIdentifier,
     ) -> AggregatorResult<Self::Api> {
         let from_ticker = self.get_token_ticker_from_lending(token_id);
         let result = self
@@ -67,11 +67,8 @@ pub trait UtilsModule:
         }
     }
 
-    fn get_token_ticker(&self, token_id: EgldOrEsdtTokenIdentifier) -> ManagedBuffer {
-        if token_id.is_egld() {
-            return ManagedBuffer::new_from_bytes(b"EGLD");
-        }
-        let as_buffer = token_id.into_name();
+    fn get_token_ticker(&self, token_id: TokenIdentifier) -> ManagedBuffer {
+        let as_buffer = token_id.into_managed_buffer();
         let ticker_start_index = 0;
         let ticker_end_index = as_buffer.len() - TOKEN_ID_SUFFIX_LEN;
 
@@ -81,8 +78,8 @@ pub trait UtilsModule:
     }
 
     // Each lent/borrowed token has an L/B prefix, so we start from index 1
-    fn get_token_ticker_from_lending(&self, token_id: EgldOrEsdtTokenIdentifier) -> ManagedBuffer {
-        let as_buffer = token_id.into_name();
+    fn get_token_ticker_from_lending(&self, token_id: TokenIdentifier) -> ManagedBuffer {
+        let as_buffer = token_id.as_managed_buffer();
         let ticker_start_index = 1;
         let ticker_end_index = as_buffer.len() - TOKEN_ID_SUFFIX_LEN - 1;
 
@@ -208,149 +205,5 @@ pub trait UtilsModule:
         borrow_token_repaid: &BigUint,
     ) -> bool {
         &borrow_position.amount == borrow_token_repaid
-    }
-
-    #[inline]
-    fn get_collateral_available(&self, account_position: u64) -> BigUint {
-        let mut deposited_amount_in_dollars = BigUint::zero();
-        let deposit_positions = self.deposit_position();
-        let deposit_position_iter = deposit_positions
-            .iter()
-            .filter(|dp| dp.owner_nonce == account_position);
-
-        for dp in deposit_position_iter {
-            let dp_data = self.get_token_price_data_lending(dp.token_id);
-            deposited_amount_in_dollars += dp.amount * dp_data.price;
-        }
-
-        deposited_amount_in_dollars
-    }
-
-    fn send_amount_in_dollars_to_liquidator(
-        &self,
-        initial_caller: ManagedAddress,
-        liquidatee_account_position: u64,
-        amount_to_return_in_dollars: BigUint,
-    ) {
-        let mut amount_to_send = amount_to_return_in_dollars;
-        let deposit_positions = self.deposit_position();
-        let deposit_position_iter = deposit_positions
-            .iter()
-            .filter(|dp| dp.owner_nonce == liquidatee_account_position);
-
-        // Send amount_to_return_in_dollars to initial_caller
-        for mut dp in deposit_position_iter {
-            let dp_data = self.get_token_price_data_lending(dp.token_id.clone());
-            let amount_in_dollars_available_for_this_bp = &dp.amount * &dp_data.price;
-
-            if amount_to_send == 0 {
-                break;
-            }
-
-            if amount_in_dollars_available_for_this_bp <= amount_to_send {
-                // Send all tokens and remove DepositPosition
-
-                self.send()
-                    .direct(&initial_caller, &dp.token_id, 0, &dp.amount);
-                amount_to_send -= amount_in_dollars_available_for_this_bp;
-                self.deposit_position().swap_remove(&dp);
-            } else {
-                // Send part of the tokens and update DepositPosition
-                let partial_amount_to_send = &amount_to_send / &dp_data.price;
-                self.send().direct(
-                    &initial_caller,
-                    &dp.token_id,
-                    0,
-                    &partial_amount_to_send,
-                );
-
-                // Update DepositPosition
-                self.deposit_position().swap_remove(&dp);
-                dp.amount -= partial_amount_to_send;
-                self.deposit_position().insert(dp);
-            }
-        }
-    }
-
-    fn get_total_borrowed_amount(&self, account_position: u64) -> BigUint {
-        let mut total_borrowed_amount = BigUint::zero();
-        let borrow_positions = self.borrow_position();
-        let borrow_position_iter = borrow_positions
-            .iter()
-            .filter(|bp| bp.owner_nonce == account_position);
-
-        for bp in borrow_position_iter {
-            let accumulated_debt = self.get_debt_interest(&bp.amount, &bp.initial_borrow_index);
-            total_borrowed_amount += bp.amount + accumulated_debt;
-        }
-
-        total_borrowed_amount
-    }
-
-    fn merge_deposit_positions(&self, account_position: u64) -> DepositPosition<Self::Api> {
-        let pool_asset = self.pool_asset().get();
-        let round = self.blockchain().get_block_round();
-        let supply_index = self.supply_index().get();
-        let zero_amount = BigUint::zero();
-        let deposit_positions = self.deposit_position();
-        let deposit_position_iter = deposit_positions
-            .iter()
-            .filter(|dp| dp.owner_nonce == account_position);
-
-        // Create new DP
-        let mut merged_deposit_position = DepositPosition::new(
-            pool_asset,
-            zero_amount,
-            account_position,
-            round,
-            supply_index.clone(),
-        );
-
-        for dp in deposit_position_iter {
-            // Add old DP to new DP
-            let interest_accrued =
-                self.compute_interest(&dp.amount, &supply_index, &dp.initial_supply_index);
-
-            merged_deposit_position.amount += &dp.amount + &interest_accrued;
-            self.deposit_position().swap_remove(&dp);
-        }
-        // Add DP to self.deposit_position()
-        self.deposit_position()
-            .insert(merged_deposit_position.clone());
-
-        merged_deposit_position
-    }
-
-    fn merge_borrow_positions(&self, account_position: u64) -> BorrowPosition<Self::Api> {
-        let pool_asset = self.pool_asset().get();
-        let round = self.blockchain().get_block_round();
-        let borrow_index = self.borrow_index().get();
-        let zero_amount = BigUint::zero();
-        let borrow_positions = self.borrow_position();
-        let borrow_position_iter = borrow_positions
-            .iter()
-            .filter(|bp| bp.owner_nonce == account_position);
-
-        // Create new DP
-        let mut merged_borrow_position = BorrowPosition::new(
-            pool_asset,
-            zero_amount,
-            account_position,
-            round,
-            borrow_index,
-        );
-
-        for bp in borrow_position_iter {
-            // Add old DP to new DP
-            let accumulated_debt = self.get_debt_interest(&bp.amount, &bp.initial_borrow_index);
-
-            merged_borrow_position.amount += &bp.amount + &accumulated_debt;
-            self.borrow_position().swap_remove(&bp);
-        }
-        // Add DP to self.borrow_position()
-        self.borrow_position()
-            .insert(merged_borrow_position.clone());
-
-        merged_borrow_position
     }
 }

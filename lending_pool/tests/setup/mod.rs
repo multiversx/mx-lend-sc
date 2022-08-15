@@ -1,13 +1,13 @@
-use elrond_wasm::types::Address;
+use elrond_wasm::{types::Address, storage::mappers::StorageTokenWrapper};
 use elrond_wasm_debug::{
     managed_address, managed_biguint, managed_buffer, rust_biguint,
     testing_framework::{BlockchainStateWrapper, ContractObjWrapper},
-    DebugApi,
+    DebugApi, managed_token_id,
 };
 
 use crate::constants::*;
 use aggregator_mock::PriceAggregatorMock;
-use lending_pool::LendingPool;
+use lending_pool::{LendingPool, AccountTokenModule, ACCOUNT_TOKEN, ACCOUNT_TICKER};
 
 pub fn setup_price_aggregator<PriceAggregatorObjBuilder>(
     owner_addr: &Address,
@@ -63,8 +63,11 @@ where
         setup_liquidity_pool_template(owner_addr, b_mock, liquidity_pool::contract_obj);
 
     b_mock
-        .execute_tx(owner_addr, &lending_pool_wrapper, &rust_zero, |sc| {
+        .execute_tx(&owner_addr, &lending_pool_wrapper, &rust_zero, |sc| {
             sc.init(managed_address!(&lp_template_addr));
+            let account_token_id = managed_token_id!(ACCOUNT_TOKEN);
+            sc.account_token().set_token_id(&account_token_id);
+
         })
         .assert_ok();
 

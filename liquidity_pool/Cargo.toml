@@ -20,5 +20,8 @@ path = "../common/structs"
 [dependencies.common-checks]
 path = "../common/checks"
 
+[dependencies.common-tokens]
+path = "../common/tokens"
+
 [dependencies.price-aggregator-proxy]
 path = "../common/price-aggregator-proxy"

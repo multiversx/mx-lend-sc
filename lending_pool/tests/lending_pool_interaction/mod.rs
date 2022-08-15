@@ -2,10 +2,10 @@ use elrond_wasm::types::{Address, EsdtLocalRole};
 use elrond_wasm_debug::{
     managed_address, managed_biguint, managed_token_id, rust_biguint,
     testing_framework::{BlockchainStateWrapper, ContractObjWrapper},
-    DebugApi,
+    DebugApi, managed_token_id_wrapped,
 };
-use lending_pool::router::RouterModule;
-use liquidity_pool::storage::StorageModule;
+use lending_pool::{router::RouterModule, LendingPool, ACCOUNT_TOKEN, AccountTokenModule};
+use liquidity_pool::liq_storage::StorageModule;
 use liquidity_pool::LiquidityPool;
 use price_aggregator_proxy::PriceAggregatorModule;
 
@@ -86,7 +86,7 @@ where
                 &rust_biguint!(0),
                 |sc| {
                     sc.init(
-                        managed_token_id!(USDC_TOKEN_ID),
+                        managed_token_id_wrapped!(USDC_TOKEN_ID),
                         managed_biguint!(R_BASE),
                         managed_biguint!(R_SLOPE1),
                         managed_biguint!(R_SLOPE2),
@@ -111,7 +111,7 @@ where
                 &rust_biguint!(0),
                 |sc| {
                     sc.pools_map().insert(
-                        managed_token_id!(USDC_TOKEN_ID),
+                        managed_token_id_wrapped!(USDC_TOKEN_ID),
                         managed_address!(&liquidity_pool_usdc_wrapper.address_ref()),
                     );
                     sc.pools_allowed()
@@ -166,7 +166,7 @@ where
                 &rust_biguint!(0),
                 |sc| {
                     sc.init(
-                        managed_token_id!(EGLD_TOKEN_ID),
+                        managed_token_id_wrapped!(EGLD_TOKEN_ID),
                         managed_biguint!(R_BASE),
                         managed_biguint!(R_SLOPE1),
                         managed_biguint!(R_SLOPE2),
@@ -179,6 +179,7 @@ where
                     sc.set_price_aggregator_address(managed_address!(
                         &price_aggregator_wrapper.address_ref()
                     ));
+                    
                 },
             )
             .assert_ok();
@@ -190,7 +191,7 @@ where
                 &rust_biguint!(0),
                 |sc| {
                     sc.pools_map().insert(
-                        managed_token_id!(EGLD_TOKEN_ID),
+                        managed_token_id_wrapped!(EGLD_TOKEN_ID),
                         managed_address!(&liquidity_pool_egld_wrapper.address_ref()),
                     );
                     sc.pools_allowed()
@@ -229,8 +230,18 @@ where
                 EsdtLocalRole::NftAddQuantity,
                 EsdtLocalRole::NftBurn,
             ],
-        );
+        );        
 
+        b_mock.set_esdt_local_roles(
+            lending_pool_wrapper.address_ref(),
+            ACCOUNT_TOKEN,
+            &[
+                EsdtLocalRole::NftCreate,
+                EsdtLocalRole::NftAddQuantity,
+                EsdtLocalRole::NftBurn,
+            ],
+        );
+        
         Self {
             owner_addr,
             first_user_addr,

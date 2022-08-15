@@ -4,29 +4,31 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-pub mod math;
-pub use math::*;
+pub mod liq_math;
+pub use liq_math::*;
 pub mod liquidity;
 pub mod tokens;
 pub use common_structs::*;
+pub use common_tokens::*;
 
-pub mod storage;
-pub mod utils;
+pub mod liq_storage;
+pub mod liq_utils;
 
 #[elrond_wasm::contract]
 pub trait LiquidityPool:
-    storage::StorageModule
+    liq_storage::StorageModule
     + tokens::TokensModule
-    + math::MathModule
+    + common_tokens::AccountTokenModule
+    + liq_math::MathModule
     + liquidity::LiquidityModule
-    + utils::UtilsModule
+    + liq_utils::UtilsModule
     + price_aggregator_proxy::PriceAggregatorModule
     + common_checks::ChecksModule
 {
     #[init]
     fn init(
         &self,
-        asset: EgldOrEsdtTokenIdentifier,
+        asset: TokenIdentifier,
         r_base: BigUint,
         r_slope1: BigUint,
         r_slope2: BigUint,

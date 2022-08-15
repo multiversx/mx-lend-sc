@@ -4,10 +4,11 @@ elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
 pub const BP: u64 = 1_000_000_000_000_000_000;
+pub const MAX_THRESHOLD: u64 = BP / 2;
 pub const SECONDS_PER_YEAR: u64 = 31_536_000;
 pub const LEND_TOKEN_PREFIX: u8 = b'L';
 pub const BORROW_TOKEN_PREFIX: u8 = b'B';
-pub const ACCOUNT_TOKEN: &[u8] = b"LAccount";
+pub const ACCOUNT_TOKEN: &[u8] = b"LACC-abcdef";
 pub const ACCOUNT_TICKER: &[u8] = b"LACC";
 
 
@@ -29,14 +30,14 @@ pub struct IssueData<M: ManagedTypeApi> {
 
 #[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, TypeAbi, Clone)]
 pub struct TokenAmountPair<M: ManagedTypeApi> {
-    pub token_id: EgldOrEsdtTokenIdentifier<M>,
+    pub token_id: TokenIdentifier<M>,
     pub nonce: u64,
     pub amount: BigUint<M>,
 }
 
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi, Clone)]
 pub struct DepositPosition<M: ManagedTypeApi> {
-    pub token_id: EgldOrEsdtTokenIdentifier<M>,
+    pub token_id: TokenIdentifier<M>,
     pub amount: BigUint<M>,
     pub owner_nonce: u64,
     pub round: u64,
@@ -45,7 +46,7 @@ pub struct DepositPosition<M: ManagedTypeApi> {
 
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi, Clone)]
 pub struct BorrowPosition<M: ManagedTypeApi> {
-    pub token_id: EgldOrEsdtTokenIdentifier<M>,
+    pub token_id: TokenIdentifier<M>,
     pub amount: BigUint<M>,
     pub owner_nonce: u64,
     pub round: u64,
@@ -53,7 +54,7 @@ pub struct BorrowPosition<M: ManagedTypeApi> {
 }
 
 impl<M: ManagedTypeApi> TokenAmountPair<M> {
-    pub fn new(token_id: EgldOrEsdtTokenIdentifier<M>, nonce: u64, amount: BigUint<M>) -> Self {
+    pub fn new(token_id: TokenIdentifier<M>, nonce: u64, amount: BigUint<M>) -> Self {
         TokenAmountPair {
             token_id,
             nonce,
@@ -64,7 +65,7 @@ impl<M: ManagedTypeApi> TokenAmountPair<M> {
 
 impl<M: ManagedTypeApi> DepositPosition<M> {
     pub fn new(
-        token_id: EgldOrEsdtTokenIdentifier<M>,
+        token_id: TokenIdentifier<M>,
         amount: BigUint<M>,
         owner_nonce: u64,
         round: u64,
@@ -82,7 +83,7 @@ impl<M: ManagedTypeApi> DepositPosition<M> {
 
 impl<M: ManagedTypeApi> BorrowPosition<M> {
     pub fn new(
-        token_id: EgldOrEsdtTokenIdentifier<M>,
+        token_id: TokenIdentifier<M>,
         amount: BigUint<M>,
         owner_nonce: u64,
         round: u64,

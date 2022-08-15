@@ -105,7 +105,7 @@ pub trait SafetyModule {
     #[payable("*")]
     #[endpoint(fundFromPool)]
     fn fund_from_pool(&self) {
-        let (token, payment) = self.call_value().egld_or_single_fungible_esdt();
+        let (token, payment) = self.call_value().single_fungible_esdt();
         require!(payment > 0, "amount must be greater than 0");
 
         self.convert_to_wegld(token, payment);
@@ -238,7 +238,7 @@ pub trait SafetyModule {
         //TODO:  integration with dex
     }
 
-    fn convert_to_wegld(&self, _pool_token: EgldOrEsdtTokenIdentifier, _amount: BigUint) {
+    fn convert_to_wegld(&self, _pool_token: TokenIdentifier, _amount: BigUint) {
         //TODO:  integration with dex
     }
 
