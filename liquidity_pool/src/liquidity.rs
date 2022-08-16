@@ -115,7 +115,7 @@ pub trait LiquidityModule:
         &self,
         initial_caller: ManagedAddress,
         borrow_amount: BigUint,
-        borrow_position: BorrowPosition<Self::Api>,
+        existing_borrow_position: BorrowPosition<Self::Api>,
         // loan_to_value: BigUint,
     ) -> BorrowPosition<Self::Api> {
         let pool_token_id = self.pool_asset().get();
@@ -130,7 +130,7 @@ pub trait LiquidityModule:
         //     * BigUint::from(10u64).pow(pool_asset_data.decimals as u32);
         // let borrow_amount_in_tokens = cmp::min(borrowable_amount_in_tokens, amount);
         let asset_reserve = self.reserves().get();
-        let mut ret_borrow_position = borrow_position.clone();
+        let mut ret_borrow_position = existing_borrow_position.clone();
         self.require_non_zero_address(&initial_caller);
         require!(
             asset_reserve >= borrow_amount,
@@ -138,8 +138,8 @@ pub trait LiquidityModule:
         );
 
         self.update_interest_indexes();
-        if borrow_position.amount != 0 {
-            ret_borrow_position = self.update_borrows_with_debt(borrow_position);
+        if existing_borrow_position.amount != 0 {
+            ret_borrow_position = self.update_borrows_with_debt(existing_borrow_position);
         }
 
         let round = self.blockchain().get_block_round();
@@ -228,16 +228,12 @@ pub trait LiquidityModule:
             repay_amount = total_owed.clone();
         }
 
-        // self.borrow_position().swap_remove(&merged_borrows);
-        // if !self.is_full_repay(&merged_borrows, &repay_amount) {
         ret_borrow_position.amount -= &repay_amount;
-        //     self.borrow_position().insert(merged_borrows.clone());
-        // }
 
         self.borrowed_amount()
-            .update(|total| *total -= repay_amount);
+            .update(|total| *total -= &repay_amount);
 
-        self.reserves().update(|total| *total += &total_owed);
+        self.reserves().update(|total| *total += &repay_amount);
 
         ret_borrow_position
     }
