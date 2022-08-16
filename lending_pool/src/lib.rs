@@ -7,7 +7,7 @@ pub mod factory;
 mod proxy;
 pub mod router;
 pub mod storage;
-mod utils;
+pub mod utils;
 mod math;
 
 pub use common_structs::*;

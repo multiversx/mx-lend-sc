@@ -1,12 +1,18 @@
-use elrond_wasm::types::{Address, EsdtLocalRole};
-use elrond_wasm_debug::{
-    managed_address, managed_biguint, managed_token_id, rust_biguint,
-    testing_framework::{BlockchainStateWrapper, ContractObjWrapper},
-    DebugApi, managed_token_id_wrapped,
+use elrond_wasm::{
+    elrond_codec::Empty,
+    types::{Address, EsdtLocalRole, TokenIdentifier},
 };
-use lending_pool::{router::RouterModule, LendingPool, ACCOUNT_TOKEN, AccountTokenModule};
-use liquidity_pool::liq_storage::StorageModule;
+use elrond_wasm_debug::{
+    managed_address, managed_biguint, managed_token_id, managed_token_id_wrapped, rust_biguint,
+    testing_framework::{BlockchainStateWrapper, ContractObjWrapper},
+    DebugApi,
+};
+use lending_pool::{
+    router::RouterModule, AccountTokenModule, BorrowPosition, DepositPosition, LendingPool,
+    ACCOUNT_TOKEN, BP,
+};
 use liquidity_pool::LiquidityPool;
+use liquidity_pool::{liq_storage::StorageModule, liquidity::LiquidityModule};
 use price_aggregator_proxy::PriceAggregatorModule;
 
 use crate::{
@@ -86,7 +92,7 @@ where
                 &rust_biguint!(0),
                 |sc| {
                     sc.init(
-                        managed_token_id_wrapped!(USDC_TOKEN_ID),
+                        managed_token_id!(USDC_TOKEN_ID),
                         managed_biguint!(R_BASE),
                         managed_biguint!(R_SLOPE1),
                         managed_biguint!(R_SLOPE2),
@@ -111,7 +117,7 @@ where
                 &rust_biguint!(0),
                 |sc| {
                     sc.pools_map().insert(
-                        managed_token_id_wrapped!(USDC_TOKEN_ID),
+                        managed_token_id!(USDC_TOKEN_ID),
                         managed_address!(&liquidity_pool_usdc_wrapper.address_ref()),
                     );
                     sc.pools_allowed()
@@ -166,7 +172,7 @@ where
                 &rust_biguint!(0),
                 |sc| {
                     sc.init(
-                        managed_token_id_wrapped!(EGLD_TOKEN_ID),
+                        managed_token_id!(EGLD_TOKEN_ID),
                         managed_biguint!(R_BASE),
                         managed_biguint!(R_SLOPE1),
                         managed_biguint!(R_SLOPE2),
@@ -179,7 +185,6 @@ where
                     sc.set_price_aggregator_address(managed_address!(
                         &price_aggregator_wrapper.address_ref()
                     ));
-                    
                 },
             )
             .assert_ok();
@@ -191,7 +196,7 @@ where
                 &rust_biguint!(0),
                 |sc| {
                     sc.pools_map().insert(
-                        managed_token_id_wrapped!(EGLD_TOKEN_ID),
+                        managed_token_id!(EGLD_TOKEN_ID),
                         managed_address!(&liquidity_pool_egld_wrapper.address_ref()),
                     );
                     sc.pools_allowed()
@@ -230,7 +235,7 @@ where
                 EsdtLocalRole::NftAddQuantity,
                 EsdtLocalRole::NftBurn,
             ],
-        );        
+        );
 
         b_mock.set_esdt_local_roles(
             lending_pool_wrapper.address_ref(),
@@ -241,7 +246,7 @@ where
                 EsdtLocalRole::NftBurn,
             ],
         );
-        
+
         Self {
             owner_addr,
             first_user_addr,
@@ -255,5 +260,202 @@ where
             liquidity_pool_usdc_wrapper: liquidity_pool_usdc_wrapper,
             liquidity_pool_egld_wrapper: liquidity_pool_egld_wrapper,
         }
+    }
+
+    pub fn enter_market(&mut self, user_addr: &Address) -> u64 {
+        let mut account_nonce = 0;
+        self.b_mock
+            .execute_tx(
+                &user_addr,
+                &self.lending_pool_wrapper,
+                &rust_biguint!(0),
+                |sc| {
+                    account_nonce = sc.enter_market(managed_address!(&user_addr));
+                    assert!(account_nonce != 0, "Account nonce didn't change");
+                },
+            )
+            .assert_ok();
+
+        self.check_account(&user_addr, account_nonce);
+        account_nonce
+    }
+
+    pub fn check_account(&mut self, user_addr: &Address, account_nonce: u64) {
+        self.b_mock.check_nft_balance(
+            &user_addr,
+            ACCOUNT_TOKEN,
+            account_nonce,
+            &rust_biguint!(1),
+            Option::<&Empty>::None,
+        );
+    }
+
+    pub fn add_collateral(
+        &mut self,
+        user_addr: &Address,
+        token_id: &[u8],
+        initial_amount: u64,
+        owner_nonce: u64,
+        add_amount: u64,
+        expected_reserves_after_deposit: u64,
+    ) {
+        self.b_mock
+            .execute_esdt_transfer(
+                &user_addr,
+                &self.liquidity_pool_usdc_wrapper,
+                USDC_TOKEN_ID,
+                0,
+                &rust_biguint!(add_amount),
+                |sc| {
+                    sc.add_collateral(DepositPosition::new(
+                        managed_token_id!(token_id),
+                        managed_biguint!(initial_amount),
+                        owner_nonce,
+                        1,
+                        managed_biguint!(BP),
+                    ));
+                },
+            )
+            .assert_ok();
+
+        self.check_reserves(expected_reserves_after_deposit);
+    }
+
+    pub fn remove_collateral(
+        &mut self,
+        user_addr: &Address,
+        token_id: &[u8],
+        initial_amount: u64,
+        owner_nonce: u64,
+        remove_amount: u64,
+        expected_collateral_after_deposit: u64,
+    ) {
+        self.b_mock
+            .execute_esdt_transfer(
+                &user_addr,
+                &self.liquidity_pool_usdc_wrapper,
+                USDC_TOKEN_ID,
+                0,
+                &rust_biguint!(0),
+                |sc| {
+                    sc.remove_collateral(
+                        managed_address!(&user_addr),
+                        managed_biguint!(remove_amount),
+                        DepositPosition::new(
+                            managed_token_id!(token_id),
+                            managed_biguint!(initial_amount),
+                            owner_nonce,
+                            1,
+                            managed_biguint!(BP),
+                        ),
+                    );
+                },
+            )
+            .assert_ok();
+
+        self.check_reserves(expected_collateral_after_deposit);
+    }
+
+    pub fn borrow(
+        &mut self,
+        user_addr: &Address,
+        token_id: &[u8],
+        initial_amount: u64,
+        owner_nonce: u64,
+        borrow_amount: u64,
+        expected_reserves_after_borrow: u64,
+        expected_borrowed_amount_after_borrow: u64,
+    ) {
+        self.b_mock
+            .execute_esdt_transfer(
+                &user_addr,
+                &self.liquidity_pool_usdc_wrapper,
+                USDC_TOKEN_ID,
+                0,
+                &rust_biguint!(0),
+                |sc| {
+                    sc.borrow(
+                        managed_address!(&user_addr),
+                        managed_biguint!(borrow_amount),
+                        BorrowPosition::new(
+                            managed_token_id!(token_id),
+                            managed_biguint!(initial_amount),
+                            owner_nonce,
+                            1,
+                            managed_biguint!(BP),
+                        ),
+                    );
+                },
+            )
+            .assert_ok();
+
+        self.check_reserves(expected_reserves_after_borrow);
+        self.check_borrowed_amount(expected_borrowed_amount_after_borrow);
+    }
+
+    pub fn repay(
+        &mut self,
+        user_addr: &Address,
+        token_id: &[u8],
+        initial_amount: u64,
+        owner_nonce: u64,
+        repay_amount: u64,
+        expected_reserves_after_repay: u64,
+        expected_borrowed_amount_after_repay: u64,
+    ) {
+        self.b_mock
+            .execute_esdt_transfer(
+                &user_addr,
+                &self.liquidity_pool_usdc_wrapper,
+                USDC_TOKEN_ID,
+                0,
+                &rust_biguint!(repay_amount),
+                |sc| {
+                    sc.repay(
+                        managed_address!(&user_addr),
+                        BorrowPosition::new(
+                            managed_token_id!(token_id),
+                            managed_biguint!(initial_amount),
+                            owner_nonce,
+                            1,
+                            managed_biguint!(BP),
+                        ),
+                    );
+                },
+            )
+            .assert_ok();
+
+        self.check_borrowed_amount(expected_borrowed_amount_after_repay);
+        self.check_reserves(expected_reserves_after_repay);
+    }
+
+    pub fn check_reserves(&mut self, expected_deposited_collateral: u64) {
+        self.b_mock
+            .execute_query(&self.liquidity_pool_usdc_wrapper, |sc| {
+                let actual_deposited_collateral = sc.reserves().get();
+                let expected_collateral = elrond_wasm::types::BigUint::from_bytes_be(
+                    &expected_deposited_collateral.to_be_bytes(),
+                );
+                assert_eq!(
+                    actual_deposited_collateral, expected_collateral,
+                    "Reserve tokens in Liquidity Pool doesn't match!"
+                );
+            })
+            .assert_ok();
+    }
+
+    pub fn check_borrowed_amount(&mut self, expected_borrowed_amount: u64) {
+        self.b_mock
+            .execute_query(&self.liquidity_pool_usdc_wrapper, |sc| {
+                let actual_borrowed_amount = sc.borrowed_amount().get();
+                let expected_borrowed = elrond_wasm::types::BigUint::from_bytes_be(
+                    &expected_borrowed_amount.to_be_bytes(),
+                );
+                assert_eq!(
+                    actual_borrowed_amount, expected_borrowed,
+                    "Borrowed amount in Liquidity Pool doesn't match!"
+                );
+            })
+            .assert_ok();
     }
 }
