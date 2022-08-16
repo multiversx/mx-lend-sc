@@ -6,7 +6,7 @@ elrond_wasm::derive_imports!();
 pub mod factory;
 mod proxy;
 pub mod router;
-mod storage;
+pub mod storage;
 mod utils;
 mod math;
 
@@ -114,7 +114,7 @@ pub trait LendingPool:
         let initial_deposit_position = self.get_collateral_position_for_token(nft_account_nonce, withdraw_token_id);
         let deposit_position: DepositPosition<<Self as ContractBase>::Api> = self
             .liquidity_pool_proxy(pool_address)
-            .withdraw(&initial_caller, amount, initial_deposit_position)
+            .remove_collateral(&initial_caller, amount, initial_deposit_position)
             .execute_on_dest_context();
 
         if deposit_position.amount != 0 {

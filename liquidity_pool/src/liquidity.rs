@@ -164,7 +164,7 @@ pub trait LiquidityModule:
     #[only_owner]
     #[payable("*")]
     #[endpoint]
-    fn withdraw(
+    fn remove_collateral(
         &self,
         initial_caller: ManagedAddress,
         amount: BigUint,
