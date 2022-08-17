@@ -71,9 +71,7 @@ pub trait LendingMathModule {
         current_supply_index: &BigUint,
         initial_supply_index: &BigUint,
     ) -> BigUint {
-        let bp = BigUint::from(BP);
-
-        (current_supply_index - initial_supply_index) * amount / bp
+        (current_supply_index - initial_supply_index) * amount / BP
     }
 
     fn compute_borrowable_amount(
