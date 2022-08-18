@@ -1,20 +1,13 @@
-use aggregator_mock::PriceAggregatorMock;
 use constants::*;
-use elrond_wasm::{elrond_codec::Empty, types::TokenIdentifier};
-use elrond_wasm_debug::{
-    managed_address, managed_biguint, managed_buffer, managed_token_id, rust_biguint,
-    tx_mock::TxInputESDT,
-};
-use lending_pool::{
-    router::RouterModule, storage::LendingStorageModule, AccountTokenModule, BorrowPosition,
-    DepositPosition, LendingPool, ACCOUNT_TOKEN, BP,
-};
-use lending_pool_interaction::LendingSetup;
-use liquidity_pool::{
-    liq_storage::StorageModule, liquidity::LiquidityModule, tokens::TokensModule,
-};
 
-use lending_pool::utils::LendingUtilsModule;
+use common_structs::DepositPosition;
+use common_structs::BP;
+
+use elrond_wasm::{elrond_codec::Empty, types::BigUint};
+use elrond_wasm_debug::{managed_address, managed_biguint, managed_token_id, rust_biguint};
+use lending_pool::LendingPool;
+use lending_pool::{storage::LendingStorageModule, AccountTokenModule, BorrowPosition};
+use lending_pool_interaction::LendingSetup;
 
 pub mod constants;
 pub mod lending_pool_interaction;
@@ -39,6 +32,19 @@ fn enter_market() {
     let user_addr = lending_setup.first_user_addr.clone();
 
     lending_setup.enter_market(&user_addr);
+}
+
+#[test]
+fn exit_market() {
+    let mut lending_setup = LendingSetup::deploy_lending(
+        lending_pool::contract_obj,
+        liquidity_pool::contract_obj,
+        aggregator_mock::contract_obj,
+    );
+    let user_addr = lending_setup.first_user_addr.clone();
+
+    let account_nonce = lending_setup.enter_market(&user_addr);
+    lending_setup.exit_market(&user_addr, account_nonce);
 }
 
 #[test]
@@ -135,6 +141,112 @@ fn add_collateral_test() {
     lending_setup.add_collateral(&user_addr, USDC_TOKEN_ID, 0, account_nonce, 500, 500);
     lending_setup.add_collateral(&user_addr, USDC_TOKEN_ID, 500, account_nonce, 200, 700);
     lending_setup.add_collateral(&user_addr, USDC_TOKEN_ID, 700, account_nonce, 150, 850);
+}
+
+#[test]
+fn remove_collateral_test() {
+    let mut lending_setup = LendingSetup::deploy_lending(
+        lending_pool::contract_obj,
+        liquidity_pool::contract_obj,
+        aggregator_mock::contract_obj,
+    );
+
+    let user_addr = lending_setup.first_user_addr.clone();
+    let account_nonce = lending_setup.enter_market(&user_addr);
+
+    lending_setup
+        .b_mock
+        .set_esdt_balance(&user_addr, USDC_TOKEN_ID, &rust_biguint!(1_000));
+
+    lending_setup.add_collateral(&user_addr, USDC_TOKEN_ID, 0, account_nonce, 700, 700);
+    lending_setup.remove_collateral(&user_addr, USDC_TOKEN_ID, 700, account_nonce, 300, 400);
+    lending_setup.add_collateral(&user_addr, USDC_TOKEN_ID, 400, account_nonce, 150, 550);
+}
+
+#[test]
+fn liquidate_test() {
+    let mut lending_setup = LendingSetup::deploy_lending(
+        lending_pool::contract_obj,
+        liquidity_pool::contract_obj,
+        aggregator_mock::contract_obj,
+    );
+
+    let liquidatee_user = lending_setup.first_user_addr.clone();
+    let liquidator_user = lending_setup.second_user_addr.clone();
+
+    let liquidatee_account_nonce = lending_setup.enter_market(&liquidatee_user);
+
+    lending_setup
+        .b_mock
+        .set_esdt_balance(&liquidatee_user, USDC_TOKEN_ID, &rust_biguint!(1_000));
+
+    lending_setup.add_collateral(
+        &liquidatee_user,
+        USDC_TOKEN_ID,
+        0,
+        liquidatee_account_nonce,
+        1000,
+        1000,
+    );
+    lending_setup.borrow(
+        &liquidatee_user,
+        USDC_TOKEN_ID,
+        0,
+        liquidatee_account_nonce,
+        600,
+        400,
+        600,
+    );
+
+    lending_setup
+    .b_mock
+    .set_esdt_balance(&liquidator_user, USDC_TOKEN_ID, &rust_biguint!(300));
+
+
+    lending_setup
+        .b_mock
+        .execute_esdt_transfer(
+            &liquidator_user,
+            &lending_setup.lending_pool_wrapper,
+            USDC_TOKEN_ID,
+            0,
+            &rust_biguint!(300),
+            |sc| {
+                let nft_account_amount = BigUint::from(1u64);
+                let nft_token_payment = sc.account_token().nft_create_and_send(
+                    &managed_address!(&liquidatee_user),
+                    nft_account_amount,
+                    &Empty,
+                );
+                sc.account_positions().insert(nft_token_payment.token_nonce);
+
+                sc.deposit_position().insert(DepositPosition::new(
+                    managed_token_id!(USDC_TOKEN_ID),
+                    managed_biguint!(1000),
+                    liquidatee_account_nonce,
+                    1,
+                    BigUint::from(BP),
+                ));
+
+                sc.borrow_position().insert(BorrowPosition::new(
+                    managed_token_id!(USDC_TOKEN_ID),
+                    managed_biguint!(600),
+                    liquidatee_account_nonce,
+                    2,
+                    BigUint::from(BP),
+                ));
+
+                let threshold = BigUint::from(BP / 2);
+                sc.liquidate(liquidatee_account_nonce, threshold);
+            },
+        )
+        .assert_ok();
+
+
+            lending_setup
+        .b_mock
+        .check_esdt_balance(&liquidator_user, USDC_TOKEN_ID, &rust_biguint!(300));
+
 }
 
 // #[test]

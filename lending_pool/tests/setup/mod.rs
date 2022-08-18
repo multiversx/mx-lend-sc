@@ -1,13 +1,14 @@
-use elrond_wasm::{types::Address, storage::mappers::StorageTokenWrapper};
+use elrond_wasm::{storage::mappers::StorageTokenWrapper, types::Address};
 use elrond_wasm_debug::{
-    managed_address, managed_biguint, managed_buffer, rust_biguint,
+    managed_address, managed_biguint, managed_buffer, managed_token_id, rust_biguint,
     testing_framework::{BlockchainStateWrapper, ContractObjWrapper},
-    DebugApi, managed_token_id,
+    DebugApi,
 };
+use price_aggregator_proxy::PriceAggregatorModule;
 
 use crate::constants::*;
 use aggregator_mock::PriceAggregatorMock;
-use lending_pool::{LendingPool, AccountTokenModule, ACCOUNT_TOKEN, ACCOUNT_TICKER};
+use lending_pool::{AccountTokenModule, LendingPool};
 
 pub fn setup_price_aggregator<PriceAggregatorObjBuilder>(
     owner_addr: &Address,
@@ -43,14 +44,16 @@ where
     price_aggregator_wrapper
 }
 
-pub fn setup_lending_pool<LendingPoolObjBuilder>(
+pub fn setup_lending_pool<LendingPoolObjBuilder, PriceAggregatorObjBuilder>(
     owner_addr: &Address,
     b_mock: &mut BlockchainStateWrapper,
     builder: LendingPoolObjBuilder,
+    price_aggregator_builder: PriceAggregatorObjBuilder,
     _template: &Address,
 ) -> ContractObjWrapper<lending_pool::ContractObj<DebugApi>, LendingPoolObjBuilder>
 where
     LendingPoolObjBuilder: 'static + Copy + Fn() -> lending_pool::ContractObj<DebugApi>,
+    PriceAggregatorObjBuilder: 'static + Copy + Fn() -> aggregator_mock::ContractObj<DebugApi>,
 {
     let rust_zero = rust_biguint!(0u64);
     let lending_pool_wrapper = b_mock.create_sc_account(
@@ -61,13 +64,18 @@ where
     );
     let lp_template_addr =
         setup_liquidity_pool_template(owner_addr, b_mock, liquidity_pool::contract_obj);
+    let price_aggregator_wrapper =
+        setup_price_aggregator(&owner_addr, b_mock, price_aggregator_builder);
 
     b_mock
         .execute_tx(&owner_addr, &lending_pool_wrapper, &rust_zero, |sc| {
             sc.init(managed_address!(&lp_template_addr));
+            sc.set_price_aggregator_address(managed_address!(
+                &price_aggregator_wrapper.address_ref()
+            ));
+
             let account_token_id = managed_token_id!(ACCOUNT_TOKEN);
             sc.account_token().set_token_id(&account_token_id);
-
         })
         .assert_ok();
 

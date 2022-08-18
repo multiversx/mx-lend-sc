@@ -1,15 +1,11 @@
-use elrond_wasm::{
-    elrond_codec::Empty,
-    types::{Address, EsdtLocalRole, TokenIdentifier},
-};
+use elrond_wasm::types::{Address, EsdtLocalRole};
 use elrond_wasm_debug::{
-    managed_address, managed_biguint, managed_token_id, managed_token_id_wrapped, rust_biguint,
+    managed_address, managed_biguint, managed_token_id, rust_biguint,
     testing_framework::{BlockchainStateWrapper, ContractObjWrapper},
     DebugApi,
 };
 use lending_pool::{
-    router::RouterModule, AccountTokenModule, BorrowPosition, DepositPosition, LendingPool,
-    ACCOUNT_TOKEN, BP,
+    router::RouterModule, AccountTokenModule, BorrowPosition, DepositPosition, LendingPool, BP,
 };
 use liquidity_pool::LiquidityPool;
 use liquidity_pool::{liq_storage::StorageModule, liquidity::LiquidityModule};
@@ -17,8 +13,8 @@ use price_aggregator_proxy::PriceAggregatorModule;
 
 use crate::{
     constants::{
-        BORROW_EGLD, BORROW_USDC_TOKEN_ID, EGLD_TOKEN_ID, LEND_EGLD, LEND_USDC_TOKEN_ID,
-        LIQ_THRESOLD, RESERVE_FACTOR, R_BASE, R_SLOPE1, R_SLOPE2, USDC_TOKEN_ID, U_OPTIMAL,
+        ACCOUNT_TOKEN, EGLD_TOKEN_ID, LIQ_THRESOLD, RESERVE_FACTOR, R_BASE, R_SLOPE1, R_SLOPE2,
+        USDC_TOKEN_ID, U_OPTIMAL,
     },
     setup::*,
 };
@@ -75,6 +71,7 @@ where
             &owner_addr,
             &mut b_mock,
             lending_pool_builder,
+            price_aggregator_builder,
             &Address::zero(),
         );
 
@@ -100,9 +97,6 @@ where
                         managed_biguint!(RESERVE_FACTOR),
                         managed_biguint!(LIQ_THRESOLD),
                     );
-                    sc.lend_token().set(managed_token_id!(LEND_USDC_TOKEN_ID));
-                    sc.borrow_token()
-                        .set(managed_token_id!(BORROW_USDC_TOKEN_ID));
                     sc.set_price_aggregator_address(managed_address!(
                         &price_aggregator_wrapper.address_ref()
                     ));
@@ -122,41 +116,13 @@ where
                     );
                     sc.pools_allowed()
                         .insert(managed_address!(&liquidity_pool_usdc_wrapper.address_ref()));
+                    sc.set_asset_liquidation_bonus(
+                        managed_token_id!(USDC_TOKEN_ID),
+                        managed_biguint!(BP / 20),
+                    );
                 },
             )
             .assert_ok();
-
-        b_mock.set_esdt_balance(
-            &liquidity_pool_usdc_wrapper.address_ref(),
-            LEND_USDC_TOKEN_ID,
-            &rust_biguint!(0),
-        );
-
-        b_mock.set_esdt_local_roles(
-            liquidity_pool_usdc_wrapper.address_ref(),
-            LEND_USDC_TOKEN_ID,
-            &[
-                EsdtLocalRole::NftCreate,
-                EsdtLocalRole::NftAddQuantity,
-                EsdtLocalRole::NftBurn,
-            ],
-        );
-
-        b_mock.set_esdt_balance(
-            &liquidity_pool_usdc_wrapper.address_ref(),
-            BORROW_USDC_TOKEN_ID,
-            &rust_biguint!(0),
-        );
-
-        b_mock.set_esdt_local_roles(
-            liquidity_pool_usdc_wrapper.address_ref(),
-            BORROW_USDC_TOKEN_ID,
-            &[
-                EsdtLocalRole::NftCreate,
-                EsdtLocalRole::NftAddQuantity,
-                EsdtLocalRole::NftBurn,
-            ],
-        );
 
         let liquidity_pool_egld_wrapper = b_mock.create_sc_account(
             &rust_biguint!(0u64),
@@ -180,8 +146,6 @@ where
                         managed_biguint!(RESERVE_FACTOR),
                         managed_biguint!(LIQ_THRESOLD),
                     );
-                    sc.lend_token().set(managed_token_id!(LEND_EGLD));
-                    sc.borrow_token().set(managed_token_id!(BORROW_EGLD));
                     sc.set_price_aggregator_address(managed_address!(
                         &price_aggregator_wrapper.address_ref()
                     ));
@@ -201,41 +165,14 @@ where
                     );
                     sc.pools_allowed()
                         .insert(managed_address!(&liquidity_pool_egld_wrapper.address_ref()));
+
+                    sc.set_asset_liquidation_bonus(
+                        managed_token_id!(EGLD_TOKEN_ID),
+                        managed_biguint!(BP / 20),
+                    );
                 },
             )
             .assert_ok();
-
-        b_mock.set_esdt_balance(
-            &liquidity_pool_egld_wrapper.address_ref(),
-            LEND_EGLD,
-            &rust_biguint!(0),
-        );
-
-        b_mock.set_esdt_local_roles(
-            liquidity_pool_egld_wrapper.address_ref(),
-            LEND_EGLD,
-            &[
-                EsdtLocalRole::NftCreate,
-                EsdtLocalRole::NftAddQuantity,
-                EsdtLocalRole::NftBurn,
-            ],
-        );
-
-        b_mock.set_esdt_balance(
-            &liquidity_pool_egld_wrapper.address_ref(),
-            BORROW_EGLD,
-            &rust_biguint!(0),
-        );
-
-        b_mock.set_esdt_local_roles(
-            liquidity_pool_egld_wrapper.address_ref(),
-            BORROW_EGLD,
-            &[
-                EsdtLocalRole::NftCreate,
-                EsdtLocalRole::NftAddQuantity,
-                EsdtLocalRole::NftBurn,
-            ],
-        );
 
         b_mock.set_esdt_local_roles(
             lending_pool_wrapper.address_ref(),
@@ -270,24 +207,36 @@ where
                 &self.lending_pool_wrapper,
                 &rust_biguint!(0),
                 |sc| {
-                    account_nonce = sc.enter_market(managed_address!(&user_addr));
+                    account_nonce = sc.enter_market();
                     assert!(account_nonce != 0, "Account nonce didn't change");
+                    assert!(
+                        sc.account_positions().contains(&account_nonce),
+                        "User didn't enter the market succefully!"
+                    );
                 },
             )
             .assert_ok();
 
-        self.check_account(&user_addr, account_nonce);
         account_nonce
     }
 
-    pub fn check_account(&mut self, user_addr: &Address, account_nonce: u64) {
-        self.b_mock.check_nft_balance(
-            &user_addr,
-            ACCOUNT_TOKEN,
-            account_nonce,
-            &rust_biguint!(1),
-            Option::<&Empty>::None,
-        );
+    pub fn exit_market(&mut self, user_addr: &Address, account_nonce: u64) {
+        self.b_mock
+            .execute_esdt_transfer(
+                &user_addr,
+                &self.lending_pool_wrapper,
+                ACCOUNT_TOKEN,
+                account_nonce,
+                &rust_biguint!(1),
+                |sc| {
+                    sc.exit_market();
+                    assert!(
+                        !sc.account_positions().contains(&account_nonce),
+                        "User didn't exit the market succefully!"
+                    );
+                },
+            )
+            .assert_ok();
     }
 
     pub fn add_collateral(
@@ -334,8 +283,8 @@ where
             .execute_esdt_transfer(
                 &user_addr,
                 &self.liquidity_pool_usdc_wrapper,
-                USDC_TOKEN_ID,
-                0,
+                ACCOUNT_TOKEN,
+                owner_nonce,
                 &rust_biguint!(0),
                 |sc| {
                     sc.remove_collateral(
@@ -370,8 +319,8 @@ where
             .execute_esdt_transfer(
                 &user_addr,
                 &self.liquidity_pool_usdc_wrapper,
-                USDC_TOKEN_ID,
-                0,
+                ACCOUNT_TOKEN,
+                owner_nonce,
                 &rust_biguint!(0),
                 |sc| {
                     sc.borrow(
