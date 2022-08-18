@@ -2,9 +2,6 @@ elrond_wasm::imports!();
 
 use common_structs::BP;
 
-// /* Base precision */
-// const BP: u32 = 1_000_000_000;
-
 #[elrond_wasm::module]
 pub trait LendingMathModule {
     fn compute_borrow_rate(
@@ -15,12 +12,12 @@ pub trait LendingMathModule {
         u_optimal: &BigUint,
         u_current: &BigUint,
     ) -> BigUint {
-        let bp = BigUint::from(BP);
-
         if u_current <= u_optimal {
             let utilisation_ratio = &(u_current * r_slope1) / u_optimal;
             r_base + &utilisation_ratio
         } else {
+            let bp = BigUint::from(BP);
+
             let denominator = &bp - u_optimal;
             let numerator = &(u_current - u_optimal) * r_slope2;
             (r_base + r_slope1) + numerator / denominator
@@ -34,6 +31,7 @@ pub trait LendingMathModule {
         reserve_factor: &BigUint,
     ) -> BigUint {
         let bp = BigUint::from(BP);
+
         let loan_ratio = u_current * borrow_rate;
         let deposit_rate = &(u_current * &loan_ratio) * &(&bp - reserve_factor);
 
@@ -45,11 +43,10 @@ pub trait LendingMathModule {
         borrowed_amount: &BigUint,
         total_reserves: &BigUint,
     ) -> BigUint {
-        let bp = BigUint::from(BP);
         if *total_reserves == BigUint::zero() {
             total_reserves.clone()
         } else {
-            &(borrowed_amount * &bp) / total_reserves
+            &(borrowed_amount * BP) / total_reserves
         }
     }
 
@@ -59,8 +56,7 @@ pub trait LendingMathModule {
         current_supply_index: &BigUint,
         initial_supply_index: &BigUint,
     ) -> BigUint {
-        let bp = BigUint::from(BP);
-        let interest = (current_supply_index - initial_supply_index) * amount / bp;
+        let interest = (current_supply_index - initial_supply_index) * amount / BP;
 
         amount + &interest
     }
@@ -80,9 +76,7 @@ pub trait LendingMathModule {
         loan_to_value: &BigUint,
         decimals: u8,
     ) -> BigUint {
-        let bp = BigUint::from(BP);
-
-        ((total_collateral * loan_to_value) / bp) / BigUint::from(10u64).pow(decimals as u32)
+        ((total_collateral * loan_to_value) / BP) / BigUint::from(10u64).pow(decimals as u32)
     }
 
     fn compute_health_factor(

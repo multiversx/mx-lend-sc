@@ -5,12 +5,8 @@ elrond_wasm::derive_imports!();
 
 pub const BP: u64 = 1_000_000_000_000_000_000;
 pub const MAX_THRESHOLD: u64 = BP / 2;
+pub const MAX_THRESHOLD_ERROR_MSG: &[u8] = b"Cannot liquidate more than 50% of Liquidatee's position!";
 pub const SECONDS_PER_YEAR: u64 = 31_536_000;
-pub const LEND_TOKEN_PREFIX: u8 = b'L';
-pub const BORROW_TOKEN_PREFIX: u8 = b'B';
-pub const ACCOUNT_TOKEN: &[u8] = b"LACC-abcdef";
-pub const ACCOUNT_TICKER: &[u8] = b"LACC";
-
 
 #[derive(TopEncode, TopDecode, TypeAbi)]
 pub struct PoolParams<M: ManagedTypeApi> {

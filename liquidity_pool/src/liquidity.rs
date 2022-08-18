@@ -119,7 +119,6 @@ pub trait LiquidityModule:
         // loan_to_value: BigUint,
     ) -> BorrowPosition<Self::Api> {
         let pool_token_id = self.pool_asset().get();
-        // let pool_asset_data = self.get_token_price_data(pool_token_id.clone());
         // let collateral_amount = self.get_collateral_available(account_position);
         // let borrowable_amount_in_dollars = self.compute_borrowable_amount(
         //     &collateral_amount,
@@ -225,7 +224,7 @@ pub trait LiquidityModule:
             self.send()
                 .direct_esdt(&initial_caller, &repay_asset, 0, &extra_amount);
             ret_borrow_position.amount -= repay_amount.clone();
-            repay_amount = total_owed.clone();
+            repay_amount = total_owed;
         }
 
         ret_borrow_position.amount -= &repay_amount;

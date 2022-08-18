@@ -1,7 +1,7 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use common_structs::{PoolParams};
+use common_structs::PoolParams;
 
 #[elrond_wasm::module]
 pub trait StorageModule {

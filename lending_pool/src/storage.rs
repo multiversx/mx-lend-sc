@@ -11,5 +11,4 @@ pub trait LendingStorageModule {
     #[view(getBorrowMetadata)]
     #[storage_mapper("borrow_position")]
     fn borrow_position(&self) -> UnorderedSetMapper<BorrowPosition<Self::Api>>;
-
 }

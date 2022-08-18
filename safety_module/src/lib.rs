@@ -48,60 +48,6 @@ pub trait SafetyModule {
             .direct_esdt(&caller_address, &nft_token, 0, &payment);
     }
 
-    #[only_owner]
-    #[payable("EGLD")]
-    #[endpoint(nftIssue)]
-    fn nft_issue(&self, token_display_name: ManagedBuffer, token_ticker: ManagedBuffer) {
-        let issue_cost = self.call_value().egld_value();
-
-        self.send()
-            .esdt_system_sc_proxy()
-            .register_meta_esdt(
-                issue_cost,
-                &token_display_name,
-                &token_ticker,
-                MetaTokenProperties {
-                    num_decimals: 18,
-                    can_freeze: true,
-                    can_wipe: true,
-                    can_pause: true,
-                    can_change_owner: true,
-                    can_upgrade: true,
-                    can_add_special_roles: true,
-                },
-            )
-            .async_call()
-            .with_callback(
-                self.callbacks()
-                    .nft_issue_callback(self.blockchain().get_caller()),
-            )
-            .call_and_exit();
-    }
-
-    #[callback]
-    fn nft_issue_callback(
-        &self,
-        caller: ManagedAddress,
-        #[call_result] result: ManagedAsyncCallResult<TokenIdentifier>,
-    ) {
-        match result {
-            ManagedAsyncCallResult::Ok(token_identifier) => {
-                self.nft_token().set(&token_identifier);
-                self.last_error_message().clear();
-            }
-            ManagedAsyncCallResult::Err(message) => {
-                // return issue cost to the caller
-                let (token_identifier, returned_tokens) = self.call_value().egld_or_single_fungible_esdt();
-                if token_identifier.is_egld() && returned_tokens > 0 {
-                    self.send()
-                        .direct(&caller, &token_identifier, 0, &returned_tokens);
-                }
-
-                self.last_error_message().set(&message.err_msg);
-            }
-        }
-    }
-
     #[payable("*")]
     #[endpoint(fundFromPool)]
     fn fund_from_pool(&self) {
