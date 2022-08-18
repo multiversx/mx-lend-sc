@@ -236,6 +236,15 @@ pub trait LiquidityModule:
 
         ret_borrow_position
     }
+
+    #[only_owner]
+    #[endpoint(sendTokens)]
+    fn send_tokens(&self, initial_caller: ManagedAddress, payment_amount: BigUint) {
+        let pool_asset = self.pool_asset().get();
+
+        self.send()
+            .direct_esdt(&initial_caller, &pool_asset, 0, &payment_amount);
+    }
     /*
 
     #[only_owner]

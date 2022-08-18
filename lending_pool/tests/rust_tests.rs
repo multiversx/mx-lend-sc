@@ -1,12 +1,6 @@
 use constants::*;
 
-use common_structs::DepositPosition;
-use common_structs::BP;
-
-use elrond_wasm::{elrond_codec::Empty, types::BigUint};
-use elrond_wasm_debug::{managed_address, managed_biguint, managed_token_id, rust_biguint};
-use lending_pool::LendingPool;
-use lending_pool::{storage::LendingStorageModule, AccountTokenModule, BorrowPosition};
+use elrond_wasm_debug::rust_biguint;
 use lending_pool_interaction::LendingSetup;
 
 pub mod constants;
@@ -199,54 +193,17 @@ fn liquidate_test() {
     );
 
     lending_setup
-    .b_mock
-    .set_esdt_balance(&liquidator_user, USDC_TOKEN_ID, &rust_biguint!(300));
-
-
-    lending_setup
         .b_mock
-        .execute_esdt_transfer(
-            &liquidator_user,
-            &lending_setup.lending_pool_wrapper,
-            USDC_TOKEN_ID,
-            0,
-            &rust_biguint!(300),
-            |sc| {
-                let nft_account_amount = BigUint::from(1u64);
-                let nft_token_payment = sc.account_token().nft_create_and_send(
-                    &managed_address!(&liquidatee_user),
-                    nft_account_amount,
-                    &Empty,
-                );
-                sc.account_positions().insert(nft_token_payment.token_nonce);
+        .set_esdt_balance(&liquidator_user, USDC_TOKEN_ID, &rust_biguint!(300));
 
-                sc.deposit_position().insert(DepositPosition::new(
-                    managed_token_id!(USDC_TOKEN_ID),
-                    managed_biguint!(1000),
-                    liquidatee_account_nonce,
-                    1,
-                    BigUint::from(BP),
-                ));
-
-                sc.borrow_position().insert(BorrowPosition::new(
-                    managed_token_id!(USDC_TOKEN_ID),
-                    managed_biguint!(600),
-                    liquidatee_account_nonce,
-                    2,
-                    BigUint::from(BP),
-                ));
-
-                let threshold = BigUint::from(BP / 2);
-                sc.liquidate(liquidatee_account_nonce, threshold);
-            },
-        )
-        .assert_ok();
-
-
-            lending_setup
-        .b_mock
-        .check_esdt_balance(&liquidator_user, USDC_TOKEN_ID, &rust_biguint!(300));
-
+    lending_setup.liquidate(
+        &liquidator_user,
+        &liquidatee_user,
+        liquidatee_account_nonce,
+        300,
+        315,
+        85,
+    );
 }
 
 // #[test]

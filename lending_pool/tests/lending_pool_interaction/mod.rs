@@ -1,11 +1,15 @@
-use elrond_wasm::types::{Address, EsdtLocalRole};
+use elrond_wasm::{
+    elrond_codec::Empty,
+    types::{Address, BigUint, EsdtLocalRole},
+};
 use elrond_wasm_debug::{
     managed_address, managed_biguint, managed_token_id, rust_biguint,
     testing_framework::{BlockchainStateWrapper, ContractObjWrapper},
     DebugApi,
 };
 use lending_pool::{
-    router::RouterModule, AccountTokenModule, BorrowPosition, DepositPosition, LendingPool, BP,
+    router::RouterModule, storage::LendingStorageModule, AccountTokenModule, BorrowPosition,
+    DepositPosition, LendingPool, BP,
 };
 use liquidity_pool::LiquidityPool;
 use liquidity_pool::{liq_storage::StorageModule, liquidity::LiquidityModule};
@@ -376,6 +380,66 @@ where
 
         self.check_borrowed_amount(expected_borrowed_amount_after_repay);
         self.check_reserves(expected_reserves_after_repay);
+    }
+
+    pub fn liquidate(
+        mut self,
+        liquidator_user: &Address,
+        liquidatee_user: &Address,
+        liquidatee_nonce: u64,
+        liquidation_amount: u64,
+        liquidator_expected_amount: u64,
+        contract_reserves_exected_amount: u64,
+    ) {
+        self.b_mock
+            .execute_esdt_transfer(
+                &liquidator_user,
+                &self.lending_pool_wrapper,
+                USDC_TOKEN_ID,
+                0,
+                &rust_biguint!(liquidation_amount),
+                |sc| {
+                    let nft_account_amount = BigUint::from(1u64);
+                    let nft_token_payment = sc.account_token().nft_create_and_send(
+                        &managed_address!(&liquidatee_user),
+                        nft_account_amount,
+                        &Empty,
+                    );
+                    sc.account_positions().insert(nft_token_payment.token_nonce);
+
+                    sc.deposit_position().insert(DepositPosition::new(
+                        managed_token_id!(USDC_TOKEN_ID),
+                        managed_biguint!(1000),
+                        liquidatee_nonce,
+                        1,
+                        managed_biguint!(BP),
+                    ));
+
+                    sc.borrow_position().insert(BorrowPosition::new(
+                        managed_token_id!(USDC_TOKEN_ID),
+                        managed_biguint!(600),
+                        liquidatee_nonce,
+                        2,
+                        BigUint::from(BP),
+                    ));
+
+                    let threshold = BigUint::from(BP / 2);
+                    sc.liquidate(liquidatee_nonce, threshold);
+                },
+            )
+            .assert_ok();
+
+        self.b_mock.check_esdt_balance(
+            &liquidator_user,
+            USDC_TOKEN_ID,
+            &rust_biguint!(liquidator_expected_amount),
+        );
+
+        self.b_mock.check_esdt_balance(
+            &self.liquidity_pool_usdc_wrapper.address_ref(),
+            USDC_TOKEN_ID,
+            &rust_biguint!(contract_reserves_exected_amount),
+        );
     }
 
     pub fn check_reserves(&mut self, expected_deposited_collateral: u64) {

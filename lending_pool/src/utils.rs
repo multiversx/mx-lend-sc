@@ -146,10 +146,10 @@ pub trait LendingUtilsModule:
 
     fn send_amount_in_dollars_to_liquidator(
         &self,
-        initial_caller: ManagedAddress,
         liquidatee_account_nonce: u64,
         amount_to_return_to_liquidator_in_dollars: BigUint,
-    ) {
+    ) -> ManagedVec<Self::Api, EsdtTokenPayment<Self::Api>> {
+        let mut payments = ManagedVec::new();
         let mut amount_to_send = amount_to_return_to_liquidator_in_dollars;
         let deposit_positions = self.deposit_position();
         let deposit_position_iter = deposit_positions
@@ -163,8 +163,11 @@ pub trait LendingUtilsModule:
 
             if amount_in_dollars_available_for_this_bp <= amount_to_send {
                 // Send all tokens and remove DepositPosition
-                       self.send()
-                    .direct_esdt(&initial_caller, &dp.token_id, 0, &dp.amount);
+                payments.push(EsdtTokenPayment::new(
+                    dp.token_id.clone(),
+                    0,
+                    dp.amount.clone(),
+                ));
                 amount_to_send -= amount_in_dollars_available_for_this_bp;
                 self.deposit_position().swap_remove(&dp);
 
@@ -177,8 +180,11 @@ pub trait LendingUtilsModule:
                     * BigUint::from(10u64).pow(dp_data.decimals as u32)
                     / BP;
 
-                self.send()
-                    .direct_esdt(&initial_caller, &dp.token_id, 0, &partial_amount_to_send);
+                payments.push(EsdtTokenPayment::new(
+                    dp.token_id.clone(),
+                    0,
+                    partial_amount_to_send.clone(),
+                ));
 
                 // Update DepositPosition
                 self.deposit_position().swap_remove(&dp);
@@ -187,5 +193,6 @@ pub trait LendingUtilsModule:
                 break;
             }
         }
+        payments
     }
 }
