@@ -112,7 +112,6 @@ fn repay_test() {
         .set_esdt_balance(&user_addr, USDC_TOKEN_ID, &rust_biguint!(1_000));
 
     lending_setup.add_collateral(&user_addr, USDC_TOKEN_ID, 0, account_nonce, 1000, 1000);
-
     lending_setup.borrow(&user_addr, USDC_TOKEN_ID, 0, account_nonce, 250, 750, 250);
     lending_setup.repay(&user_addr, USDC_TOKEN_ID, 250, account_nonce, 100, 850, 150);
 }
