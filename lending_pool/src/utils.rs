@@ -40,108 +40,82 @@ pub trait LendingUtilsModule:
     }
 
     // Returns the collateral position for the user or a new DepositPosition if the user didn't add collateral previously
-    fn get_collateral_position_for_token(
+    fn get_existing_or_new_deposit_position_for_token(
         &self,
         account_position: u64,
         token_id: TokenIdentifier,
     ) -> DepositPosition<Self::Api> {
-        let deposit_positions = self.deposit_position();
-        let deposit_position_iter = deposit_positions
-            .iter()
-            .filter(|dp| dp.owner_nonce == account_position);
-
-        for dp in deposit_position_iter {
-            if dp.token_id == token_id {
-                self.deposit_position().swap_remove(&dp);
-                return dp;
-            }
+        match self.deposit_positions(account_position).get(&token_id) {
+            Some(dp) => dp,
+            None => DepositPosition::new(
+                token_id,
+                BigUint::zero(),
+                account_position,
+                self.blockchain().get_block_round(),
+                BigUint::from(BP),
+            ),
         }
-        DepositPosition::new(
-            token_id,
-            BigUint::zero(),
-            account_position,
-            self.blockchain().get_block_round(),
-            BigUint::from(BP),
-        )
     }
 
-    fn get_borrow_position_for_token(
+    fn get_existing_or_new_borrow_position_for_token(
         &self,
         account_position: u64,
         token_id: TokenIdentifier,
     ) -> BorrowPosition<Self::Api> {
-        let borrow_positions = self.borrow_position();
-        let borrow_position_iter = borrow_positions
-            .iter()
-            .filter(|bp| bp.owner_nonce == account_position);
-
-        for bp in borrow_position_iter {
-            if bp.token_id == token_id {
-                self.borrow_position().swap_remove(&bp);
-                return bp;
-            }
+        match self.borrow_positions(account_position).get(&token_id) {
+            Some(bp) => bp,
+            None => BorrowPosition::new(
+                token_id,
+                BigUint::zero(),
+                account_position,
+                self.blockchain().get_block_round(),
+                BigUint::from(BP),
+            ),
         }
-        BorrowPosition::new(
-            token_id,
-            BigUint::zero(),
-            account_position,
-            self.blockchain().get_block_round(),
-            BigUint::from(BP),
-        )
     }
 
     #[inline]
-    #[view(getTotalCollateralAvailableForToken)]
-    fn get_collateral_available_for_token(
+    #[view(getCollateralAmountForToken)]
+    fn get_collateral_amount_for_token(
         &self,
         account_position: u64,
         token_id: TokenIdentifier,
     ) -> BigUint {
-        let mut deposited_amount_in_dollars = BigUint::zero();
-        let deposit_positions = self.deposit_position();
-        let deposit_position_iter = deposit_positions
-            .iter()
-            .filter(|dp| dp.owner_nonce == account_position && dp.token_id == token_id);
-
-        for dp in deposit_position_iter {
-            let dp_data = self.get_token_price_data(dp.token_id);
-            deposited_amount_in_dollars += dp.amount * dp_data.price;
+        match self.deposit_positions(account_position).get(&token_id) {
+            Some(dp) => dp.amount,
+            None => BigUint::zero(),
         }
-
-        deposited_amount_in_dollars
     }
 
     #[inline]
     #[view(getTotalCollateralAvailable)]
-    fn get_total_collateral_available(&self, account_position: u64) -> BigUint {
+    fn get_total_collateral_in_dollars(&self, account_position: u64) -> BigUint {
         let mut deposited_amount_in_dollars = BigUint::zero();
-        let deposit_positions = self.deposit_position();
-        let deposit_position_iter = deposit_positions
-            .iter()
-            .filter(|dp| dp.owner_nonce == account_position);
+        let deposit_positions = self.deposit_positions(account_position);
 
-        for dp in deposit_position_iter {
-            let dp_data = self.get_token_price_data(dp.token_id);
-            deposited_amount_in_dollars += dp.amount * dp_data.price;
+        for token in deposit_positions.keys() {
+            if let Some(dp) = deposit_positions.get(&token) {
+                let dp_data = self.get_token_price_data(dp.token_id);
+                deposited_amount_in_dollars += dp.amount * dp_data.price;
+            }
         }
 
         deposited_amount_in_dollars
     }
 
-    #[view(getTotalBorrowedAmount)]
-    fn get_total_borrowed_amount(&self, account_position: u64) -> BigUint {
-        let mut total_borrowed_amount = BigUint::zero();
-        let borrow_positions = self.borrow_position();
-        let borrow_position_iter = borrow_positions
-            .iter()
-            .filter(|bp| bp.owner_nonce == account_position);
+    #[view(getTotalBorrowInDollars)]
+    fn get_total_borrow_in_dollars(&self, account_position: u64) -> BigUint {
+        let mut total_borrow_in_dollars = BigUint::zero();
+        let borrow_positions = self.borrow_positions(account_position);
 
-        for bp in borrow_position_iter {
-            let bp_data = self.get_token_price_data(bp.token_id);
-            total_borrowed_amount += bp.amount * bp_data.price;
+        for token in borrow_positions.keys() {
+            if let Some(bp) = borrow_positions.get(&token) {
+                let bp_data = self.get_token_price_data(bp.token_id);
+                total_borrow_in_dollars += bp.amount * bp_data.price;
+            }
         }
 
-        total_borrowed_amount
+        total_borrow_in_dollars
     }
 
     fn send_amount_in_dollars_to_liquidator(
@@ -150,49 +124,54 @@ pub trait LendingUtilsModule:
         amount_to_return_to_liquidator_in_dollars: BigUint,
     ) -> ManagedVec<Self::Api, EsdtTokenPayment<Self::Api>> {
         let mut payments = ManagedVec::new();
-        let mut amount_to_send = amount_to_return_to_liquidator_in_dollars;
-        let deposit_positions = self.deposit_position();
-        let deposit_position_iter = deposit_positions
-            .iter()
-            .filter(|dp| dp.owner_nonce == liquidatee_account_nonce);
 
-        // Send amount_to_return_in_dollars to initial_caller
-        for mut dp in deposit_position_iter {
-            let dp_data = self.get_token_price_data(dp.token_id.clone());
-            let amount_in_dollars_available_for_this_bp = &dp.amount * &dp_data.price;
+        let mut amount_in_dollars_to_send = amount_to_return_to_liquidator_in_dollars;
+        let deposit_positions = self.deposit_positions(liquidatee_account_nonce);
 
-            if amount_in_dollars_available_for_this_bp <= amount_to_send {
-                // Send all tokens and remove DepositPosition
-                payments.push(EsdtTokenPayment::new(
-                    dp.token_id.clone(),
-                    0,
-                    dp.amount.clone(),
-                ));
-                amount_to_send -= amount_in_dollars_available_for_this_bp;
-                self.deposit_position().swap_remove(&dp);
+        for token in deposit_positions.keys() {
+            if let Some(mut dp) = deposit_positions.get(&token) {
+                let dp_data = self.get_token_price_data(dp.token_id.clone());
+                let amount_in_dollars_available_for_this_bp = &dp.amount * &dp_data.price;
 
-                if amount_to_send == 0 {
+                if amount_in_dollars_available_for_this_bp <= amount_in_dollars_to_send {
+                    // Send all tokens and remove DepositPosition
+                    payments.push(EsdtTokenPayment::new(
+                        dp.token_id.clone(),
+                        0,
+                        dp.amount.clone(),
+                    ));
+
+                    // Todo: Is it better to remove this position after the transfer of the tokens?
+                    amount_in_dollars_to_send -= amount_in_dollars_available_for_this_bp;
+                    self.deposit_positions(liquidatee_account_nonce)
+                        .remove(&dp.token_id);
+
+                    if amount_in_dollars_to_send == 0 {
+                        break;
+                    }
+                } else {
+                    // Send part of the tokens and update DepositPosition
+                    let partial_amount_to_send = (&amount_in_dollars_to_send * BP / &dp_data.price)
+                        * BigUint::from(10u64).pow(dp_data.decimals as u32)
+                        / BP;
+
+                    payments.push(EsdtTokenPayment::new(
+                        dp.token_id.clone(),
+                        0,
+                        partial_amount_to_send.clone(),
+                    ));
+
+                    // Update DepositPosition
+                    self.deposit_positions(liquidatee_account_nonce)
+                        .remove(&dp.token_id);
+                    dp.amount -= partial_amount_to_send;
+                    self.deposit_positions(liquidatee_account_nonce)
+                        .insert(dp.token_id.clone(), dp);
                     break;
                 }
-            } else {
-                // Send part of the tokens and update DepositPosition
-                let partial_amount_to_send = (&amount_to_send * BP / &dp_data.price)
-                    * BigUint::from(10u64).pow(dp_data.decimals as u32)
-                    / BP;
-
-                payments.push(EsdtTokenPayment::new(
-                    dp.token_id.clone(),
-                    0,
-                    partial_amount_to_send.clone(),
-                ));
-
-                // Update DepositPosition
-                self.deposit_position().swap_remove(&dp);
-                dp.amount -= partial_amount_to_send;
-                self.deposit_position().insert(dp);
-                break;
             }
         }
+
         payments
     }
 }

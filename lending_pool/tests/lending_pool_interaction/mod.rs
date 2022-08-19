@@ -407,21 +407,27 @@ where
                     );
                     sc.account_positions().insert(nft_token_payment.token_nonce);
 
-                    sc.deposit_position().insert(DepositPosition::new(
+                    sc.deposit_positions(liquidatee_nonce).insert(
                         managed_token_id!(USDC_TOKEN_ID),
-                        managed_biguint!(1000),
-                        liquidatee_nonce,
-                        1,
-                        managed_biguint!(BP),
-                    ));
+                        DepositPosition::new(
+                            managed_token_id!(USDC_TOKEN_ID),
+                            managed_biguint!(1000),
+                            liquidatee_nonce,
+                            1,
+                            managed_biguint!(BP),
+                        ),
+                    );
 
-                    sc.borrow_position().insert(BorrowPosition::new(
+                    sc.borrow_positions(liquidatee_nonce).insert(
                         managed_token_id!(USDC_TOKEN_ID),
-                        managed_biguint!(600),
-                        liquidatee_nonce,
-                        2,
-                        BigUint::from(BP),
-                    ));
+                        BorrowPosition::new(
+                            managed_token_id!(USDC_TOKEN_ID),
+                            managed_biguint!(600),
+                            liquidatee_nonce,
+                            2,
+                            BigUint::from(BP),
+                        ),
+                    );
 
                     let threshold = BigUint::from(BP / 2);
                     sc.liquidate(liquidatee_nonce, threshold);

@@ -64,24 +64,32 @@ pub trait LendingPool:
             nft_account_token.into_tuple();
         let (collateral_token_id, collateral_nonce, collateral_amount) =
             collateral_payment.into_tuple();
-        let initial_caller = self.blockchain().get_caller();
         let pool_address = self.get_pool_address(&collateral_token_id);
+        let initial_caller = self.blockchain().get_caller();
 
+        self.require_asset_supported(&collateral_token_id);
         self.lending_account_in_the_market(nft_account_nonce);
         self.lending_account_token_valid(nft_account_token_id.clone());
         self.require_amount_greater_than_zero(&collateral_amount);
         self.require_non_zero_address(&initial_caller);
 
-        let initial_deposit_position =
-            self.get_collateral_position_for_token(nft_account_nonce, collateral_token_id.clone());
+        let initial_or_new_deposit_position = self.get_existing_or_new_deposit_position_for_token(
+            nft_account_nonce,
+            collateral_token_id.clone(),
+        );
 
-        let deposit_position = self
+        let return_deposit_position = self
             .liquidity_pool_proxy(pool_address)
-            .add_collateral(initial_deposit_position)
-            .add_esdt_token_transfer(collateral_token_id, collateral_nonce, collateral_amount)
+            .add_collateral(initial_or_new_deposit_position)
+            .add_esdt_token_transfer(
+                collateral_token_id.clone(),
+                collateral_nonce,
+                collateral_amount,
+            )
             .execute_on_dest_context();
 
-        self.deposit_position().insert(deposit_position);
+        self.deposit_positions(nft_account_nonce)
+            .insert(collateral_token_id, return_deposit_position);
 
         // Return NFT to owner
         self.send().direct_esdt(
@@ -101,39 +109,48 @@ pub trait LendingPool:
         let pool_address = self.get_pool_address(&withdraw_token_id);
         // let mut merged_deposits;
 
+        self.require_asset_supported(&withdraw_token_id);
         self.lending_account_in_the_market(nft_account_nonce);
         self.lending_account_token_valid(nft_account_token_id.clone());
         self.require_amount_greater_than_zero(&amount);
         self.require_non_zero_address(&initial_caller);
         require!(
             amount
-                > self.get_collateral_available_for_token(
+                > self.get_collateral_amount_for_token(
                     nft_account_nonce,
                     nft_account_token_id.clone()
                 ),
-            "Not enough funds deposited for this account!"
+            "Not enough tokens deposited for this account!"
         );
 
-        // Alternative, go through all deposits and withdraw amount
-        // merged_deposits = self.merge_deposit_positions(nft_account_nonce, withdraw_token_id);
-        let initial_deposit_position =
-            self.get_collateral_position_for_token(nft_account_nonce, withdraw_token_id);
-        let deposit_position: DepositPosition<<Self as ContractBase>::Api> = self
-            .liquidity_pool_proxy(pool_address)
-            .remove_collateral(&initial_caller, amount, initial_deposit_position)
-            .execute_on_dest_context();
+        match self
+            .deposit_positions(nft_account_nonce)
+            .get(&withdraw_token_id)
+        {
+            Some(dp) => {
+                let deposit_position: DepositPosition<<Self as ContractBase>::Api> = self
+                    .liquidity_pool_proxy(pool_address)
+                    .remove_collateral(&initial_caller, amount, dp)
+                    .execute_on_dest_context();
 
-        if deposit_position.amount != 0 {
-            self.deposit_position().insert(deposit_position);
-        }
+                if deposit_position.amount != 0 {
+                    self.deposit_positions(nft_account_nonce)
+                        .insert(withdraw_token_id, deposit_position);
+                }
 
-        // Return NFT to owner
-        self.send().direct_esdt(
-            &initial_caller,
-            &nft_account_token_id,
-            nft_account_nonce,
-            &nft_account_amount,
-        );
+                // Return NFT to owner
+                self.send().direct_esdt(
+                    &initial_caller,
+                    &nft_account_token_id,
+                    nft_account_nonce,
+                    &nft_account_amount,
+                );
+            }
+            None => panic!(
+                "Tokens {} are not available for this account",
+                withdraw_token_id
+            ),
+        };
     }
 
     #[payable("*")]
@@ -145,6 +162,7 @@ pub trait LendingPool:
         let borrow_token_pool_address = self.get_pool_address(&asset_to_borrow);
         let loan_to_value = self.get_loan_to_value_exists_and_non_zero(&asset_to_borrow);
 
+        self.require_asset_supported(&asset_to_borrow);
         self.lending_account_in_the_market(nft_account_nonce);
         self.lending_account_token_valid(nft_account_token_id.clone());
         require!(
@@ -157,22 +175,30 @@ pub trait LendingPool:
         self.update_collateral_with_interest(nft_account_nonce);
         self.update_borrows_with_debt(nft_account_nonce);
 
-        let collateral_available = self.get_total_borrowed_amount(nft_account_nonce);
-        let borrowed_amount_in_dollars = self.get_total_borrowed_amount(nft_account_nonce);
+        let collateral_in_dollars = self.get_total_collateral_in_dollars(nft_account_nonce);
+        let borrowed_amount_in_dollars = self.get_total_borrow_in_dollars(nft_account_nonce);
+        let amount_to_borrow_in_dollars =
+            amount.clone() * self.get_token_price_data(asset_to_borrow.clone()).price;
 
         require!(
-            collateral_available * loan_to_value > borrowed_amount_in_dollars,
-            "Not enough collateral supplied to perform loan!"
+            collateral_in_dollars * loan_to_value
+                > (borrowed_amount_in_dollars + amount_to_borrow_in_dollars),
+            "Not enough collateral available for this loan!"
         );
 
-        let initial_borrow_position =
-            self.get_borrow_position_for_token(nft_account_nonce, asset_to_borrow);
+        let initial_borrow_position = self.get_existing_or_new_borrow_position_for_token(
+            nft_account_nonce,
+            asset_to_borrow.clone(),
+        );
+
         let borrow_position = self
             .liquidity_pool_proxy(borrow_token_pool_address)
             .borrow(&initial_caller, amount, initial_borrow_position)
             .execute_on_dest_context();
 
-        self.borrow_position().insert(borrow_position);
+        // TODO: Remove existing position
+        self.borrow_positions(nft_account_nonce)
+            .insert(asset_to_borrow, borrow_position);
 
         // Return NFT to owner
         self.send().direct_esdt(
@@ -198,32 +224,43 @@ pub trait LendingPool:
         self.lending_account_token_valid(repay_token_id.clone());
         self.require_amount_greater_than_zero(&repay_amount);
         self.require_non_zero_address(&initial_caller);
+        self.require_asset_supported(&repay_token_id);
 
         require!(
             self.pools_map().contains_key(&repay_token_id),
             "asset not supported"
         );
 
-        let initial_borrow_position =
-            self.get_borrow_position_for_token(nft_account_nonce, repay_token_id.clone());
+        match self
+            .borrow_positions(nft_account_nonce)
+            .get(&repay_token_id)
+        {
+            Some(bp) => {
+                let borrow_position: BorrowPosition<Self::Api> = self
+                    .liquidity_pool_proxy(asset_address)
+                    .repay(&initial_caller, bp)
+                    .add_esdt_token_transfer(repay_token_id.clone(), repay_nonce, repay_amount)
+                    .execute_on_dest_context();
 
-        let borrow_position: BorrowPosition<Self::Api> = self
-            .liquidity_pool_proxy(asset_address)
-            .repay(&initial_caller, initial_borrow_position)
-            .add_esdt_token_transfer(repay_token_id, repay_nonce, repay_amount)
-            .execute_on_dest_context();
+                // TOdo Remove old BorrowPosition
+                if borrow_position.amount != 0 {
+                    self.borrow_positions(nft_account_nonce)
+                        .insert(repay_token_id, borrow_position);
+                }
 
-        if borrow_position.amount != 0 {
-            self.borrow_position().insert(borrow_position);
-        }
-
-        // Return NFT to owner
-        self.send().direct_esdt(
-            &initial_caller,
-            &nft_account_token_id,
-            nft_account_nonce,
-            &nft_account_amount,
-        );
+                // Return NFT to owner
+                self.send().direct_esdt(
+                    &initial_caller,
+                    &nft_account_token_id,
+                    nft_account_nonce,
+                    &nft_account_amount,
+                );
+            }
+            None => panic!(
+                "Borrowed tokens {} are not available for this account",
+                repay_token_id
+            ),
+        };
     }
 
     #[payable("*")]
@@ -231,6 +268,8 @@ pub trait LendingPool:
     fn liquidate(&self, liquidatee_account_nonce: u64, liquidation_threshold: BigUint) {
         let (liquidator_asset_token_id, liquidator_asset_amount) =
             self.call_value().single_fungible_esdt();
+        let bp = BigUint::from(BP);
+
         let initial_caller = self.blockchain().get_caller();
 
         // Liquidatee is in the market; Liquidator doesn't have to be in the Lending Protocol
@@ -249,12 +288,11 @@ pub trait LendingPool:
 
         let liq_bonus = self.get_liquidation_bonus_non_zero(&liquidator_asset_token_id);
         let total_collateral_in_dollars =
-            self.get_total_collateral_available(liquidatee_account_nonce);
-        let borrowed_value_in_dollars = self.get_total_borrowed_amount(liquidatee_account_nonce);
+            self.get_total_collateral_in_dollars(liquidatee_account_nonce);
+        let borrowed_value_in_dollars = self.get_total_borrow_in_dollars(liquidatee_account_nonce);
         let liquidator_asset_data = self.get_token_price_data(liquidator_asset_token_id);
         let liquidator_asset_value_in_dollars =
             liquidator_asset_amount.clone() * liquidator_asset_data.price;
-        let bp = BigUint::from(BP);
 
         let health_factor = self.compute_health_factor(
             &total_collateral_in_dollars,
@@ -292,31 +330,29 @@ pub trait LendingPool:
 
     #[endpoint(updateCollateralWithInterest)]
     fn update_collateral_with_interest(&self, account_position: u64) {
-        let deposit_positions = self.deposit_position();
-        let deposit_position_iter = deposit_positions
-            .iter()
-            .filter(|dp| dp.owner_nonce == account_position);
+        let deposit_positions = self.deposit_positions(account_position);
 
-        for dp in deposit_position_iter {
-            let asset_address = self.get_pool_address(&dp.token_id);
-            self.liquidity_pool_proxy(asset_address)
-                .update_collateral_with_interest(dp)
-                .execute_on_dest_context_ignore_result();
+        for token in deposit_positions.keys() {
+            if let Some(dp) = deposit_positions.get(&token) {
+                let asset_address = self.get_pool_address(&dp.token_id);
+                self.liquidity_pool_proxy(asset_address)
+                    .update_collateral_with_interest(dp)
+                    .execute_on_dest_context_ignore_result();
+            }
         }
     }
 
     #[endpoint(updateBorrowsWithDebt)]
     fn update_borrows_with_debt(&self, account_position: u64) {
-        let borrow_positions = self.borrow_position();
-        let borrow_position_iter = borrow_positions
-            .iter()
-            .filter(|bp| bp.owner_nonce == account_position);
+        let borrow_positions = self.borrow_positions(account_position);
 
-        for bp in borrow_position_iter {
-            let asset_address = self.get_pool_address(&bp.token_id);
-            self.liquidity_pool_proxy(asset_address)
-                .update_borrows_with_debt(bp)
-                .execute_on_dest_context_ignore_result();
+        for token in borrow_positions.keys() {
+            if let Some(bp) = borrow_positions.get(&token) {
+                let asset_address = self.get_pool_address(&bp.token_id);
+                self.liquidity_pool_proxy(asset_address)
+                    .update_borrows_with_debt(bp)
+                    .execute_on_dest_context_ignore_result();
+            }
         }
     }
 
