@@ -129,7 +129,7 @@ pub trait LendingUtilsModule:
         let deposit_positions = self.deposit_positions(liquidatee_account_nonce);
 
         for token in deposit_positions.keys() {
-            if let Some(mut dp) = deposit_positions.get(&token) {
+            if let Some(dp) = deposit_positions.get(&token) {
                 let dp_data = self.get_token_price_data(dp.token_id.clone());
                 let amount_in_dollars_available_for_this_bp = &dp.amount * &dp_data.price;
 
@@ -140,15 +140,7 @@ pub trait LendingUtilsModule:
                         0,
                         dp.amount.clone(),
                     ));
-
-                    // Todo: Is it better to remove this position after the transfer of the tokens?
                     amount_in_dollars_to_send -= amount_in_dollars_available_for_this_bp;
-                    self.deposit_positions(liquidatee_account_nonce)
-                        .remove(&dp.token_id);
-
-                    if amount_in_dollars_to_send == 0 {
-                        break;
-                    }
                 } else {
                     // Send part of the tokens and update DepositPosition
                     let partial_amount_to_send = (&amount_in_dollars_to_send * BP / &dp_data.price)
@@ -156,22 +148,14 @@ pub trait LendingUtilsModule:
                         / BP;
 
                     payments.push(EsdtTokenPayment::new(
-                        dp.token_id.clone(),
+                        dp.token_id,
                         0,
-                        partial_amount_to_send.clone(),
+                        partial_amount_to_send,
                     ));
-
-                    // Update DepositPosition
-                    self.deposit_positions(liquidatee_account_nonce)
-                        .remove(&dp.token_id);
-                    dp.amount -= partial_amount_to_send;
-                    self.deposit_positions(liquidatee_account_nonce)
-                        .insert(dp.token_id.clone(), dp);
                     break;
                 }
             }
         }
-
         payments
     }
 }

@@ -319,12 +319,27 @@ pub trait LendingPool:
         );
 
         for payment in &payments {
-            let token_payment = &payment.token_identifier;
-            let asset_address = self.get_pool_address(token_payment);
+            let token_payment = payment.token_identifier.clone();
+            let asset_address = self.get_pool_address(&token_payment);
 
             self.liquidity_pool_proxy(asset_address)
-                .send_tokens(&initial_caller, payment.amount)
+                .send_tokens(&initial_caller, &payment.amount)
                 .execute_on_dest_context_ignore_result();
+
+            // Update Liquidated Positions
+            if let Some(mut liquidated_position) = self
+                .deposit_positions(liquidatee_account_nonce)
+                .get(&token_payment)
+            {
+                liquidated_position.amount -= payment.amount;
+                if liquidated_position.amount == 0 {
+                    self.deposit_positions(liquidatee_account_nonce)
+                        .remove(&token_payment);
+                } else {
+                    self.deposit_positions(liquidatee_account_nonce)
+                        .insert(token_payment, liquidated_position);
+                }
+            }
         }
     }
 
