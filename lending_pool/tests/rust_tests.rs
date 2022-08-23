@@ -205,6 +205,67 @@ fn liquidate_test() {
     );
 }
 
+#[test]
+fn liquidate_multiple_tokens_test() {
+    let mut lending_setup = LendingSetup::deploy_lending(
+        lending_pool::contract_obj,
+        liquidity_pool::contract_obj,
+        aggregator_mock::contract_obj,
+    );
+
+    let liquidatee_user = lending_setup.first_user_addr.clone();
+    let liquidator_user = lending_setup.second_user_addr.clone();
+
+    let liquidatee_account_nonce = lending_setup.enter_market(&liquidatee_user);
+
+    lending_setup
+        .b_mock
+        .set_esdt_balance(&liquidatee_user, USDC_TOKEN_ID, &rust_biguint!(1_000));
+
+    lending_setup
+        .b_mock
+        .set_esdt_balance(&liquidatee_user, EGLD_TOKEN_ID, &rust_biguint!(4));
+
+    lending_setup.add_collateral(
+        &liquidatee_user,
+        USDC_TOKEN_ID,
+        0,
+        liquidatee_account_nonce,
+        1000,
+        1000,
+    );
+    lending_setup.add_collateral(
+        &liquidatee_user,
+        EGLD_TOKEN_ID,
+        0,
+        liquidatee_account_nonce,
+        4,
+        4,
+    );
+    lending_setup.borrow(
+        &liquidatee_user,
+        USDC_TOKEN_ID,
+        0,
+        liquidatee_account_nonce,
+        1000,
+        0,
+        1000,
+    );
+
+    lending_setup
+        .b_mock
+        .set_esdt_balance(&liquidator_user, USDC_TOKEN_ID, &rust_biguint!(500));
+
+    lending_setup.liquidate(
+        &liquidator_user,
+        &liquidatee_user,
+        liquidatee_account_nonce,
+        500,
+        2,
+        2,
+    );
+}
+
 // #[test]
 // fn add_collateral_test() {
 //     let mut lending_setup = LendingSetup::deploy_lending(
