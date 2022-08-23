@@ -347,13 +347,11 @@ pub trait LendingPool:
     fn update_collateral_with_interest(&self, account_position: u64) {
         let deposit_positions = self.deposit_positions(account_position);
 
-        for token in deposit_positions.keys() {
-            if let Some(dp) = deposit_positions.get(&token) {
-                let asset_address = self.get_pool_address(&dp.token_id);
-                self.liquidity_pool_proxy(asset_address)
-                    .update_collateral_with_interest(dp)
-                    .execute_on_dest_context_ignore_result();
-            }
+        for dp in deposit_positions.values() {
+            let asset_address = self.get_pool_address(&dp.token_id);
+            self.liquidity_pool_proxy(asset_address)
+                .update_collateral_with_interest(dp)
+                .execute_on_dest_context_ignore_result();
         }
     }
 
@@ -361,13 +359,11 @@ pub trait LendingPool:
     fn update_borrows_with_debt(&self, account_position: u64) {
         let borrow_positions = self.borrow_positions(account_position);
 
-        for token in borrow_positions.keys() {
-            if let Some(bp) = borrow_positions.get(&token) {
-                let asset_address = self.get_pool_address(&bp.token_id);
-                self.liquidity_pool_proxy(asset_address)
-                    .update_borrows_with_debt(bp)
-                    .execute_on_dest_context_ignore_result();
-            }
+        for bp in borrow_positions.values() {
+            let asset_address = self.get_pool_address(&bp.token_id);
+            self.liquidity_pool_proxy(asset_address)
+                .update_borrows_with_debt(bp)
+                .execute_on_dest_context_ignore_result();
         }
     }
 

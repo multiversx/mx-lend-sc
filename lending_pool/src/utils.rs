@@ -93,11 +93,9 @@ pub trait LendingUtilsModule:
         let mut deposited_amount_in_dollars = BigUint::zero();
         let deposit_positions = self.deposit_positions(account_position);
 
-        for token in deposit_positions.keys() {
-            if let Some(dp) = deposit_positions.get(&token) {
-                let dp_data = self.get_token_price_data(dp.token_id);
-                deposited_amount_in_dollars += dp.amount * dp_data.price;
-            }
+        for dp in deposit_positions.values() {
+            let dp_data = self.get_token_price_data(dp.token_id);
+            deposited_amount_in_dollars += dp.amount * dp_data.price;
         }
 
         deposited_amount_in_dollars
@@ -108,11 +106,9 @@ pub trait LendingUtilsModule:
         let mut total_borrow_in_dollars = BigUint::zero();
         let borrow_positions = self.borrow_positions(account_position);
 
-        for token in borrow_positions.keys() {
-            if let Some(bp) = borrow_positions.get(&token) {
-                let bp_data = self.get_token_price_data(bp.token_id);
-                total_borrow_in_dollars += bp.amount * bp_data.price;
-            }
+        for bp in borrow_positions.values() {
+            let bp_data = self.get_token_price_data(bp.token_id);
+            total_borrow_in_dollars += bp.amount * bp_data.price;
         }
 
         total_borrow_in_dollars
@@ -128,32 +124,30 @@ pub trait LendingUtilsModule:
         let mut amount_in_dollars_to_send = amount_to_return_to_liquidator_in_dollars;
         let deposit_positions = self.deposit_positions(liquidatee_account_nonce);
 
-        for token in deposit_positions.keys() {
-            if let Some(dp) = deposit_positions.get(&token) {
-                let dp_data = self.get_token_price_data(dp.token_id.clone());
-                let amount_in_dollars_available_for_this_bp = &dp.amount * &dp_data.price;
+        for dp in deposit_positions.values() {
+            let dp_data = self.get_token_price_data(dp.token_id.clone());
+            let amount_in_dollars_available_for_this_bp = &dp.amount * &dp_data.price;
 
-                if amount_in_dollars_available_for_this_bp <= amount_in_dollars_to_send {
-                    // Send all tokens and remove DepositPosition
-                    payments.push(EsdtTokenPayment::new(
-                        dp.token_id.clone(),
-                        0,
-                        dp.amount.clone(),
-                    ));
-                    amount_in_dollars_to_send -= amount_in_dollars_available_for_this_bp;
-                } else {
-                    // Send part of the tokens and update DepositPosition
-                    let partial_amount_to_send = (&amount_in_dollars_to_send * BP / &dp_data.price)
-                        * BigUint::from(10u64).pow(dp_data.decimals as u32)
-                        / BP;
+            if amount_in_dollars_available_for_this_bp <= amount_in_dollars_to_send {
+                // Send all tokens and remove DepositPosition
+                payments.push(EsdtTokenPayment::new(
+                    dp.token_id.clone(),
+                    0,
+                    dp.amount.clone(),
+                ));
+                amount_in_dollars_to_send -= amount_in_dollars_available_for_this_bp;
+            } else {
+                // Send part of the tokens and update DepositPosition
+                let partial_amount_to_send = (&amount_in_dollars_to_send * BP / &dp_data.price)
+                    * BigUint::from(10u64).pow(dp_data.decimals as u32)
+                    / BP;
 
-                    payments.push(EsdtTokenPayment::new(
-                        dp.token_id,
-                        0,
-                        partial_amount_to_send,
-                    ));
-                    break;
-                }
+                payments.push(EsdtTokenPayment::new(
+                    dp.token_id,
+                    0,
+                    partial_amount_to_send,
+                ));
+                break;
             }
         }
         payments
