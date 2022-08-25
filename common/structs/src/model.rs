@@ -3,7 +3,7 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-pub const BP: u64 = 1_000_000_000_000_000_000;
+pub const BP: u64 = 1_000_000_000;
 pub const MAX_THRESHOLD: u64 = BP / 2;
 pub const MAX_THRESHOLD_ERROR_MSG: &[u8] =
     b"Cannot liquidate more than 50% of Liquidatee's position!";

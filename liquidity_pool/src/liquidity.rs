@@ -137,7 +137,7 @@ pub trait LiquidityModule:
         );
 
         self.update_interest_indexes();
-        if existing_borrow_position.amount != 0 {
+        if ret_borrow_position.amount != 0 {
             ret_borrow_position = self.update_borrows_with_debt(existing_borrow_position);
         }
 
@@ -206,6 +206,7 @@ pub trait LiquidityModule:
     ) -> BorrowPosition<Self::Api> {
         let (repay_asset, mut repay_amount) = self.call_value().single_fungible_esdt();
         let pool_asset = self.pool_asset().get();
+        let initial_borrowed_amount = borrow_position.amount.clone();
 
         self.require_non_zero_address(&initial_caller);
         self.require_amount_greater_than_zero(&repay_amount);
@@ -214,25 +215,26 @@ pub trait LiquidityModule:
             "asset not supported for this liquidity pool"
         );
 
-        self.update_interest_indexes();
+        // self.update_interest_indexes();
         let mut ret_borrow_position = self.update_borrows_with_debt(borrow_position);
 
-        let total_owed = ret_borrow_position.amount.clone();
+        let total_owed_with_interest = ret_borrow_position.amount.clone();
 
-        if repay_amount > total_owed {
-            let extra_amount = &repay_amount - &total_owed;
+        if repay_amount >= total_owed_with_interest {
+            let extra_amount = &repay_amount - &total_owed_with_interest;
             self.send()
                 .direct_esdt(&initial_caller, &repay_asset, 0, &extra_amount);
-            ret_borrow_position.amount -= repay_amount.clone();
-            repay_amount = total_owed;
+            ret_borrow_position.amount = BigUint::zero();
+            repay_amount = total_owed_with_interest.clone();
+        } else {
+            ret_borrow_position.amount -= &repay_amount;
         }
 
-        ret_borrow_position.amount -= &repay_amount;
-
         self.borrowed_amount()
-            .update(|total| *total -= &repay_amount);
+            .update(|total| *total -= initial_borrowed_amount);
 
-        self.reserves().update(|total| *total += &repay_amount);
+        self.reserves()
+            .update(|total| *total += &total_owed_with_interest);
 
         ret_borrow_position
     }

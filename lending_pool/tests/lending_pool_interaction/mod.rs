@@ -522,7 +522,11 @@ where
                     );
 
                     let threshold = BigUint::from(BP / 2);
-                    sc.liquidate(liquidatee_nonce, threshold, managed_token_id!(USDC_TOKEN_ID));
+                    sc.liquidate(
+                        liquidatee_nonce,
+                        threshold,
+                        managed_token_id!(USDC_TOKEN_ID),
+                    );
                 },
             )
             .assert_ok();
@@ -591,6 +595,21 @@ where
                     actual_borrowed_amount, expected_borrowed,
                     "Borrowed amount in Liquidity Pool doesn't match!"
                 );
+            })
+            .assert_ok();
+    }
+
+    pub fn check_index(&mut self, expected_value: BigUint<DebugApi>, token_id: &[u8]) {
+        let liquidity_pool_wrapper = match token_id {
+            USDC_TOKEN_ID => &self.liquidity_pool_usdc_wrapper,
+            EGLD_TOKEN_ID => &self.liquidity_pool_egld_wrapper,
+            _ => todo!(),
+        };
+
+        self.b_mock
+            .execute_query(&liquidity_pool_wrapper, |sc| {
+                let borrow_index = sc.borrow_index().get();
+                assert_eq!(borrow_index, expected_value);
             })
             .assert_ok();
     }

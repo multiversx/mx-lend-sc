@@ -327,9 +327,8 @@ pub trait LendingPool:
         let asset_address = self.get_pool_address(&token_to_liquidate);
 
         self.liquidity_pool_proxy(asset_address)
-        .send_tokens(&initial_caller, &amount_to_send)
-        .execute_on_dest_context_ignore_result();
-
+            .send_tokens(&initial_caller, &amount_to_send)
+            .execute_on_dest_context_ignore_result();
     }
 
     #[endpoint(updateCollateralWithInterest)]

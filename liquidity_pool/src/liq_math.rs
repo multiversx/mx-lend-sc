@@ -2,9 +2,6 @@ use common_structs::BP;
 
 elrond_wasm::imports!();
 
-// /* Base precision */
-// const BP: u32 = 1_000_000_000;
-
 #[elrond_wasm::module]
 pub trait MathModule {
     fn compute_borrow_rate(
