@@ -165,10 +165,6 @@ pub trait LendingPool:
         self.require_asset_supported(&asset_to_borrow);
         self.lending_account_in_the_market(nft_account_nonce);
         self.lending_account_token_valid(nft_account_token_id.clone());
-        require!(
-            asset_to_borrow.is_valid_esdt_identifier(),
-            "invalid ticker provided"
-        );
         self.require_amount_greater_than_zero(&amount);
         self.require_non_zero_address(&initial_caller);
 
@@ -226,11 +222,6 @@ pub trait LendingPool:
         self.require_non_zero_address(&initial_caller);
         self.require_asset_supported(&repay_token_id);
 
-        require!(
-            self.pools_map().contains_key(&repay_token_id),
-            "asset not supported"
-        );
-
         match self
             .borrow_positions(nft_account_nonce)
             .get(&repay_token_id)
@@ -279,13 +270,14 @@ pub trait LendingPool:
 
         // Liquidatee is in the market; Liquidator doesn't have to be in the Lending Protocol
         self.lending_account_in_the_market(liquidatee_account_nonce);
-        require!(
-            liquidator_asset_token_id.is_valid_esdt_identifier(),
-            "invalid ticker provided"
-        );
         self.require_asset_supported(&liquidator_asset_token_id);
         self.require_amount_greater_than_zero(&liquidator_asset_amount);
         self.require_non_zero_address(&initial_caller);
+        require!(
+            token_to_liquidate == liquidator_asset_token_id,
+            "Token sent is not the same as the liquidation token!"
+        );
+
         require!(
             liquidation_threshold <= MAX_THRESHOLD,
             MAX_THRESHOLD_ERROR_MSG
@@ -327,9 +319,8 @@ pub trait LendingPool:
         let asset_address = self.get_pool_address(&token_to_liquidate);
 
         self.liquidity_pool_proxy(asset_address)
-        .send_tokens(&initial_caller, &amount_to_send)
-        .execute_on_dest_context_ignore_result();
-
+            .send_tokens(&initial_caller, &amount_to_send)
+            .execute_on_dest_context_ignore_result();
     }
 
     #[endpoint(updateCollateralWithInterest)]

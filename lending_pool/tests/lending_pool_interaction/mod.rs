@@ -522,7 +522,11 @@ where
                     );
 
                     let threshold = BigUint::from(BP / 2);
-                    sc.liquidate(liquidatee_nonce, threshold, managed_token_id!(USDC_TOKEN_ID));
+                    sc.liquidate(
+                        liquidatee_nonce,
+                        threshold,
+                        managed_token_id!(USDC_TOKEN_ID),
+                    );
                 },
             )
             .assert_ok();
