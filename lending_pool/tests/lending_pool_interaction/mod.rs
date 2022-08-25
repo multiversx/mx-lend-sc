@@ -509,16 +509,6 @@ where
                             managed_biguint!(BP),
                         ),
                     );
-                    sc.deposit_positions(liquidatee_nonce).insert(
-                        managed_token_id!(EGLD_TOKEN_ID),
-                        DepositPosition::new(
-                            managed_token_id!(EGLD_TOKEN_ID),
-                            managed_biguint!(4),
-                            liquidatee_nonce,
-                            1,
-                            managed_biguint!(BP),
-                        ),
-                    );
 
                     sc.borrow_positions(liquidatee_nonce).insert(
                         managed_token_id!(USDC_TOKEN_ID),
@@ -532,20 +522,20 @@ where
                     );
 
                     let threshold = BigUint::from(BP / 2);
-                    sc.liquidate(liquidatee_nonce, threshold);
+                    sc.liquidate(liquidatee_nonce, threshold, managed_token_id!(USDC_TOKEN_ID));
                 },
             )
             .assert_ok();
 
         self.b_mock.check_esdt_balance(
             &liquidator_user,
-            EGLD_TOKEN_ID,
+            USDC_TOKEN_ID,
             &rust_biguint!(liquidator_expected_amount),
         );
 
         self.b_mock.check_esdt_balance(
-            &self.liquidity_pool_egld_wrapper.address_ref(),
-            EGLD_TOKEN_ID,
+            &self.liquidity_pool_usdc_wrapper.address_ref(),
+            USDC_TOKEN_ID,
             &rust_biguint!(contract_reserves_exected_amount),
         );
     }

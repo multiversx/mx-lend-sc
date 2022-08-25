@@ -114,42 +114,21 @@ pub trait LendingUtilsModule:
         total_borrow_in_dollars
     }
 
-    fn send_amount_in_dollars_to_liquidator(
+    fn compute_amount_in_tokens(
         &self,
         liquidatee_account_nonce: u64,
+        token_to_liquidate: TokenIdentifier,
         amount_to_return_to_liquidator_in_dollars: BigUint,
-    ) -> ManagedVec<Self::Api, EsdtTokenPayment<Self::Api>> {
-        let mut payments = ManagedVec::new();
+    ) -> BigUint {
+        require!(
+            self.deposit_positions(liquidatee_account_nonce)
+                .contains_key(&token_to_liquidate),
+            "Liquidatee user doesn't have this token as collateral"
+        );
 
-        let mut amount_in_dollars_to_send = amount_to_return_to_liquidator_in_dollars;
-        let deposit_positions = self.deposit_positions(liquidatee_account_nonce);
-
-        for dp in deposit_positions.values() {
-            let dp_data = self.get_token_price_data(dp.token_id.clone());
-            let amount_in_dollars_available_for_this_bp = &dp.amount * &dp_data.price;
-
-            if amount_in_dollars_available_for_this_bp <= amount_in_dollars_to_send {
-                // Send all tokens and remove DepositPosition
-                payments.push(EsdtTokenPayment::new(
-                    dp.token_id.clone(),
-                    0,
-                    dp.amount.clone(),
-                ));
-                amount_in_dollars_to_send -= amount_in_dollars_available_for_this_bp;
-            } else {
-                // Send part of the tokens and update DepositPosition
-                let partial_amount_to_send = (&amount_in_dollars_to_send * BP / &dp_data.price)
-                    * BigUint::from(10u64).pow(dp_data.decimals as u32)
-                    / BP;
-
-                payments.push(EsdtTokenPayment::new(
-                    dp.token_id,
-                    0,
-                    partial_amount_to_send,
-                ));
-                break;
-            }
-        }
-        payments
+        let token_data = self.get_token_price_data(token_to_liquidate);
+        (&amount_to_return_to_liquidator_in_dollars * BP / &token_data.price)
+            * BigUint::from(10u64).pow(token_data.decimals as u32)
+            / BP
     }
 }

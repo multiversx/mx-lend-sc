@@ -6,7 +6,6 @@ use common_structs::{BorrowPosition, DepositPosition};
 pub trait LendingStorageModule {
     #[view(getDepositPositions)]
     #[storage_mapper("deposit_positions")]
-    // fn deposit_position(&self) -> UnorderedSetMapper<DepositPosition<Self::Api>>;
     fn deposit_positions(
         &self,
         owner_nonce: u64,
@@ -14,7 +13,6 @@ pub trait LendingStorageModule {
 
     #[view(getBorrowPositions)]
     #[storage_mapper("borrow_positions")]
-    // fn borrow_position(&self) -> UnorderedSetMapper<BorrowPosition<Self::Api>>;
     fn borrow_positions(
         &self,
         owner_nonce: u64,

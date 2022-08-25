@@ -265,7 +265,12 @@ pub trait LendingPool:
 
     #[payable("*")]
     #[endpoint(liquidate)]
-    fn liquidate(&self, liquidatee_account_nonce: u64, liquidation_threshold: BigUint) {
+    fn liquidate(
+        &self,
+        liquidatee_account_nonce: u64,
+        liquidation_threshold: BigUint,
+        token_to_liquidate: TokenIdentifier,
+    ) {
         let (liquidator_asset_token_id, liquidator_asset_amount) =
             self.call_value().single_fungible_esdt();
         let bp = BigUint::from(BP);
@@ -290,17 +295,17 @@ pub trait LendingPool:
         let total_collateral_in_dollars =
             self.get_total_collateral_in_dollars(liquidatee_account_nonce);
         let borrowed_value_in_dollars = self.get_total_borrow_in_dollars(liquidatee_account_nonce);
-        let liquidator_asset_data = self.get_token_price_data(liquidator_asset_token_id);
-        let liquidator_asset_value_in_dollars =
-            liquidator_asset_amount.clone() * liquidator_asset_data.price;
 
         let health_factor = self.compute_health_factor(
             &total_collateral_in_dollars,
             &borrowed_value_in_dollars,
             &liquidation_threshold,
         );
-
         require!(health_factor < BP, "health not low enough for liquidation");
+
+        let liquidator_asset_data = self.get_token_price_data(liquidator_asset_token_id);
+        let liquidator_asset_value_in_dollars =
+            liquidator_asset_amount.clone() * liquidator_asset_data.price;
 
         let amount_needed_for_liquidation = borrowed_value_in_dollars * liquidation_threshold / &bp;
         require!(
@@ -313,34 +318,18 @@ pub trait LendingPool:
             (liquidator_asset_amount * (&bp + &liq_bonus)) / bp;
 
         // Go through all DepositPositions and send amount_to_return_in_dollars to Liquidator
-        let payments = self.send_amount_in_dollars_to_liquidator(
+        let amount_to_send = self.compute_amount_in_tokens(
             liquidatee_account_nonce,
+            token_to_liquidate.clone(),
             amount_to_return_to_liquidator_in_dollars,
         );
 
-        for payment in &payments {
-            let token_payment = payment.token_identifier.clone();
-            let asset_address = self.get_pool_address(&token_payment);
+        let asset_address = self.get_pool_address(&token_to_liquidate);
 
-            self.liquidity_pool_proxy(asset_address)
-                .send_tokens(&initial_caller, &payment.amount)
-                .execute_on_dest_context_ignore_result();
+        self.liquidity_pool_proxy(asset_address)
+        .send_tokens(&initial_caller, &amount_to_send)
+        .execute_on_dest_context_ignore_result();
 
-            // Update Liquidated Positions
-            if let Some(mut liquidated_position) = self
-                .deposit_positions(liquidatee_account_nonce)
-                .get(&token_payment)
-            {
-                liquidated_position.amount -= payment.amount;
-                if liquidated_position.amount == 0 {
-                    self.deposit_positions(liquidatee_account_nonce)
-                        .remove(&token_payment);
-                } else {
-                    self.deposit_positions(liquidatee_account_nonce)
-                        .insert(token_payment, liquidated_position);
-                }
-            }
-        }
     }
 
     #[endpoint(updateCollateralWithInterest)]
