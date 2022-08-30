@@ -252,11 +252,17 @@ where
         add_amount: u64,
         expected_reserves_after_deposit: u64,
     ) {
+        let liquidity_pool_wrapper = match token_id {
+            USDC_TOKEN_ID => &self.liquidity_pool_usdc_wrapper,
+            EGLD_TOKEN_ID => &self.liquidity_pool_egld_wrapper,
+            _ => todo!(),
+        };
+
         self.b_mock
             .execute_esdt_transfer(
                 &user_addr,
-                &self.liquidity_pool_usdc_wrapper,
-                USDC_TOKEN_ID,
+                &liquidity_pool_wrapper,
+                token_id,
                 0,
                 &rust_biguint!(add_amount),
                 |sc| {
@@ -271,7 +277,18 @@ where
             )
             .assert_ok();
 
-        self.check_reserves(expected_reserves_after_deposit);
+        self.b_mock
+            .execute_query(&liquidity_pool_wrapper, |sc| {
+                let actual_deposited_collateral = sc.reserves().get();
+                let expected_collateral = elrond_wasm::types::BigUint::from_bytes_be(
+                    &expected_reserves_after_deposit.to_be_bytes(),
+                );
+                assert_eq!(
+                    actual_deposited_collateral, expected_collateral,
+                    "Reserve tokens in Liquidity Pool doesn't match!"
+                );
+            })
+            .assert_ok();
     }
 
     pub fn remove_collateral(
@@ -283,10 +300,16 @@ where
         remove_amount: u64,
         expected_collateral_after_deposit: u64,
     ) {
+        let liquidity_pool_wrapper = match token_id {
+            USDC_TOKEN_ID => &self.liquidity_pool_usdc_wrapper,
+            EGLD_TOKEN_ID => &self.liquidity_pool_egld_wrapper,
+            _ => todo!(),
+        };
+
         self.b_mock
             .execute_esdt_transfer(
                 &user_addr,
-                &self.liquidity_pool_usdc_wrapper,
+                &liquidity_pool_wrapper,
                 ACCOUNT_TOKEN,
                 owner_nonce,
                 &rust_biguint!(0),
@@ -306,7 +329,18 @@ where
             )
             .assert_ok();
 
-        self.check_reserves(expected_collateral_after_deposit);
+        self.b_mock
+            .execute_query(&liquidity_pool_wrapper, |sc| {
+                let actual_deposited_collateral = sc.reserves().get();
+                let expected_collateral = elrond_wasm::types::BigUint::from_bytes_be(
+                    &expected_collateral_after_deposit.to_be_bytes(),
+                );
+                assert_eq!(
+                    actual_deposited_collateral, expected_collateral,
+                    "Reserve tokens in Liquidity Pool doesn't match!"
+                );
+            })
+            .assert_ok();
     }
 
     pub fn borrow(
@@ -319,10 +353,16 @@ where
         expected_reserves_after_borrow: u64,
         expected_borrowed_amount_after_borrow: u64,
     ) {
+        let liquidity_pool_wrapper = match token_id {
+            USDC_TOKEN_ID => &self.liquidity_pool_usdc_wrapper,
+            EGLD_TOKEN_ID => &self.liquidity_pool_egld_wrapper,
+            _ => todo!(),
+        };
+
         self.b_mock
             .execute_esdt_transfer(
                 &user_addr,
-                &self.liquidity_pool_usdc_wrapper,
+                &liquidity_pool_wrapper,
                 ACCOUNT_TOKEN,
                 owner_nonce,
                 &rust_biguint!(0),
@@ -342,8 +382,31 @@ where
             )
             .assert_ok();
 
-        self.check_reserves(expected_reserves_after_borrow);
-        self.check_borrowed_amount(expected_borrowed_amount_after_borrow);
+        self.b_mock
+            .execute_query(&liquidity_pool_wrapper, |sc| {
+                let actual_deposited_collateral = sc.reserves().get();
+                let expected_collateral = elrond_wasm::types::BigUint::from_bytes_be(
+                    &expected_reserves_after_borrow.to_be_bytes(),
+                );
+                assert_eq!(
+                    actual_deposited_collateral, expected_collateral,
+                    "Reserve tokens in Liquidity Pool doesn't match!"
+                );
+            })
+            .assert_ok();
+
+        self.b_mock
+            .execute_query(&liquidity_pool_wrapper, |sc| {
+                let actual_borrowed_amount = sc.borrowed_amount().get();
+                let expected_borrowed = elrond_wasm::types::BigUint::from_bytes_be(
+                    &expected_borrowed_amount_after_borrow.to_be_bytes(),
+                );
+                assert_eq!(
+                    actual_borrowed_amount, expected_borrowed,
+                    "Borrowed amount in Liquidity Pool doesn't match!"
+                );
+            })
+            .assert_ok();
     }
 
     pub fn repay(
@@ -356,10 +419,16 @@ where
         expected_reserves_after_repay: u64,
         expected_borrowed_amount_after_repay: u64,
     ) {
+        let liquidity_pool_wrapper = match token_id {
+            USDC_TOKEN_ID => &self.liquidity_pool_usdc_wrapper,
+            EGLD_TOKEN_ID => &self.liquidity_pool_egld_wrapper,
+            _ => todo!(),
+        };
+
         self.b_mock
             .execute_esdt_transfer(
                 &user_addr,
-                &self.liquidity_pool_usdc_wrapper,
+                &liquidity_pool_wrapper,
                 USDC_TOKEN_ID,
                 0,
                 &rust_biguint!(repay_amount),
@@ -378,8 +447,31 @@ where
             )
             .assert_ok();
 
-        self.check_borrowed_amount(expected_borrowed_amount_after_repay);
-        self.check_reserves(expected_reserves_after_repay);
+        self.b_mock
+            .execute_query(&liquidity_pool_wrapper, |sc| {
+                let actual_deposited_collateral = sc.reserves().get();
+                let expected_collateral = elrond_wasm::types::BigUint::from_bytes_be(
+                    &expected_reserves_after_repay.to_be_bytes(),
+                );
+                assert_eq!(
+                    actual_deposited_collateral, expected_collateral,
+                    "Reserve tokens in Liquidity Pool doesn't match!"
+                );
+            })
+            .assert_ok();
+
+        self.b_mock
+            .execute_query(&liquidity_pool_wrapper, |sc| {
+                let actual_borrowed_amount = sc.borrowed_amount().get();
+                let expected_borrowed = elrond_wasm::types::BigUint::from_bytes_be(
+                    &expected_borrowed_amount_after_repay.to_be_bytes(),
+                );
+                assert_eq!(
+                    actual_borrowed_amount, expected_borrowed,
+                    "Borrowed amount in Liquidity Pool doesn't match!"
+                );
+            })
+            .assert_ok();
     }
 
     pub fn liquidate(
@@ -407,24 +499,34 @@ where
                     );
                     sc.account_positions().insert(nft_token_payment.token_nonce);
 
-                    sc.deposit_position().insert(DepositPosition::new(
+                    sc.deposit_positions(liquidatee_nonce).insert(
                         managed_token_id!(USDC_TOKEN_ID),
-                        managed_biguint!(1000),
-                        liquidatee_nonce,
-                        1,
-                        managed_biguint!(BP),
-                    ));
+                        DepositPosition::new(
+                            managed_token_id!(USDC_TOKEN_ID),
+                            managed_biguint!(1000),
+                            liquidatee_nonce,
+                            1,
+                            managed_biguint!(BP),
+                        ),
+                    );
 
-                    sc.borrow_position().insert(BorrowPosition::new(
+                    sc.borrow_positions(liquidatee_nonce).insert(
                         managed_token_id!(USDC_TOKEN_ID),
-                        managed_biguint!(600),
-                        liquidatee_nonce,
-                        2,
-                        BigUint::from(BP),
-                    ));
+                        BorrowPosition::new(
+                            managed_token_id!(USDC_TOKEN_ID),
+                            managed_biguint!(600),
+                            liquidatee_nonce,
+                            2,
+                            BigUint::from(BP),
+                        ),
+                    );
 
                     let threshold = BigUint::from(BP / 2);
-                    sc.liquidate(liquidatee_nonce, threshold);
+                    sc.liquidate(
+                        liquidatee_nonce,
+                        threshold,
+                        managed_token_id!(USDC_TOKEN_ID),
+                    );
                 },
             )
             .assert_ok();
@@ -442,9 +544,27 @@ where
         );
     }
 
-    pub fn check_reserves(&mut self, expected_deposited_collateral: u64) {
+    pub fn get_liquidity_pool_wrapper(
+        &self,
+        token_id: &[u8],
+    ) -> &ContractObjWrapper<liquidity_pool::ContractObj<DebugApi>, LiquidityPoolObjBuilder> {
+        match token_id {
+            USDC_TOKEN_ID => &self.liquidity_pool_usdc_wrapper,
+            EGLD_TOKEN_ID => &self.liquidity_pool_egld_wrapper,
+            _ => todo!(),
+        }
+    }
+
+    pub fn check_reserves(
+        &mut self,
+        expected_deposited_collateral: u64,
+        liquidity_pool_wrapper: &ContractObjWrapper<
+            liquidity_pool::ContractObj<DebugApi>,
+            LiquidityPoolObjBuilder,
+        >,
+    ) {
         self.b_mock
-            .execute_query(&self.liquidity_pool_usdc_wrapper, |sc| {
+            .execute_query(&liquidity_pool_wrapper, |sc| {
                 let actual_deposited_collateral = sc.reserves().get();
                 let expected_collateral = elrond_wasm::types::BigUint::from_bytes_be(
                     &expected_deposited_collateral.to_be_bytes(),
@@ -457,9 +577,16 @@ where
             .assert_ok();
     }
 
-    pub fn check_borrowed_amount(&mut self, expected_borrowed_amount: u64) {
+    pub fn check_borrowed_amount(
+        &mut self,
+        expected_borrowed_amount: u64,
+        liquidity_pool_wrapper: &ContractObjWrapper<
+            liquidity_pool::ContractObj<DebugApi>,
+            LiquidityPoolObjBuilder,
+        >,
+    ) {
         self.b_mock
-            .execute_query(&self.liquidity_pool_usdc_wrapper, |sc| {
+            .execute_query(&liquidity_pool_wrapper, |sc| {
                 let actual_borrowed_amount = sc.borrowed_amount().get();
                 let expected_borrowed = elrond_wasm::types::BigUint::from_bytes_be(
                     &expected_borrowed_amount.to_be_bytes(),

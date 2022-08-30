@@ -47,7 +47,6 @@ pub trait RouterModule:
 
         self.pools_map().insert(base_asset, address.clone());
         self.pools_allowed().insert(address.clone());
-
         address
     }
 
