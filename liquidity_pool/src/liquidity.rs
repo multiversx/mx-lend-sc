@@ -104,7 +104,8 @@ pub trait LiquidityModule:
         // );
         // self.deposit_position().insert(deposit_position);
 
-        self.reserves().update(|x| *x += deposit_amount);
+        self.reserves().update(|x| *x += &deposit_amount);
+        self.supplied_amount().update(|x| *x += deposit_amount);
         ret_deposit_position
     }
 
@@ -160,6 +161,7 @@ pub trait LiquidityModule:
         ret_borrow_position
     }
 
+    // Withdraw
     #[only_owner]
     #[payable("*")]
     #[endpoint]
@@ -182,12 +184,26 @@ pub trait LiquidityModule:
             &self.supply_index().get(),
             &deposit_position.initial_supply_index,
         );
+        sc_print!(
+            "self.reserves = {}, withdrawal_amount = {}",
+            self.reserves().get(),
+            withdrawal_amount
+        );
 
         self.reserves().update(|asset_reserve| {
             require!(*asset_reserve >= withdrawal_amount, "insufficient funds");
             *asset_reserve -= &withdrawal_amount;
         });
 
+        sc_print!(
+            "supplied_amount = {}, withdrawal_amount = {}",
+            self.supplied_amount().get(),
+            &withdrawal_amount
+        );
+        self.supplied_amount().update(|asset_supplied_amount| {
+            require!(*asset_supplied_amount >= amount, "insufficient funds");
+            *asset_supplied_amount -= &amount;
+        });
         deposit_position.amount -= &amount;
 
         self.send()
@@ -204,37 +220,55 @@ pub trait LiquidityModule:
         initial_caller: ManagedAddress,
         borrow_position: BorrowPosition<Self::Api>,
     ) -> BorrowPosition<Self::Api> {
-        let (repay_asset, mut repay_amount) = self.call_value().single_fungible_esdt();
+        let (received_asset, received_amount) = self.call_value().single_fungible_esdt();
         let pool_asset = self.pool_asset().get();
-        let initial_borrowed_amount = borrow_position.amount.clone();
 
         self.require_non_zero_address(&initial_caller);
-        self.require_amount_greater_than_zero(&repay_amount);
+        self.require_amount_greater_than_zero(&received_amount);
         require!(
-            repay_asset == pool_asset,
+            received_asset == pool_asset,
             "asset not supported for this liquidity pool"
         );
 
+        self.update_interest_indexes();
+
+        let accumulated_debt = self.get_debt_interest(
+            &borrow_position.amount,
+            &borrow_position.initial_borrow_index,
+        );
+        let amount_without_interest = &received_amount - &accumulated_debt;
+
+        sc_print!(
+            "amount_without_interest {} = received_amount ({}) - &accumulated_debt({})",
+            &amount_without_interest,
+            &received_amount,
+            &accumulated_debt
+        );
         // self.update_interest_indexes();
         let mut ret_borrow_position = self.update_borrows_with_debt(borrow_position);
 
         let total_owed_with_interest = ret_borrow_position.amount.clone();
 
-        if repay_amount >= total_owed_with_interest {
-            let extra_amount = &repay_amount - &total_owed_with_interest;
+        if received_amount >= total_owed_with_interest {
+            let extra_amount = &received_amount - &total_owed_with_interest;
             self.send()
-                .direct_esdt(&initial_caller, &repay_asset, 0, &extra_amount);
+                .direct_esdt(&initial_caller, &received_asset, 0, &extra_amount);
             ret_borrow_position.amount = BigUint::zero();
-            repay_amount = total_owed_with_interest.clone();
         } else {
-            ret_borrow_position.amount -= &repay_amount;
+            let principal_amount = &received_amount - &accumulated_debt;
+            ret_borrow_position.amount -= &principal_amount;
         }
 
+        sc_print!(
+            "borrowed_amount = {}, received_amount = {}, accumulated_debt = {}",
+            self.borrowed_amount().get(),
+            &received_amount,
+            &accumulated_debt
+        );
         self.borrowed_amount()
-            .update(|total| *total -= initial_borrowed_amount);
+            .update(|total| *total -= amount_without_interest);
 
-        self.reserves()
-            .update(|total| *total += &total_owed_with_interest);
+        self.reserves().update(|total| *total += &received_amount);
 
         ret_borrow_position
     }
