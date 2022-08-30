@@ -83,23 +83,4 @@ pub trait MathModule {
 
         ((total_collateral * loan_to_value) / bp) / BigUint::from(10u64).pow(decimals as u32)
     }
-
-    // fn compute_health_factor(
-    //     &self,
-    //     collateral_value_in_dollars: &BigUint,
-    //     borrowed_value_in_dollars: &BigUint,
-    //     liquidation_threshold: &BigUint,
-    // ) -> BigUint {
-    //     let bp = self.get_base_precision();
-
-    //     let allowed_collateral_in_dollars = collateral_value_in_dollars * liquidation_threshold;
-
-    //     let health_factor = &allowed_collateral_in_dollars / borrowed_value_in_dollars;
-
-    //     health_factor / bp
-    // }
-
-    fn rule_of_three(&self, value: &BigUint, part: &BigUint, total: &BigUint) -> BigUint {
-        &(value * part) / total
-    }
 }
