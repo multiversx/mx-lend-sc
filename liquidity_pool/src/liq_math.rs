@@ -1,7 +1,9 @@
+use common_structs::BP;
+
 elrond_wasm::imports!();
 
-/* Base precision */
-const BP: u32 = 1_000_000_000;
+// /* Base precision */
+// const BP: u32 = 1_000_000_000;
 
 #[elrond_wasm::module]
 pub trait MathModule {
@@ -63,37 +65,42 @@ pub trait MathModule {
         amount + &interest
     }
 
-    fn compute_borrowable_amount(
+    fn compute_interest(
         &self,
         amount: &BigUint,
-        price: &BigUint,
+        current_supply_index: &BigUint,
+        initial_supply_index: &BigUint,
+    ) -> BigUint {
+        let bp = BigUint::from(BP);
+
+        (current_supply_index - initial_supply_index) * amount / bp
+    }
+
+    fn compute_borrowable_amount(
+        &self,
+        total_collateral: &BigUint,
         loan_to_value: &BigUint,
         decimals: u8,
     ) -> BigUint {
         let bp = BigUint::from(BP);
-        let total_collateral = amount * price;
 
-        ((&total_collateral * loan_to_value) / bp) / BigUint::from(10u64).pow(decimals as u32)
+        ((total_collateral * loan_to_value) / bp) / BigUint::from(10u64).pow(decimals as u32)
     }
 
-    fn compute_health_factor(
-        &self,
-        collateral_value_in_dollars: &BigUint,
-        borrowed_value_in_dollars: &BigUint,
-        liquidation_threshold: &BigUint,
-    ) -> BigUint {
-        let bp = self.get_base_precision();
+    // fn compute_health_factor(
+    //     &self,
+    //     collateral_value_in_dollars: &BigUint,
+    //     borrowed_value_in_dollars: &BigUint,
+    //     liquidation_threshold: &BigUint,
+    // ) -> BigUint {
+    //     let bp = self.get_base_precision();
 
-        let allowed_collateral_in_dollars = collateral_value_in_dollars * liquidation_threshold;
+    //     let allowed_collateral_in_dollars = collateral_value_in_dollars * liquidation_threshold;
 
-        let health_factor = &allowed_collateral_in_dollars / borrowed_value_in_dollars;
+    //     let health_factor = &allowed_collateral_in_dollars / borrowed_value_in_dollars;
 
-        health_factor / bp
-    }
-
-    fn get_base_precision(&self) -> BigUint {
-        BigUint::from(BP)
-    }
+    //     health_factor / bp
+    // }
 
     fn rule_of_three(&self, value: &BigUint, part: &BigUint, total: &BigUint) -> BigUint {
         &(value * part) / total

@@ -1,7 +1,7 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use common_structs::{BorrowPosition, DepositPosition, PoolParams};
+use common_structs::PoolParams;
 
 #[elrond_wasm::module]
 pub trait StorageModule {
@@ -17,10 +17,6 @@ pub trait StorageModule {
     #[storage_mapper("rewards_reserves")]
     fn rewards_reserves(&self) -> SingleValueMapper<BigUint>;
 
-    #[view(getRewardsReservesAccumulatedNotDistributed)]
-    #[storage_mapper("rewards_reserves_accumulated_not_distributed")]
-    fn rewards_reserves_accumulated_not_distributed(&self) -> SingleValueMapper<BigUint>;
-
     #[view(getLendToken)]
     #[storage_mapper("lend_token")]
     fn lend_token(&self) -> SingleValueMapper<TokenIdentifier>;
@@ -29,13 +25,21 @@ pub trait StorageModule {
     #[storage_mapper("borrow_token")]
     fn borrow_token(&self) -> SingleValueMapper<TokenIdentifier>;
 
-    #[view(getDepositPosition)]
-    #[storage_mapper("deposit_position")]
-    fn deposit_position(&self, nonce: u64) -> SingleValueMapper<DepositPosition<Self::Api>>;
+    // #[view(getDepositPosition)]
+    // #[storage_mapper("deposit_position")]
+    // fn deposit_position(&self) -> UnorderedSetMapper<DepositPosition<Self::Api>>;
 
-    #[view(getBorrowMetadata)]
-    #[storage_mapper("borrow_position")]
-    fn borrow_position(&self, nonce: u64) -> SingleValueMapper<BorrowPosition<Self::Api>>;
+    // #[view(getBorrowMetadata)]
+    // #[storage_mapper("borrow_position")]
+    // fn borrow_position(&self) -> UnorderedSetMapper<BorrowPosition<Self::Api>>;
+
+    // #[view(getSuppliedPosition)]
+    // #[storage_mapper("supplied_positions")]
+    // fn supplied_positions(&self, account_nonce: u64, nonce_deposit_position: u64) -> UnorderedSetMapper<DepositPosition<M>;
+
+    // #[view(getSuppliedPosition)]
+    // #[storage_mapper("supplied_positions")]
+    // fn supplied_positions(&self, account_nonce: u64, nonce_deposit_position: u64) -> SingleValueMapper<ManagedVec(BorrowPosition<M>)<Self::Api>>;
 
     #[view(getPoolParams)]
     #[storage_mapper("pool_params")]

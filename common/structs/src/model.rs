@@ -3,10 +3,11 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-pub const BP: u64 = 1_000_000_000;
+pub const BP: u64 = 1_000_000_000_000_000_000;
+pub const MAX_THRESHOLD: u64 = BP / 2;
+pub const MAX_THRESHOLD_ERROR_MSG: &[u8] =
+    b"Cannot liquidate more than 50% of Liquidatee's position!";
 pub const SECONDS_PER_YEAR: u64 = 31_536_000;
-pub const LEND_TOKEN_PREFIX: u8 = b'L';
-pub const BORROW_TOKEN_PREFIX: u8 = b'B';
 
 #[derive(TopEncode, TopDecode, TypeAbi)]
 pub struct PoolParams<M: ManagedTypeApi> {
@@ -24,26 +25,28 @@ pub struct IssueData<M: ManagedTypeApi> {
     pub is_empty_ticker: bool,
 }
 
-#[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, TypeAbi, PartialEq, Clone)]
+#[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, TypeAbi, Clone)]
 pub struct TokenAmountPair<M: ManagedTypeApi> {
     pub token_id: TokenIdentifier<M>,
     pub nonce: u64,
     pub amount: BigUint<M>,
 }
 
-#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi)]
+#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi, Clone)]
 pub struct DepositPosition<M: ManagedTypeApi> {
-    pub round: u64,
+    pub token_id: TokenIdentifier<M>,
     pub amount: BigUint<M>,
+    pub owner_nonce: u64,
+    pub round: u64,
     pub initial_supply_index: BigUint<M>,
 }
 
-#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi, PartialEq, Clone)]
+#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi, Clone)]
 pub struct BorrowPosition<M: ManagedTypeApi> {
+    pub token_id: TokenIdentifier<M>,
+    pub amount: BigUint<M>,
+    pub owner_nonce: u64,
     pub round: u64,
-    pub lend_tokens: TokenAmountPair<M>,
-    pub borrowed_amount: BigUint<M>,
-    pub collateral_token_id: TokenIdentifier<M>,
     pub initial_borrow_index: BigUint<M>,
 }
 
@@ -58,10 +61,18 @@ impl<M: ManagedTypeApi> TokenAmountPair<M> {
 }
 
 impl<M: ManagedTypeApi> DepositPosition<M> {
-    pub fn new(round: u64, amount: BigUint<M>, initial_supply_index: BigUint<M>) -> Self {
+    pub fn new(
+        token_id: TokenIdentifier<M>,
+        amount: BigUint<M>,
+        owner_nonce: u64,
+        round: u64,
+        initial_supply_index: BigUint<M>,
+    ) -> Self {
         DepositPosition {
-            round,
+            token_id,
             amount,
+            owner_nonce,
+            round,
             initial_supply_index,
         }
     }
@@ -69,17 +80,17 @@ impl<M: ManagedTypeApi> DepositPosition<M> {
 
 impl<M: ManagedTypeApi> BorrowPosition<M> {
     pub fn new(
+        token_id: TokenIdentifier<M>,
+        amount: BigUint<M>,
+        owner_nonce: u64,
         round: u64,
-        lend_tokens: TokenAmountPair<M>,
-        borrowed_amount: BigUint<M>,
-        collateral_token_id: TokenIdentifier<M>,
         initial_borrow_index: BigUint<M>,
     ) -> Self {
         BorrowPosition {
+            token_id,
+            amount,
+            owner_nonce,
             round,
-            lend_tokens,
-            borrowed_amount,
-            collateral_token_id,
             initial_borrow_index,
         }
     }

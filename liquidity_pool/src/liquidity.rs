@@ -3,81 +3,109 @@ elrond_wasm::derive_imports!();
 
 use common_structs::*;
 
-use super::math;
-use super::storage;
+use super::liq_math;
+use super::liq_storage;
+use super::liq_utils;
 use super::tokens;
-use super::utils;
-
-const REPAY_PAYMENTS_LEN: usize = 2;
 
 #[elrond_wasm::module]
 pub trait LiquidityModule:
-    storage::StorageModule
+    liq_storage::StorageModule
     + tokens::TokensModule
-    + utils::UtilsModule
-    + math::MathModule
+    + common_tokens::AccountTokenModule
+    + liq_utils::UtilsModule
+    + liq_math::MathModule
     + price_aggregator_proxy::PriceAggregatorModule
     + common_checks::ChecksModule
 {
     #[only_owner]
     #[payable("*")]
-    #[endpoint(depositAsset)]
-    fn deposit_asset(&self, initial_caller: ManagedAddress) -> EsdtTokenPayment<Self::Api> {
-        let (amount, asset) = self.call_value().payment_token_pair();
-        let pool_asset = self.pool_asset().get();
-        require!(
-            asset == pool_asset,
-            "asset not supported for this liquidity pool"
-        );
-
-        let lend_token_id = self.lend_token().get();
-        let new_nonce = self.mint_position_tokens(&lend_token_id, &amount);
-
+    #[endpoint(updateCollateralWithInterest)]
+    fn update_collateral_with_interest(
+        &self,
+        mut deposit_position: DepositPosition<Self::Api>,
+    ) -> DepositPosition<Self::Api> {
         let round = self.blockchain().get_block_round();
+        let supply_index = self.supply_index().get();
 
         self.update_interest_indexes();
 
-        let deposit_position =
-            DepositPosition::new(round, amount.clone(), self.supply_index().get());
-        self.deposit_position(new_nonce).set(&deposit_position);
-
-        self.reserves().update(|x| *x += &amount);
-
-        self.send().direct(
-            &initial_caller,
-            &self.lend_token().get(),
-            new_nonce,
-            &amount,
-            &[],
+        let accrued_interest = self.compute_interest(
+            &deposit_position.amount,
+            &supply_index,
+            &deposit_position.initial_supply_index,
         );
-        EsdtTokenPayment::new(lend_token_id, new_nonce, amount)
+
+        deposit_position.amount += accrued_interest;
+        deposit_position.round = round;
+        deposit_position.initial_supply_index = supply_index;
+
+        deposit_position
     }
 
     #[only_owner]
     #[payable("*")]
-    #[endpoint(reducePositionAfterLiquidation)]
-    fn reduce_position_after_liquidation(&self) {
-        let (payment_amount, payment_token_id) = self.call_value().payment_token_pair();
-        let payment_token_nonce = self.call_value().esdt_token_nonce();
-        let lend_token_id = self.lend_token().get();
+    #[endpoint(updateBorrowsWithDebt)]
+    fn update_borrows_with_debt(
+        &self,
+        mut borrow_position: BorrowPosition<Self::Api>,
+    ) -> BorrowPosition<Self::Api> {
+        let round = self.blockchain().get_block_round();
+        let borrow_index = self.borrow_index().get();
 
-        require!(
-            payment_token_id == lend_token_id,
-            "lend tokens not supported by this pool"
+        self.update_interest_indexes();
+
+        let accumulated_debt = self.get_debt_interest(
+            &borrow_position.amount,
+            &borrow_position.initial_borrow_index,
         );
 
-        let mut deposit = self.deposit_position(payment_token_nonce).get();
+        borrow_position.amount += accumulated_debt;
+        borrow_position.round = round;
+        borrow_position.initial_borrow_index = borrow_index;
+
+        borrow_position
+    }
+
+    #[only_owner]
+    #[payable("*")]
+    #[endpoint(addCollateral)]
+    fn add_collateral(
+        &self,
+        deposit_position: DepositPosition<Self::Api>,
+    ) -> DepositPosition<Self::Api> {
+        let (deposit_asset, deposit_amount) = self.call_value().single_fungible_esdt();
+        let pool_asset = self.pool_asset().get();
+        let round = self.blockchain().get_block_round();
+        let supply_index = self.supply_index().get();
+        let mut ret_deposit_position = deposit_position.clone();
+
         require!(
-            deposit.amount >= payment_amount,
-            "payment tokens greater than position size"
+            deposit_asset == pool_asset,
+            "asset not supported for this liquidity pool"
         );
 
-        deposit.amount -= &payment_amount;
-        if deposit.amount == 0 {
-            self.deposit_position(payment_token_nonce).clear();
-        } else {
-            self.deposit_position(payment_token_nonce).set(&deposit);
+        self.update_interest_indexes();
+
+        // Update DepositPosition
+        if deposit_position.amount != 0 {
+            ret_deposit_position = self.update_collateral_with_interest(deposit_position);
         }
+        ret_deposit_position.amount += &deposit_amount;
+        ret_deposit_position.round = round;
+        ret_deposit_position.initial_supply_index = supply_index;
+
+        // let deposit_position = DepositPosition::new(
+        //     pool_asset,
+        //     deposit_amount.clone(),
+        //     account_nonce,
+        //     round,
+        //     supply_index,
+        // );
+        // self.deposit_position().insert(deposit_position);
+
+        self.reserves().update(|x| *x += deposit_amount);
+        ret_deposit_position
     }
 
     #[only_owner]
@@ -86,100 +114,73 @@ pub trait LiquidityModule:
     fn borrow(
         &self,
         initial_caller: ManagedAddress,
-        loan_to_value: BigUint,
-    ) -> EsdtTokenPayment<Self::Api> {
-        let (payment_lend_amount, payment_lend_token_id) = self.call_value().payment_token_pair();
-        let payment_lend_token_nonce = self.call_value().esdt_token_nonce();
-
-        self.require_amount_greater_than_zero(&payment_lend_amount);
-        self.require_non_zero_address(&initial_caller);
-        let lend_tokens = TokenAmountPair::new(
-            payment_lend_token_id.clone(),
-            payment_lend_token_nonce,
-            payment_lend_amount.clone(),
-        );
-
-        let borrow_token_id = self.borrow_token().get();
+        borrow_amount: BigUint,
+        existing_borrow_position: BorrowPosition<Self::Api>,
+        // loan_to_value: BigUint,
+    ) -> BorrowPosition<Self::Api> {
         let pool_token_id = self.pool_asset().get();
-
-        let collateral_data = self.get_token_price_data_lending(&payment_lend_token_id);
-        let pool_asset_data = self.get_token_price_data(&pool_token_id);
-
-        let borrow_amount_in_dollars = self.compute_borrowable_amount(
-            &payment_lend_amount,
-            &collateral_data.price,
-            &loan_to_value,
-            collateral_data.decimals,
-        );
-
-        let borrow_amount_in_tokens = (&borrow_amount_in_dollars / &pool_asset_data.price)
-            * BigUint::from(10u64).pow(pool_asset_data.decimals as u32);
-
+        // let collateral_amount = self.get_collateral_available(account_position);
+        // let borrowable_amount_in_dollars = self.compute_borrowable_amount(
+        //     &collateral_amount,
+        //     &loan_to_value,
+        //     pool_asset_data.decimals,
+        // );
+        // let borrowable_amount_in_tokens = (&borrowable_amount_in_dollars / &pool_asset_data.price)
+        //     * BigUint::from(10u64).pow(pool_asset_data.decimals as u32);
+        // let borrow_amount_in_tokens = cmp::min(borrowable_amount_in_tokens, amount);
         let asset_reserve = self.reserves().get();
-
+        let mut ret_borrow_position = existing_borrow_position.clone();
+        self.require_non_zero_address(&initial_caller);
         require!(
-            asset_reserve >= borrow_amount_in_tokens,
+            asset_reserve >= borrow_amount,
             "insufficient funds to perform loan"
         );
 
         self.update_interest_indexes();
+        if existing_borrow_position.amount != 0 {
+            ret_borrow_position = self.update_borrows_with_debt(existing_borrow_position);
+        }
 
-        let new_nonce = self.mint_position_tokens(&borrow_token_id, &borrow_amount_in_tokens);
         let round = self.blockchain().get_block_round();
-        let borrow_position = BorrowPosition::new(
-            round,
-            lend_tokens,
-            borrow_amount_in_tokens.clone(),
-            payment_lend_token_id,
-            self.borrow_index().get(),
-        );
+        let borrow_index = self.borrow_index().get();
+        ret_borrow_position.amount += &borrow_amount;
+        ret_borrow_position.round = round;
+        ret_borrow_position.initial_borrow_index = borrow_index;
 
-        self.borrow_position(new_nonce).set(&borrow_position);
+        // self.borrow_position().insert(borrow_position);
 
         self.borrowed_amount()
-            .update(|total| *total += &borrow_amount_in_tokens);
+            .update(|total| *total += &borrow_amount);
 
-        self.reserves()
-            .update(|total| *total -= &borrow_amount_in_tokens);
+        self.reserves().update(|total| *total -= &borrow_amount);
 
-        self.send().direct(
-            &initial_caller,
-            &borrow_token_id,
-            new_nonce,
-            &borrow_amount_in_tokens,
-            &[],
-        );
-        self.send().direct(
-            &initial_caller,
-            &pool_token_id,
-            0,
-            &borrow_amount_in_tokens,
-            &[],
-        );
-        EsdtTokenPayment::new(borrow_token_id, new_nonce, borrow_amount_in_tokens)
+        self.send()
+            .direct_esdt(&initial_caller, &pool_token_id, 0, &borrow_amount);
+
+        ret_borrow_position
     }
 
     #[only_owner]
     #[payable("*")]
     #[endpoint]
-    fn withdraw(&self, initial_caller: ManagedAddress) {
-        let (amount, lend_token) = self.call_value().payment_token_pair();
-        let token_nonce = self.call_value().esdt_token_nonce();
-
-        require!(
-            lend_token == self.lend_token().get(),
-            "lend token not supported"
-        );
-
+    fn remove_collateral(
+        &self,
+        initial_caller: ManagedAddress,
+        amount: BigUint,
+        mut deposit_position: DepositPosition<Self::Api>,
+    ) -> DepositPosition<Self::Api> {
         let pool_asset = self.pool_asset().get();
-        let mut deposit = self.deposit_position(token_nonce).get();
+
+        self.require_non_zero_address(&initial_caller);
+        self.require_amount_greater_than_zero(&amount);
 
         self.update_interest_indexes();
 
+        // Withdrawal amount = initial_deposit + Interest
         let withdrawal_amount = self.compute_withdrawal_amount(
             &amount,
             &self.supply_index().get(),
-            &deposit.initial_supply_index,
+            &deposit_position.initial_supply_index,
         );
 
         self.reserves().update(|asset_reserve| {
@@ -187,209 +188,64 @@ pub trait LiquidityModule:
             *asset_reserve -= &withdrawal_amount;
         });
 
-        let interest = &withdrawal_amount - &amount;
-
-        self.rewards_reserves_accumulated_not_distributed()
-            .update(|rewards| {
-                require!(*rewards >= interest, "rewards accumulated not sufficient");
-
-                *rewards -= interest;
-            });
-
-        deposit.amount -= &amount;
-        if deposit.amount == 0 {
-            self.deposit_position(token_nonce).clear();
-        } else {
-            self.deposit_position(token_nonce).set(&deposit);
-        }
+        deposit_position.amount -= &amount;
 
         self.send()
-            .esdt_local_burn(&lend_token, token_nonce, &amount);
+            .direct_esdt(&initial_caller, &pool_asset, 0, &withdrawal_amount);
 
-        self.send()
-            .direct(&initial_caller, &pool_asset, 0, &withdrawal_amount, &[]);
-    }
-
-    #[only_owner]
-    #[payable("*")]
-    #[endpoint(addCollateral)]
-    fn add_collateral(&self, initial_caller: ManagedAddress, loan_to_value: BigUint) {
-        self.require_non_zero_address(&initial_caller);
-
-        let payments = self.call_value().all_esdt_transfers();
-        require!(
-            payments.len() == REPAY_PAYMENTS_LEN,
-            "Invalid number of payments"
-        );
-
-        let first_payment = payments.get(0);
-        let second_payment = payments.get(1);
-
-        require!(
-            first_payment.token_identifier == self.borrow_token().get(),
-            "First payment should be the borrow SFTs"
-        );
-
-        let borrow_token_id = &first_payment.token_identifier;
-        let borrow_token_amount = &first_payment.amount;
-        let borrow_token_nonce = first_payment.token_nonce;
-
-        require!(
-            !self.borrow_position(borrow_token_nonce).is_empty(),
-            "liquidated position"
-        );
-
-        let borrow_position = self.borrow_position(borrow_token_nonce).get();
-
-        require!(
-            borrow_token_amount == &borrow_position.borrowed_amount,
-            "Borrower should send all BTokens he has"
-        );
-
-        require!(
-            second_payment.token_identifier == borrow_position.collateral_token_id,
-            "Second payment should be Collateral Token ID"
-        );
-
-        let collateral_token_id = &second_payment.token_identifier;
-        let extra_collateral_amount = &second_payment.amount;
-        let collateral_data = self.get_token_price_data_lending(collateral_token_id);
-
-        let pool_token_id = self.pool_asset().get();
-        let pool_asset_data = self.get_token_price_data(&pool_token_id);
-
-        self.update_interest_indexes();
-
-        let total_collateral_amount = &borrow_position.lend_tokens.amount + extra_collateral_amount;
-
-        let new_collateral_amount_in_dollars = self.compute_borrowable_amount(
-            &total_collateral_amount,
-            &collateral_data.price,
-            &loan_to_value,
-            collateral_data.decimals,
-        );
-
-        let new_collateral_amount_in_tokens = (&new_collateral_amount_in_dollars
-            / &pool_asset_data.price)
-            * BigUint::from(10u64).pow(pool_asset_data.decimals as u32);
-
-        let round_no = self.blockchain().get_block_round();
-        let new_nonce =
-            self.mint_position_tokens(borrow_token_id, &new_collateral_amount_in_tokens);
-        let new_borrow_position = BorrowPosition::new(
-            round_no,
-            borrow_position.lend_tokens,
-            borrow_position.borrowed_amount,
-            collateral_token_id.clone(),
-            borrow_position.initial_borrow_index,
-        );
-
-        self.borrow_position(new_nonce).set(&new_borrow_position);
-
-        self.send()
-            .esdt_local_burn(borrow_token_id, borrow_token_nonce, borrow_token_amount);
-
-        self.send().direct(
-            &initial_caller,
-            borrow_token_id,
-            new_nonce,
-            &new_collateral_amount_in_tokens,
-            &[],
-        );
+        deposit_position
     }
 
     #[only_owner]
     #[payable("*")]
     #[endpoint]
-    fn repay(&self, initial_caller: ManagedAddress) {
+    fn repay(
+        &self,
+        initial_caller: ManagedAddress,
+        borrow_position: BorrowPosition<Self::Api>,
+    ) -> BorrowPosition<Self::Api> {
+        let (repay_asset, mut repay_amount) = self.call_value().single_fungible_esdt();
+        let pool_asset = self.pool_asset().get();
+
         self.require_non_zero_address(&initial_caller);
-
-        let payments = self.call_value().all_esdt_transfers();
+        self.require_amount_greater_than_zero(&repay_amount);
         require!(
-            payments.len() == REPAY_PAYMENTS_LEN,
-            "Invalid number of payments"
+            repay_asset == pool_asset,
+            "asset not supported for this liquidity pool"
         );
-
-        let first_payment = payments.get(0);
-        let second_payment = payments.get(1);
-
-        require!(
-            first_payment.token_identifier == self.borrow_token().get(),
-            "First payment should be the borrow SFTs"
-        );
-        require!(
-            second_payment.token_identifier == self.pool_asset().get(),
-            "Second payment should be this pool's asset"
-        );
-
-        let borrow_token_id = &first_payment.token_identifier;
-        let borrow_token_nonce = first_payment.token_nonce;
-        let borrow_token_amount = &first_payment.amount;
-
-        let asset_token_id = &second_payment.token_identifier;
-        let asset_amount = &second_payment.amount;
-
-        require!(
-            !self.borrow_position(borrow_token_nonce).is_empty(),
-            "liquidated position"
-        );
-        let mut borrow_position = self.borrow_position(borrow_token_nonce).get();
 
         self.update_interest_indexes();
+        let mut ret_borrow_position = self.update_borrows_with_debt(borrow_position);
 
-        let accumulated_debt =
-            self.get_debt_interest(borrow_token_amount, &borrow_position.initial_borrow_index);
-        let total_owed = borrow_token_amount + &accumulated_debt;
+        let total_owed = ret_borrow_position.amount.clone();
 
-        if asset_amount > &total_owed {
-            let extra_asset_paid = asset_amount - &total_owed;
+        if repay_amount > total_owed {
+            let extra_amount = &repay_amount - &total_owed;
             self.send()
-                .direct(&initial_caller, asset_token_id, 0, &extra_asset_paid, &[]);
+                .direct_esdt(&initial_caller, &repay_asset, 0, &extra_amount);
+            ret_borrow_position.amount -= repay_amount.clone();
+            repay_amount = total_owed;
         }
 
-        self.rewards_reserves_accumulated_not_distributed()
-            .update(|rewards| {
-                *rewards += &accumulated_debt;
-            });
-
-        let lend_token_amount_to_send_back: BigUint;
-        if self.is_full_repay(&borrow_position, borrow_token_amount) {
-            lend_token_amount_to_send_back = borrow_position.lend_tokens.amount;
-            self.borrow_position(borrow_token_nonce).clear();
-        } else {
-            lend_token_amount_to_send_back = self.rule_of_three(
-                &borrow_position.lend_tokens.amount,
-                borrow_token_amount,
-                &borrow_position.borrowed_amount,
-            );
-
-            require!(
-                lend_token_amount_to_send_back > 0,
-                "repay too little. lend tokens amount is zero"
-            );
-
-            borrow_position.borrowed_amount -= borrow_token_amount;
-            borrow_position.lend_tokens.amount -= &lend_token_amount_to_send_back;
-            self.borrow_position(borrow_token_nonce)
-                .set(&borrow_position);
-        }
+        ret_borrow_position.amount -= &repay_amount;
 
         self.borrowed_amount()
-            .update(|total| *total -= borrow_token_amount);
+            .update(|total| *total -= &repay_amount);
 
-        self.reserves().update(|total| *total += &total_owed);
+        self.reserves().update(|total| *total += &repay_amount);
+
+        ret_borrow_position
+    }
+
+    #[only_owner]
+    #[endpoint(sendTokens)]
+    fn send_tokens(&self, initial_caller: ManagedAddress, payment_amount: BigUint) {
+        let pool_asset = self.pool_asset().get();
 
         self.send()
-            .esdt_local_burn(borrow_token_id, borrow_token_nonce, borrow_token_amount);
-
-        self.send().direct(
-            &initial_caller,
-            &borrow_position.lend_tokens.token_id,
-            borrow_position.lend_tokens.nonce,
-            &lend_token_amount_to_send_back,
-            &[],
-        );
+            .direct_esdt(&initial_caller, &pool_asset, 0, &payment_amount);
     }
+    /*
 
     #[only_owner]
     #[payable("*")]
@@ -397,88 +253,55 @@ pub trait LiquidityModule:
     fn liquidate(
         &self,
         initial_caller: ManagedAddress,
-        borrow_position_nonce: u64,
+        liquidatee_account_nonce: u64,
         liquidation_bonus: BigUint,
-    ) -> TokenAmountPair<Self::Api> {
-        let (asset_amount, asset_token_id) = self.call_value().payment_token_pair();
+    ) {
+        let (liquidator_asset, liquidator_asset_amount) = self.call_value().single_fungible_esdt();
 
         self.require_non_zero_address(&initial_caller);
-        self.require_amount_greater_than_zero(&asset_amount);
+        self.require_amount_greater_than_zero(&liquidator_asset_amount);
 
         require!(
-            asset_token_id == self.pool_asset().get(),
+            liquidator_asset == self.pool_asset().get(),
             "asset is not supported by this pool"
         );
 
-        require!(
-            !self.borrow_position(borrow_position_nonce).is_empty(),
-            "position was repaid or already liquidated"
-        );
+        // let collateral_value_in_dollars = self.get_collateral_available(account_position);
+        // let collateral_amount_in_dollars = self.get_collateral_available(account_position);
+        // let borrowed_value_in_dollars = self.get_total_borrowed_amount(account_position);
 
-        let borrow_position = self.borrow_position(borrow_position_nonce).get();
-        let collateral_token_id = borrow_position.collateral_token_id.clone();
+        // let liquidation_threshold = self.liquidation_threshold().get();
+        // let health_factor = self.compute_health_factor(
+        //     &collateral_amount_in_dollars,
+        //     &borrowed_value_in_dollars,
+        //     &liquidation_threshold,
+        // );
 
-        let base_big = BigUint::from(10u64);
+        // let bp = self.get_base_precision();
 
-        let asset_price_data = self.get_token_price_data(&asset_token_id);
-        let asset_price_decs = base_big.pow(asset_price_data.decimals as u32);
-
-        let collateral_price_data = self.get_token_price_data_lending(&collateral_token_id);
-        let collateral_price_decs = base_big.pow(collateral_price_data.decimals as u32);
-
-        let collateral_amount = borrow_position.lend_tokens.amount.clone();
-        let collateral_value_in_dollars =
-            (collateral_amount * collateral_price_data.price.clone()) / collateral_price_decs;
-
-        let borrowed_value_in_dollars =
-            (&asset_amount * &asset_price_data.price) / asset_price_decs;
-
-        let liquidation_threshold = self.liquidation_threshold().get();
-        let health_factor = self.compute_health_factor(
-            &collateral_value_in_dollars,
-            &borrowed_value_in_dollars,
-            &liquidation_threshold,
-        );
-
-        let bp = self.get_base_precision();
-
-        require!(health_factor < 1, "health not low enough for liquidation");
-        require!(
-            asset_amount >= collateral_value_in_dollars * liquidation_threshold / &bp,
-            "insufficient funds for liquidation"
-        );
+        // require!(health_factor < 1, "health not low enough for liquidation");
+        // require!(
+        //     asset_amount >= collateral_value_in_dollars * liquidation_threshold / &bp,
+        //     "insufficient funds for liquidation"
+        // );
 
         self.update_interest_indexes();
 
+        // Total borrowed amount is covered/paid by the liquidator with asset_amount
         self.borrowed_amount()
-            .update(|total| *total -= &borrow_position.borrowed_amount);
+            .update(|total| *total -= &asset_amount);
 
-        self.reserves().update(|total| *total += &asset_amount);
+        self.reserves().update(|total| *total += &liquidator_asset_amount);
 
-        self.borrow_position(borrow_position_nonce).clear();
+        let amount_to_return_in_dollars = (asset_amount * (&bp + &liquidation_bonus)) / bp;
 
-        let lend_amount_to_return_in_dollars = (asset_amount * (&bp + &liquidation_bonus)) / bp;
-        let lend_amount_to_return = (&lend_amount_to_return_in_dollars * &asset_price_data.price)
-            / &collateral_price_data.price;
-        let lend_tokens = borrow_position.lend_tokens.clone();
-
-        require!(
-            lend_tokens.amount >= lend_amount_to_return,
-            "total amount to return bigger than position"
+        // Go through all DepositPositions and send amount_to_return_in_dollars to Liquidator
+        self.send_amount_in_dollars_to_liquidator(
+            initial_caller,
+            account_position,
+            amount_to_return_in_dollars,
         );
-
-        self.send().direct(
-            &initial_caller,
-            &borrow_position.lend_tokens.token_id,
-            borrow_position.lend_tokens.nonce,
-            &lend_amount_to_return,
-            &[],
-        );
-
-        TokenAmountPair::new(
-            lend_tokens.token_id,
-            lend_tokens.nonce,
-            lend_amount_to_return,
-        )
     }
+
+    */
 }

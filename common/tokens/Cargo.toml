@@ -1,0 +1,11 @@
+[package]
+name = "common-tokens"
+version = "0.0.0"
+authors = [ "CostinCarabas <costin.carabas@gmail.com>",]
+edition = "2018"
+
+[lib]
+path = "src/tokens.rs"
+
+[dependencies.elrond-wasm]
+version = "0.34.1"

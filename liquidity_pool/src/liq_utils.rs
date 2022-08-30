@@ -1,96 +1,14 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use crate::{math, storage};
-use price_aggregator_proxy::AggregatorResult;
+use crate::{liq_math, liq_storage};
 
 use common_structs::*;
 
-const TOKEN_ID_SUFFIX_LEN: usize = 7; // "dash" + 6 random bytes
-const LEND_TOKEN_NAME: &[u8] = b"IntBearing";
-const DEBT_TOKEN_NAME: &[u8] = b"DebtBearing";
-const DOLLAR_TICKER: &[u8] = b"USD";
-
 #[elrond_wasm::module]
 pub trait UtilsModule:
-    math::MathModule + storage::StorageModule + price_aggregator_proxy::PriceAggregatorModule
+    liq_math::MathModule + liq_storage::StorageModule + price_aggregator_proxy::PriceAggregatorModule
 {
-    fn prepare_issue_data(&self, prefix: u8, ticker: ManagedBuffer) -> IssueData<Self::Api> {
-        let mut prefixed_ticker = ManagedBuffer::new_from_bytes(&[prefix]);
-        prefixed_ticker.append(&ticker);
-
-        let mut issue_data = IssueData {
-            name: ManagedBuffer::new(),
-            ticker: prefixed_ticker,
-            is_empty_ticker: true,
-        };
-
-        if prefix == LEND_TOKEN_PREFIX {
-            let mut name = ManagedBuffer::new_from_bytes(LEND_TOKEN_NAME);
-            name.append(&ticker);
-
-            issue_data.name = name;
-            issue_data.is_empty_ticker = self.lend_token().is_empty();
-        } else if prefix == BORROW_TOKEN_PREFIX {
-            let mut name = ManagedBuffer::new_from_bytes(DEBT_TOKEN_NAME);
-            name.append(&ticker);
-
-            issue_data.name = name;
-            issue_data.is_empty_ticker = self.borrow_token().is_empty();
-        }
-
-        issue_data
-    }
-
-    fn get_token_price_data(&self, token_id: &TokenIdentifier) -> AggregatorResult<Self::Api> {
-        let from_ticker = self.get_token_ticker(token_id);
-        let result = self
-            .get_full_result_for_pair(from_ticker, ManagedBuffer::new_from_bytes(DOLLAR_TICKER));
-
-        match result {
-            Some(r) => r,
-            None => sc_panic!("failed to get token price"),
-        }
-    }
-
-    fn get_token_price_data_lending(
-        &self,
-        token_id: &TokenIdentifier,
-    ) -> AggregatorResult<Self::Api> {
-        let from_ticker = self.get_token_ticker_from_lending(token_id);
-        let result = self
-            .get_full_result_for_pair(from_ticker, ManagedBuffer::new_from_bytes(DOLLAR_TICKER));
-
-        match result {
-            Some(r) => r,
-            None => sc_panic!("failed to get token price"),
-        }
-    }
-
-    fn get_token_ticker(&self, token_id: &TokenIdentifier) -> ManagedBuffer {
-        if token_id.is_egld() {
-            return ManagedBuffer::new_from_bytes(b"EGLD");
-        }
-        let as_buffer = token_id.as_managed_buffer();
-        let ticker_start_index = 0;
-        let ticker_end_index = as_buffer.len() - TOKEN_ID_SUFFIX_LEN;
-
-        as_buffer
-            .copy_slice(ticker_start_index, ticker_end_index)
-            .unwrap()
-    }
-
-    // Each lent/borrowed token has an L/B prefix, so we start from index 1
-    fn get_token_ticker_from_lending(&self, token_id: &TokenIdentifier) -> ManagedBuffer {
-        let as_buffer = token_id.as_managed_buffer();
-        let ticker_start_index = 1;
-        let ticker_end_index = as_buffer.len() - TOKEN_ID_SUFFIX_LEN - 1;
-
-        as_buffer
-            .copy_slice(ticker_start_index, ticker_end_index)
-            .unwrap()
-    }
-
     #[view(getCapitalUtilisation)]
     fn get_capital_utilisation(&self) -> BigUint {
         let borrowed_amount = self.borrowed_amount().get();
@@ -207,6 +125,6 @@ pub trait UtilsModule:
         borrow_position: &BorrowPosition<Self::Api>,
         borrow_token_repaid: &BigUint,
     ) -> bool {
-        &borrow_position.borrowed_amount == borrow_token_repaid
+        &borrow_position.amount == borrow_token_repaid
     }
 }
