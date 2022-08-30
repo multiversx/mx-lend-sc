@@ -184,22 +184,12 @@ pub trait LiquidityModule:
             &self.supply_index().get(),
             &deposit_position.initial_supply_index,
         );
-        sc_print!(
-            "self.reserves = {}, withdrawal_amount = {}",
-            self.reserves().get(),
-            withdrawal_amount
-        );
 
         self.reserves().update(|asset_reserve| {
             require!(*asset_reserve >= withdrawal_amount, "insufficient funds");
             *asset_reserve -= &withdrawal_amount;
         });
 
-        sc_print!(
-            "supplied_amount = {}, withdrawal_amount = {}",
-            self.supplied_amount().get(),
-            &withdrawal_amount
-        );
         self.supplied_amount().update(|asset_supplied_amount| {
             require!(*asset_supplied_amount >= amount, "insufficient funds");
             *asset_supplied_amount -= &amount;
@@ -238,12 +228,6 @@ pub trait LiquidityModule:
         );
         let amount_without_interest = &received_amount - &accumulated_debt;
 
-        sc_print!(
-            "amount_without_interest {} = received_amount ({}) - &accumulated_debt({})",
-            &amount_without_interest,
-            &received_amount,
-            &accumulated_debt
-        );
         // self.update_interest_indexes();
         let mut ret_borrow_position = self.update_borrows_with_debt(borrow_position);
 
@@ -259,12 +243,6 @@ pub trait LiquidityModule:
             ret_borrow_position.amount -= &principal_amount;
         }
 
-        sc_print!(
-            "borrowed_amount = {}, received_amount = {}, accumulated_debt = {}",
-            self.borrowed_amount().get(),
-            &received_amount,
-            &accumulated_debt
-        );
         self.borrowed_amount()
             .update(|total| *total -= amount_without_interest);
 

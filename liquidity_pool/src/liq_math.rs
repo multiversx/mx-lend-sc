@@ -46,11 +46,7 @@ pub trait MathModule {
         if *total_reserves == BigUint::zero() {
             total_reserves.clone()
         } else {
-            let a = &(borrowed_amount * &bp) / total_reserves;
-
-            sc_print!("borrowed_amount ({}) * BP ({}) / total_reserves ({}) = compute_capital_utilisation = {}",borrowed_amount, bp, total_reserves, a);
-
-            a
+            &(borrowed_amount * &bp) / total_reserves
         }
     }
 
@@ -63,11 +59,6 @@ pub trait MathModule {
         let bp = BigUint::from(BP);
         let interest = (current_supply_index - initial_supply_index) * amount / bp;
 
-        sc_print!(
-            "current_supply_index = {}, initial_supply_index = {}",
-            current_supply_index,
-            initial_supply_index
-        );
         amount + &interest
     }
 

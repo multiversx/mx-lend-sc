@@ -46,7 +46,10 @@ pub trait LendingUtilsModule:
         token_id: TokenIdentifier,
     ) -> DepositPosition<Self::Api> {
         match self.deposit_positions(account_position).get(&token_id) {
-            Some(dp) => dp,
+            Some(dp) => {
+                self.deposit_positions(account_position).remove(&token_id);
+                dp
+            }
             None => DepositPosition::new(
                 token_id,
                 BigUint::zero(),
