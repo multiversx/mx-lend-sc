@@ -12,6 +12,7 @@ pub mod utils;
 
 pub use common_structs::*;
 pub use common_tokens::*;
+
 use elrond_wasm::elrond_codec::Empty;
 use liquidity_pool::liquidity::ProxyTrait as _;
 
@@ -32,21 +33,38 @@ pub trait LendingPool:
         self.liq_pool_template_address().set(&lp_template_address);
     }
 
-    #[endpoint]
+    #[only_owner]
+    #[payable("EGLD")]
+    #[endpoint(registerAccountToken)]
+    fn register_account_token(
+        &self,
+        token_name: ManagedBuffer,
+        ticker: ManagedBuffer,
+    ) {
+        let payment_amount = self.call_value().egld_value();
+        self.account_token().issue_and_set_all_roles(
+            EsdtTokenType::NonFungible,
+            payment_amount,
+            token_name,
+            ticker,
+            1,
+            None,
+        );
+    }
+
+    #[endpoint(enterMarket)]
     fn enter_market(&self) -> u64 {
         let caller = self.blockchain().get_caller();
         let nft_account_amount = BigUint::from(1u64);
-        let nft_token_payment =
-            self.account_token()
-                .nft_create_and_send(&caller, nft_account_amount, &Empty);
 
+        let nft_token_payment = self.account_token().nft_create_and_send(&caller, nft_account_amount, &Empty);
         self.account_positions()
             .insert(nft_token_payment.token_nonce);
 
         nft_token_payment.token_nonce
     }
 
-    #[endpoint]
+    #[endpoint(exitMarket)]
     fn exit_market(&self) {
         let (_nft_account_token_id, nft_account_nonce, nft_account_amount) =
             self.call_value().single_esdt().into_tuple();

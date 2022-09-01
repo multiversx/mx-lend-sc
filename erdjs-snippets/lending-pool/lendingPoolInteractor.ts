@@ -144,6 +144,34 @@ export class LendingPoolInteractor {
     }
 
 
+
+    async registerAccountToken(user: ITestUser, tokenIdentifier: string, ticker: string): Promise<ReturnCode> {
+        console.log(`LendingPoolInteractor.issueLend(): address = ${user.address}`);
+
+        // Prepare the interaction
+        let interaction = <Interaction>this.contract.methods
+            .registerAccountToken([tokenIdentifier, ticker])
+            .withGasLimit(80000000)
+            .withValue(TokenPayment.egldFromAmount(0.05))
+            .withNonce(user.account.getNonceThenIncrement())
+            .withChainID(this.networkConfig.ChainID);
+
+        // Let's check the interaction, then build the transaction object.
+        let transaction = interaction.check().buildTransaction();
+
+        // Let's sign the transaction. For dApps, use a wallet provider instead.
+        await user.signer.sign(transaction);
+
+        // Let's broadcast the transaction and await its completion:
+        await this.networkProvider.sendTransaction(transaction);
+        let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
+
+        // In the end, parse the results:
+        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+        return returnCode;
+    }
+
+
     async issueLend(user: ITestUser, tokenIdentifier: string): Promise<ReturnCode> {
         console.log(`LendingPoolInteractor.issueLend(): address = ${user.address}`);
 
@@ -292,6 +320,34 @@ export class LendingPoolInteractor {
         // In the end, parse the results:
         let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
         return returnCode;
+    }
+
+    async enter_market(user: ITestUser): Promise<{ returnCode: ReturnCode, accountNonce: number }> {
+        console.log(`LendingPoolInteractor.enter_market(): user = ${user.address}}`);
+
+        // Prepare the interaction
+        let interaction = <Interaction>this.contract.methods
+            .enterMarket([])
+            .withGasLimit(15000000)
+            .withNonce(user.account.getNonceThenIncrement())
+            .withChainID(this.networkConfig.ChainID);
+
+        // Let's check the interaction, then build the transaction object.
+        let transaction = interaction.check().buildTransaction();
+
+        // Let's sign the transaction. For dApps, use a wallet provider instead.
+        await user.signer.sign(transaction);
+
+        // Let's broadcast the transaction and await its completion:
+        await this.networkProvider.sendTransaction(transaction);
+        let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
+
+        // In the end, parse the results:
+        let { returnCode, firstValue } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+
+        let accountNonce: number = +(<Struct>firstValue).getFieldValue("token_nonce").toNumber();
+
+        return { returnCode, accountNonce };
     }
 
     async deposit(user: ITestUser, tokenPayment: TokenPayment): Promise<{ returnCode: ReturnCode, depositNonce: number }> {

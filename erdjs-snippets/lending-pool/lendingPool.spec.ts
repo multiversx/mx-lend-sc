@@ -84,11 +84,25 @@ describe("lending snippet", async function () {
         await session.saveAddress({name: "lendingAddr", address: address});
     });
 
+    it("Issue Account Token", async function () {
+        this.timeout(FiveMinutesInMilliseconds);
+        this.retries(5);
+
+        await session.syncUsers([whale]);
+
+        // let token = await session.loadToken("tokenABC");
+        let address = await session.loadAddress("lendingAddr");
+        let interactor = await createLendingInteractor(session, address);
+
+        // Deploy dummy liquidity pool
+        let returnCode = await interactor.registerAccountToken(whale, "LAccount", "LACC");
+        assert.isTrue(returnCode.isSuccess());
+        
+    });
+
     it("Set price aggregator for Liquidity Pools", async function () {
         this.timeout(FiveMinutesInMilliseconds);
         await session.syncUsers([whale, firstUser, secondUser]);
-
-
 
         let priceAggregatorInteractor = await createPriceAggregatorInteractor(session);
         let { address: priceAggregatorAddress, returnCode: returnCode } = await priceAggregatorInteractor.deployAggregator(whale);
@@ -113,45 +127,46 @@ describe("lending snippet", async function () {
         assert.isTrue(isSuccess);
     });
 
-    it("Issue Lend Tokens", async function () {
-        this.timeout(FiveMinutesInMilliseconds);
-        await session.syncUsers([whale]);
+    // it("Issue Lend Tokens", async function () {
+    //     this.timeout(FiveMinutesInMilliseconds);
+    //     await session.syncUsers([whale]);
 
-        let isSuccess = await helperIssueLendToken(session, whale, "tokenABC");
-        assert.isTrue(isSuccess);
+    //     let isSuccess = await helperIssueLendToken(session, whale, "tokenABC");
+    //     assert.isTrue(isSuccess);
 
-        isSuccess = await helperIssueLendToken(session, whale, "tokenXYZ");
-        assert.isTrue(isSuccess);
-    });
+    //     isSuccess = await helperIssueLendToken(session, whale, "tokenXYZ");
+    //     assert.isTrue(isSuccess);
+    // });
 
-    it("Issue Borrow Tokens ", async function () {
-        this.timeout(FiveMinutesInMilliseconds);
-        await session.syncUsers([whale]);
+    // it("Issue Borrow Tokens ", async function () {
+    //     this.timeout(FiveMinutesInMilliseconds);
+    //     await session.syncUsers([whale]);
 
-        let isSuccess = await helperIssueBorrowToken(session, whale, "tokenABC");
-        assert.isTrue(isSuccess);
+    //     let isSuccess = await helperIssueBorrowToken(session, whale, "tokenABC");
+    //     assert.isTrue(isSuccess);
 
-        isSuccess = await helperIssueBorrowToken(session, whale, "tokenXYZ");
-        assert.isTrue(isSuccess);
-    });
+    //     isSuccess = await helperIssueBorrowToken(session, whale, "tokenXYZ");
+    //     assert.isTrue(isSuccess);
+    // });
 
     it("Setup Lending Pool", async function () {
         this.timeout(FiveMinutesInMilliseconds);
         this.retries(5);
+        let isSuccess;
 
         await session.syncUsers([whale]);
 
-        let isSuccess = await helperSetLendRoles(session, whale, "tokenABC");
-        assert.isTrue(isSuccess);
+        // let isSuccess = await helperSetLendRoles(session, whale, "tokenABC");
+        // assert.isTrue(isSuccess);
 
-        isSuccess = await helperSetLendRoles(session, whale, "tokenXYZ");
-        assert.isTrue( isSuccess);
+        // isSuccess = await helperSetLendRoles(session, whale, "tokenXYZ");
+        // assert.isTrue( isSuccess);
 
-        isSuccess = await helperSetBorrowRoles(session, whale, "tokenABC");
-        assert.isTrue(isSuccess);
+        // isSuccess = await helperSetBorrowRoles(session, whale, "tokenABC");
+        // assert.isTrue(isSuccess);
 
-        isSuccess = await helperSetBorrowRoles(session, whale, "tokenXYZ");
-        assert.isTrue(isSuccess);
+        // isSuccess = await helperSetBorrowRoles(session, whale, "tokenXYZ");
+        // assert.isTrue(isSuccess);
 
         isSuccess = await helperSetAssetLoanToValue(session, whale, "tokenABC");
         assert.isTrue(isSuccess);
@@ -170,6 +185,36 @@ describe("lending snippet", async function () {
 
         isSuccess = await helperSetAggregatorForLP(session, whale, "tokenXYZ");
 
+    });
+
+    it("enter market First User", async function () {
+        this.timeout(FiveMinutesInMilliseconds);
+        
+        await session.syncUsers([whale, firstUser]);
+
+        // let tokenABC = await session.loadToken("tokenABC");
+        let address = await session.loadAddress("lendingAddr");
+        let interactor = await createLendingInteractor(session, address);
+        // let paymentABC = TokenPayment.fungibleFromAmount(tokenABC.identifier, "20", tokenABC.decimals);
+        let { returnCode: returnCodeDeposit, accountNonce: accountNonceFirstUser } = await interactor.enter_market(firstUser);
+        assert.isTrue(returnCodeDeposit.isSuccess());
+
+        session.saveBreadcrumb({name: "accountNonceFirstUser", value: accountNonceFirstUser})
+    });
+
+    it("enter market Second User", async function () {
+        this.timeout(FiveMinutesInMilliseconds);
+        
+        await session.syncUsers([whale, secondUser]);
+
+        let tokenABC = await session.loadToken("tokenABC");
+        let address = await session.loadAddress("lendingAddr");
+        let interactor = await createLendingInteractor(session, address);
+        let paymentABC = TokenPayment.fungibleFromAmount(tokenABC.identifier, "20", tokenABC.decimals);
+        let { returnCode: returnCodeDeposit, accountNonce: accountNonceSecondUser } = await interactor.enter_market(secondUser);
+        assert.isTrue(returnCodeDeposit.isSuccess());
+
+        session.saveBreadcrumb({name: "accountNonceSecondUser", value: accountNonceSecondUser})
     });
 
     it("deposit token ABC", async function () {
