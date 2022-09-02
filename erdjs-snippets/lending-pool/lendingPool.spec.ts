@@ -37,30 +37,30 @@ describe("lending snippet", async function () {
         await createAirdropService(session).sendToEachUser(whale, [firstUser, secondUser], [payment]);
     });
 
-    it("Issue Pool Token ABC", async function () {
+    it("Issue Pool Token USDC", async function () {
         this.timeout(FiveMinutesInMilliseconds);
         this.retries(5);
 
         let interactor = await createESDTInteractor(session);
         await session.syncUsers([whale]);
-        let token = await interactor.issueFungibleToken(whale, { name: "ABC", ticker: "ABC", decimals: 18, supply: "1000000000000000000000" })
-        await session.saveToken({ name: "tokenABC", token: token });
+        let token = await interactor.issueFungibleToken(whale, { name: "USDC", ticker: "USD", decimals: 18, supply: "1000000000000000000000" })
+        await session.saveToken({ name: "tokenUSD", token: token });
     });
 
-    it("Issue Pool Token XYZ", async function () {
+    it("Issue Pool Token EGLD", async function () {
         this.timeout(FiveMinutesInMilliseconds);
         this.retries(5);
 
         let interactor = await createESDTInteractor(session);
         await session.syncUsers([whale]);
-        let token = await interactor.issueFungibleToken(whale, { name: "XYZ", ticker: "XYZ", decimals: 18, supply: "1000000000000000000000" })
-        await session.saveToken({ name: "tokenXYZ", token: token });
+        let token = await interactor.issueFungibleToken(whale, { name: "EGLD", ticker: "EGLD", decimals: 18, supply: "1000000000000000000000" })
+        await session.saveToken({ name: "tokenEGLD", token: token });
     });
 
     it("airdrop pool_tokens to users", async function () {
         this.timeout(FiveMinutesInMilliseconds);
-        await helperAirdropTokens(session, whale, firstUser, secondUser, "tokenABC");
-        await helperAirdropTokens(session, whale, firstUser, secondUser, "tokenXYZ");
+        await helperAirdropTokens(session, whale, firstUser, secondUser, "tokenUSD");
+        await helperAirdropTokens(session, whale, firstUser, secondUser, "tokenEGLD");
 
     });
 
@@ -71,7 +71,7 @@ describe("lending snippet", async function () {
 
         await session.syncUsers([whale]);
 
-        let token = await session.loadToken("tokenABC");
+        let token = await session.loadToken("tokenUSD");
         let interactor = await createLendingInteractor(session);
 
         // Deploy dummy liquidity pool
@@ -90,7 +90,6 @@ describe("lending snippet", async function () {
 
         await session.syncUsers([whale]);
 
-        // let token = await session.loadToken("tokenABC");
         let address = await session.loadAddress("lendingAddr");
         let interactor = await createLendingInteractor(session, address);
 
@@ -108,8 +107,8 @@ describe("lending snippet", async function () {
         let { address: priceAggregatorAddress, returnCode: returnCode } = await priceAggregatorInteractor.deployAggregator(whale);
 
         await priceAggregatorInteractor.unpausePoolAggregator(whale);
-        await priceAggregatorInteractor.submitPriceAggregator(whale, "ABC", "USD", 7000000000000000000);
-        await priceAggregatorInteractor.submitPriceAggregator(whale, "XYZ", "USD", 9000000000000000000);
+        await priceAggregatorInteractor.submitPriceAggregator(whale, "USDC", "USD", 1000000000000000000);
+        await priceAggregatorInteractor.submitPriceAggregator(whale, "EGLD", "EGLD", 50000000000000000000);
         await session.saveAddress({name: "priceAggregatorAddress", address: priceAggregatorAddress});
     });
 
@@ -120,34 +119,12 @@ describe("lending snippet", async function () {
 
         await session.syncUsers([whale]);
 
-        let isSuccess = await helperAddLiquidityPool(session, whale, "tokenABC");
+        let isSuccess = await helperAddLiquidityPool(session, whale, "tokenUSD");
         assert.isTrue(isSuccess);
 
-        isSuccess = await helperAddLiquidityPool(session, whale, "tokenXYZ");
+        isSuccess = await helperAddLiquidityPool(session, whale, "tokenEGLD");
         assert.isTrue(isSuccess);
     });
-
-    // it("Issue Lend Tokens", async function () {
-    //     this.timeout(FiveMinutesInMilliseconds);
-    //     await session.syncUsers([whale]);
-
-    //     let isSuccess = await helperIssueLendToken(session, whale, "tokenABC");
-    //     assert.isTrue(isSuccess);
-
-    //     isSuccess = await helperIssueLendToken(session, whale, "tokenXYZ");
-    //     assert.isTrue(isSuccess);
-    // });
-
-    // it("Issue Borrow Tokens ", async function () {
-    //     this.timeout(FiveMinutesInMilliseconds);
-    //     await session.syncUsers([whale]);
-
-    //     let isSuccess = await helperIssueBorrowToken(session, whale, "tokenABC");
-    //     assert.isTrue(isSuccess);
-
-    //     isSuccess = await helperIssueBorrowToken(session, whale, "tokenXYZ");
-    //     assert.isTrue(isSuccess);
-    // });
 
     it("Setup Lending Pool", async function () {
         this.timeout(FiveMinutesInMilliseconds);
@@ -156,34 +133,22 @@ describe("lending snippet", async function () {
 
         await session.syncUsers([whale]);
 
-        // let isSuccess = await helperSetLendRoles(session, whale, "tokenABC");
-        // assert.isTrue(isSuccess);
-
-        // isSuccess = await helperSetLendRoles(session, whale, "tokenXYZ");
-        // assert.isTrue( isSuccess);
-
-        // isSuccess = await helperSetBorrowRoles(session, whale, "tokenABC");
-        // assert.isTrue(isSuccess);
-
-        // isSuccess = await helperSetBorrowRoles(session, whale, "tokenXYZ");
-        // assert.isTrue(isSuccess);
-
-        isSuccess = await helperSetAssetLoanToValue(session, whale, "tokenABC");
+        isSuccess = await helperSetAssetLoanToValue(session, whale, "tokenUSD");
         assert.isTrue(isSuccess);
 
-        isSuccess = await helperSetAssetLoanToValue(session, whale, "tokenXYZ");
+        isSuccess = await helperSetAssetLoanToValue(session, whale, "tokenEGLD");
         assert.isTrue(isSuccess);
 
-        isSuccess = await helperSetAssetLiquidationBonus(session, whale, "tokenABC");
+        isSuccess = await helperSetAssetLiquidationBonus(session, whale, "tokenUSD");
         assert.isTrue(isSuccess);
 
-        isSuccess = await helperSetAssetLiquidationBonus(session, whale, "tokenXYZ");
+        isSuccess = await helperSetAssetLiquidationBonus(session, whale, "tokenEGLD");
         assert.isTrue(isSuccess);
 
-        isSuccess = await helperSetAggregatorForLP(session, whale, "tokenABC");
+        isSuccess = await helperSetAggregatorForLP(session, whale, "tokenUSD");
         assert.isTrue(isSuccess);
 
-        isSuccess = await helperSetAggregatorForLP(session, whale, "tokenXYZ");
+        isSuccess = await helperSetAggregatorForLP(session, whale, "tokenEGLD");
 
     });
 
@@ -192,14 +157,13 @@ describe("lending snippet", async function () {
         
         await session.syncUsers([whale, firstUser]);
 
-        // let tokenABC = await session.loadToken("tokenABC");
         let address = await session.loadAddress("lendingAddr");
         let interactor = await createLendingInteractor(session, address);
-        // let paymentABC = TokenPayment.fungibleFromAmount(tokenABC.identifier, "20", tokenABC.decimals);
-        let { returnCode: returnCodeDeposit, accountNonce: accountNonceFirstUser } = await interactor.enter_market(firstUser);
+        let { returnCode: returnCodeDeposit, accountNonce: accountNonceFirstUser, accountTokenId: accountTokenIdFirstUser } = await interactor.enter_market(firstUser);
         assert.isTrue(returnCodeDeposit.isSuccess());
 
         session.saveBreadcrumb({name: "accountNonceFirstUser", value: accountNonceFirstUser})
+        session.saveBreadcrumb({name: "accountTokenIdFirstUser", value: accountTokenIdFirstUser})
     });
 
     it("enter market Second User", async function () {
@@ -207,64 +171,72 @@ describe("lending snippet", async function () {
         
         await session.syncUsers([whale, secondUser]);
 
-        let tokenABC = await session.loadToken("tokenABC");
         let address = await session.loadAddress("lendingAddr");
         let interactor = await createLendingInteractor(session, address);
-        let paymentABC = TokenPayment.fungibleFromAmount(tokenABC.identifier, "20", tokenABC.decimals);
-        let { returnCode: returnCodeDeposit, accountNonce: accountNonceSecondUser } = await interactor.enter_market(secondUser);
+        let { returnCode: returnCodeDeposit, accountNonce: accountNonceSecondUser, accountTokenId: accountTokenIdSecondUser } = await interactor.enter_market(secondUser);
         assert.isTrue(returnCodeDeposit.isSuccess());
 
         session.saveBreadcrumb({name: "accountNonceSecondUser", value: accountNonceSecondUser})
+        session.saveBreadcrumb({name: "accountTokenIdSecondUser", value: accountTokenIdSecondUser})
+
     });
 
-    it("deposit token ABC", async function () {
+    it("addCollateral token USD", async function () {
         this.timeout(FiveMinutesInMilliseconds);
         
         await session.syncUsers([whale, firstUser]);
 
-        let tokenABC = await session.loadToken("tokenABC");
+        let tokenUSD = await session.loadToken("tokenUSD");
         let address = await session.loadAddress("lendingAddr");
         let interactor = await createLendingInteractor(session, address);
-        let paymentABC = TokenPayment.fungibleFromAmount(tokenABC.identifier, "20", tokenABC.decimals);
-        let { returnCode: returnCodeDeposit, depositNonce: depositNonceABC } = await interactor.deposit(firstUser, paymentABC);
-        assert.isTrue(returnCodeDeposit.isSuccess());
+        let depositNonceUSDC = await session.loadBreadcrumb("accountNonceFirstUser");
+        let accountTokenIdFirstUser = await session.loadBreadcrumb("accountTokenIdFirstUser");
 
-        session.saveBreadcrumb({name: "depositNonceABC", value: depositNonceABC})
+        let paymentAccountNFT = TokenPayment.nonFungible(accountTokenIdFirstUser, depositNonceUSDC);
+        let paymentUSD = TokenPayment.fungibleFromAmount(tokenUSD.identifier, "20", tokenUSD.decimals);
+        // let payment = [paymentAccountNFT, paymentUSD];
+
+        let returnCode = await interactor.addCollateral(firstUser, paymentAccountNFT, paymentUSD);
+        assert.isTrue(returnCode.isSuccess());
     });
 
 
-    it("deposit token XYZ", async function () {
+    it("addCollateral token EGLD", async function () {
         this.timeout(FiveMinutesInMilliseconds);
-        await session.syncUsers([whale, firstUser]);
+        await session.syncUsers([whale, secondUser]);
         
-        let tokenXYZ = await session.loadToken("tokenXYZ");
+        let tokenEGLD = await session.loadToken("tokenEGLD");
         let address = await session.loadAddress("lendingAddr");
         let interactor = await createLendingInteractor(session, address);
-        let paymentXYZ = TokenPayment.fungibleFromAmount(tokenXYZ.identifier, "20", tokenXYZ.decimals);
-        let { returnCode: returnCodeDeposit, depositNonce: depositNonceXYZ } = await interactor.deposit(firstUser, paymentXYZ);
-        assert.isTrue(returnCodeDeposit.isSuccess());
+        let depositNonceEGLD = await session.loadBreadcrumb("accountNonceSecondUser");
+        let accountTokenIdSecondUser = await session.loadBreadcrumb("accountTokenIdSecondUser");
 
-        session.saveBreadcrumb({name: "depositNonceXYZ", value: depositNonceXYZ})
+        let paymentAccountNFT = TokenPayment.nonFungible(accountTokenIdSecondUser, depositNonceEGLD);
+        let paymentUSD = TokenPayment.fungibleFromAmount(tokenEGLD.identifier, "10", tokenEGLD.decimals);
+        // let payment = [paymentAccountNFT, paymentUSD];
+
+        let returnCode = await interactor.addCollateral(secondUser, paymentAccountNFT, paymentUSD);
+        assert.isTrue(returnCode.isSuccess());
     });
 
-    it("withdraw token XYZ", async function () {
+    it("withdraw token EGLD", async function () {
         this.timeout(FiveMinutesInMilliseconds);
         
         await session.syncUsers([firstUser, secondUser]);
 
         let lendingAddress = await session.loadAddress("lendingAddr");
-        let depositNonceXYZ = await session.loadBreadcrumb("depositNonceXYZ");
+        let depositNonceEGLD = await session.loadBreadcrumb("depositNonceEGLD");
 
         let lendingInteractor = await createLendingInteractor(session, lendingAddress);
 
-        let tokenXYZ = await session.loadToken("tokenXYZ");
-        let liquidityAddress = await lendingInteractor.getLiquidityAddress(tokenXYZ.identifier);
-        let liquidityInteractorXYZ = await createLiquidityInteractor(session, liquidityAddress)
-        let lendTokenXYZ = await liquidityInteractorXYZ.getLendToken();
+        let tokenEGLD = await session.loadToken("tokenEGLD");
+        let liquidityAddress = await lendingInteractor.getLiquidityAddress(tokenEGLD.identifier);
+        let liquidityInteractorEGLD = await createLiquidityInteractor(session, liquidityAddress)
+        let lendTokenEGLD = await liquidityInteractorEGLD.getLendToken();
 
-        let paymentXYZ = TokenPayment.metaEsdtFromAmount(lendTokenXYZ, depositNonceXYZ, 7, tokenXYZ.decimals)
+        let paymentEGLD = TokenPayment.metaEsdtFromAmount(lendTokenEGLD, depositNonceEGLD, 7, tokenEGLD.decimals)
 
-        let returnCode = await lendingInteractor.withdraw(firstUser, paymentXYZ);
+        let returnCode = await lendingInteractor.withdraw(firstUser, paymentEGLD);
         assert.isTrue(returnCode.isSuccess());
     });
 

@@ -1,5 +1,5 @@
 import path from "path";
-import { AddressValue, BigIntValue, CodeMetadata, IAddress, Interaction, ResultsParser, ReturnCode, SmartContract, SmartContractAbi, Struct, TokenIdentifierValue, TokenPayment, TransactionWatcher } from "@elrondnetwork/erdjs";
+import { AddressValue, BigIntValue, CodeMetadata, EnumValue, IAddress, Interaction, ResultsParser, ReturnCode, SmartContract, SmartContractAbi, Struct, TokenIdentifierValue, TokenPayment, TransactionWatcher } from "@elrondnetwork/erdjs";
 import { IAudit, INetworkConfig, INetworkProvider, ITestSession, ITestUser, loadAbiRegistry, loadCode } from "@elrondnetwork/erdjs-snippets";
 
 const PathToWasm = path.resolve(__dirname, "..", "..", "lending_pool", "output", "lending-pool.wasm");
@@ -143,8 +143,6 @@ export class LendingPoolInteractor {
         return returnCode;
     }
 
-
-
     async registerAccountToken(user: ITestUser, tokenIdentifier: string, ticker: string): Promise<ReturnCode> {
         console.log(`LendingPoolInteractor.issueLend(): address = ${user.address}`);
 
@@ -167,7 +165,7 @@ export class LendingPoolInteractor {
         let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
 
         // In the end, parse the results:
-        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+        let { returnCode, firstValue } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
         return returnCode;
     }
 
@@ -322,7 +320,7 @@ export class LendingPoolInteractor {
         return returnCode;
     }
 
-    async enter_market(user: ITestUser): Promise<{ returnCode: ReturnCode, accountNonce: number }> {
+    async enter_market(user: ITestUser): Promise<{ returnCode: ReturnCode, accountNonce: number, accountTokenId: string }> {
         console.log(`LendingPoolInteractor.enter_market(): user = ${user.address}}`);
 
         // Prepare the interaction
@@ -345,19 +343,24 @@ export class LendingPoolInteractor {
         // In the end, parse the results:
         let { returnCode, firstValue } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
 
-        let accountNonce: number = +(<Struct>firstValue).getFieldValue("token_nonce").toNumber();
+        console.log(`LendingPoolInteractor.enter_market(): accountNonce = ${firstValue}}`);
 
-        return { returnCode, accountNonce };
+        let accountNonce: number = +(<Struct>firstValue).getFieldValue("token_nonce").toNumber();
+        let accountTokenId: string = (<Struct>firstValue).getFieldValue("token_identifier");
+
+        console.log(`LendingPoolInteractor.enter_market(): Received accountNonce = ${accountNonce}, tokenID: ${accountTokenId}`);
+
+        return { returnCode, accountNonce, accountTokenId };
     }
 
-    async deposit(user: ITestUser, tokenPayment: TokenPayment): Promise<{ returnCode: ReturnCode, depositNonce: number }> {
-        console.log(`LendingPoolInteractor.deposit(): user = ${user.address}, Token = ${tokenPayment.toPrettyString()}`);
+    async addCollateral(user: ITestUser, paymentAccountNFT: TokenPayment, paymentUSD: TokenPayment): Promise<ReturnCode> {
+        console.log(`LendingPoolInteractor.addCollateral(): user = ${user.address}, Payment = ${paymentAccountNFT.toPrettyString}, ${paymentUSD.toPrettyString}`);
 
         // Prepare the interaction
         let interaction = <Interaction>this.contract.methods
-            .deposit([])
+            .addCollateral([])
             .withGasLimit(15000000)
-            .withSingleESDTTransfer(tokenPayment)
+            .withMultiESDTNFTTransfer([paymentAccountNFT, paymentUSD], user.address)
             .withNonce(user.account.getNonceThenIncrement())
             .withChainID(this.networkConfig.ChainID);
 
@@ -372,11 +375,8 @@ export class LendingPoolInteractor {
         let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
 
         // In the end, parse the results:
-        let { returnCode, firstValue } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
-
-        let depositNonce: number = +(<Struct>firstValue).getFieldValue("token_nonce").toNumber();
-
-        return { returnCode, depositNonce };
+        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+        return returnCode;
     }
 
 

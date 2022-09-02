@@ -13,7 +13,6 @@ elrond_wasm_node::wasm_endpoints! {
         fund
         fundFromPool
         lastErrorMessage
-        nftIssue
         nftToken
         pools
         removePool

@@ -7,6 +7,7 @@
 elrond_wasm_node::wasm_endpoints! {
     lending_pool
     (
+        callBack
         addCollateral
         borrow
         createLiquidityPool
@@ -38,5 +39,3 @@ elrond_wasm_node::wasm_endpoints! {
         upgradeLiquidityPool
     )
 }
-
-elrond_wasm_node::wasm_empty_callback! {}
