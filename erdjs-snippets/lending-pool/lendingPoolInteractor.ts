@@ -9,7 +9,7 @@ const PathToWasmDummyLiquidityPool = path.resolve(__dirname, "..", "..", "liquid
 export async function createLendingInteractor(session: ITestSession, contractAddress?: IAddress): Promise<LendingPoolInteractor> {
     const registry = await loadAbiRegistry(PathToAbi);
     const abi = new SmartContractAbi(registry);
-    const contract = new SmartContract({ address: contractAddress, abi: abi});
+    const contract = new SmartContract({ address: contractAddress, abi: abi });
     const networkProvider = session.networkProvider;
     const networkConfig = session.getNetworkConfig();
     const audit = session.audit;
@@ -406,15 +406,14 @@ export class LendingPoolInteractor {
         return returnCode;
     }
 
-    async borrow(user: ITestUser, collateralPayment: TokenPayment, assetToBorrow: string): Promise<{ returnCode: ReturnCode, borrowNonce: number }> {
-        console.log(`LendingPoolInteractor.borrow(): borrower = ${user.address}, collateralToken = ${collateralPayment.toPrettyString()}, 
-                    nonce = ${collateralPayment.nonce} assetToBorrow = ${assetToBorrow}`);
+    async borrow(user: ITestUser, borrowTokenId: string, amount: number, paymentAccountNFT: TokenPayment): Promise<ReturnCode> {
+        console.log(`LendingPoolInteractor.borrow(): borrower = ${user.address}, borrowTokenId = ${borrowTokenId}, amount = ${amount}`);
 
         // Prepare the interaction
         let interaction = <Interaction>this.contract.methods
-            .borrow([assetToBorrow])
+            .borrow([borrowTokenId, amount])
             .withGasLimit(150000000)
-            .withSingleESDTNFTTransfer(collateralPayment, user.address)
+            .withSingleESDTNFTTransfer(paymentAccountNFT, user.address)
             .withNonce(user.account.getNonceThenIncrement())
             .withChainID(this.networkConfig.ChainID);
 
@@ -429,10 +428,9 @@ export class LendingPoolInteractor {
         let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
 
         // In the end, parse the results:
-        let { returnCode, firstValue } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
 
-        let borrowNonce: number = +(<Struct>firstValue).getFieldValue("token_nonce").toNumber();
-        return { returnCode, borrowNonce };
+        return returnCode;
     }
 
     async repay(user: ITestUser, repayment: TokenPayment[], assetToRepay: string): Promise<ReturnCode> {
@@ -499,6 +497,31 @@ export class LendingPoolInteractor {
         // Prepare the interaction
         let interaction = <Interaction>this.contract.methods
             .setAggregator([poolAsset, priceAggregatorAddress])
+            .withGasLimit(10000000)
+            .withNonce(user.account.getNonceThenIncrement())
+            .withChainID(this.networkConfig.ChainID);
+
+        // Let's check the interaction, then build the transaction object.
+        let transaction = interaction.check().buildTransaction();
+
+        // Let's sign the transaction. For dApps, use a wallet provider instead.
+        await user.signer.sign(transaction);
+
+        // Let's broadcast the transaction and await its completion:
+        await this.networkProvider.sendTransaction(transaction);
+        let transactionOnNetwork = await this.transactionWatcher.awaitCompleted(transaction);
+
+        // In the end, parse the results:
+        let { returnCode } = this.resultsParser.parseOutcome(transactionOnNetwork, interaction.getEndpoint());
+        return returnCode;
+    }
+
+    async setPriceAggregatorAddress(user: ITestUser, priceAggregatorAddress: IAddress) {
+        console.log(`LiquidityInteractor.setPriceAggregatorAddress(): priceAggregatorAddres = ${priceAggregatorAddress}`);
+
+        // Prepare the interaction
+        let interaction = <Interaction>this.contract.methods
+            .setPriceAggregatorAddress([priceAggregatorAddress])
             .withGasLimit(10000000)
             .withNonce(user.account.getNonceThenIncrement())
             .withChainID(this.networkConfig.ChainID);
