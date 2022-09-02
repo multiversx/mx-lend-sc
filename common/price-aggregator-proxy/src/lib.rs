@@ -12,12 +12,12 @@ mod price_aggregator_proxy_mod {
 
     #[elrond_wasm::proxy]
     pub trait PriceAggregator {
-        #[view(latestPriceFeedOptional)]
-        fn latest_price_feed_optional(
+        #[view(latestPriceFeed)]
+        fn latest_price_feed(
             &self,
             from: ManagedBuffer,
             to: ManagedBuffer,
-        ) -> OptionalValue<super::AggregatorResultAsMultiValue<Self::Api>>;
+        ) -> SCResult<MultiValue6<u32, ManagedBuffer, ManagedBuffer, u64, BigUint, u8>>;
     }
 }
 
@@ -70,14 +70,16 @@ pub trait PriceAggregatorModule {
         from_ticker: ManagedBuffer,
         to_ticker: ManagedBuffer,
     ) -> Option<AggregatorResult<Self::Api>> {
-        if self.price_aggregator_address().is_empty() {
-            return None;
-        }
+        require!(
+            !self.price_aggregator_address().is_empty(),
+            "Price Aggregator Address Empty",
+        );
+
         let price_aggregator_address = self.price_aggregator_address().get();
 
         let result: OptionalValue<AggregatorResultAsMultiValue<Self::Api>> = self
             .aggregator_proxy(price_aggregator_address)
-            .latest_price_feed_optional(from_ticker, to_ticker)
+            .latest_price_feed(from_ticker, to_ticker)
             .execute_on_dest_context();
 
         result.into_option().map(AggregatorResult::from)
