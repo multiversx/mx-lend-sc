@@ -222,21 +222,21 @@ describe("lending snippet", async function () {
     it("withdraw token EGLD", async function () {
         this.timeout(FiveMinutesInMilliseconds);
         
-        await session.syncUsers([firstUser, secondUser]);
+        await session.syncUsers([secondUser]);
 
+        let tokenEGLD = await session.loadToken("tokenEGLD");
         let lendingAddress = await session.loadAddress("lendingAddr");
-        let depositNonceEGLD = await session.loadBreadcrumb("depositNonceEGLD");
+        let depositNonceEGLD = await session.loadBreadcrumb("accountNonceSecondUser");
+        let accountTokenIdSecondUser = await session.loadBreadcrumb("accountTokenIdSecondUser");
+        let paymentAccountNFT = TokenPayment.nonFungible(accountTokenIdSecondUser, depositNonceEGLD);
 
         let lendingInteractor = await createLendingInteractor(session, lendingAddress);
 
-        let tokenEGLD = await session.loadToken("tokenEGLD");
-        let liquidityAddress = await lendingInteractor.getLiquidityAddress(tokenEGLD.identifier);
-        let liquidityInteractorEGLD = await createLiquidityInteractor(session, liquidityAddress)
-        let lendTokenEGLD = await liquidityInteractorEGLD.getLendToken();
+        // let liquidityAddress = await lendingInteractor.getLiquidityAddress(tokenEGLD.identifier);
+        // let liquidityInteractorEGLD = await createLiquidityInteractor(session, liquidityAddress)
+        // let lendTokenEGLD = await liquidityInteractorEGLD.getLendToken();
 
-        let paymentEGLD = TokenPayment.metaEsdtFromAmount(lendTokenEGLD, depositNonceEGLD, 7, tokenEGLD.decimals)
-
-        let returnCode = await lendingInteractor.withdraw(firstUser, paymentEGLD);
+        let returnCode = await lendingInteractor.removeCollateral(secondUser, tokenEGLD.identifier, 5, paymentAccountNFT);
         assert.isTrue(returnCode.isSuccess());
     });
 

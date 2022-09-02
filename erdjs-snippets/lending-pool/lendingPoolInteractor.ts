@@ -380,14 +380,14 @@ export class LendingPoolInteractor {
     }
 
 
-    async withdraw(user: ITestUser, tokenPayment: TokenPayment): Promise<ReturnCode> {
-        console.log(`LendingPoolInteractor.deposit(): user = ${user.address}, Token = ${tokenPayment.toPrettyString()}`);
+    async removeCollateral(user: ITestUser, withdrawTokenId: string, amount: number, paymentAccountNFT: TokenPayment): Promise<ReturnCode> {
+        console.log(`LendingPoolInteractor.removeCollateral(): user = ${user.address}, Token = ${withdrawTokenId}, amount = ${amount}`);
 
         // Prepare the interaction
         let interaction = <Interaction>this.contract.methods
-            .withdraw([])
+            .removeCollateral([withdrawTokenId, amount])
             .withGasLimit(15000000)
-            .withSingleESDTNFTTransfer(tokenPayment, user.address)
+            .withSingleESDTNFTTransfer(paymentAccountNFT, user.address)
             .withNonce(user.account.getNonceThenIncrement())
             .withChainID(this.networkConfig.ChainID);
 
