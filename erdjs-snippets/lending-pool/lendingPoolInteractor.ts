@@ -433,15 +433,15 @@ export class LendingPoolInteractor {
         return returnCode;
     }
 
-    async repay(user: ITestUser, repayment: TokenPayment[], assetToRepay: string): Promise<ReturnCode> {
-        console.log(`LendingPoolInteractor.repay(): borrower = ${user.address}, BToken = ${repayment[0].toPrettyString()}, 
-                    Token = ${repayment[1].toPrettyString} `);
+    async repay(user: ITestUser, paymentAccountNFT: TokenPayment, paymentUSD: TokenPayment): Promise<ReturnCode> {
+        console.log(`LendingPoolInteractor.repay(): borrower = ${user.address}, paymentAccountNFT = ${paymentAccountNFT.toPrettyString}, 
+                    Token = ${paymentUSD.toPrettyString} `);
 
         // Prepare the interaction
         let interaction = <Interaction>this.contract.methods
-            .repay([assetToRepay])
+            .repay([])
             .withGasLimit(150000000)
-            .withMultiESDTNFTTransfer(repayment, user.address)
+            .withMultiESDTNFTTransfer([paymentAccountNFT, paymentUSD], user.address)
             .withNonce(user.account.getNonceThenIncrement())
             .withChainID(this.networkConfig.ChainID);
 

@@ -243,6 +243,7 @@ describe("lending snippet", async function () {
     it("borrow USDC token - First user", async function () {
         this.timeout(FiveMinutesInMilliseconds);
         await session.syncUsers([firstUser]);
+
         let tokenUSD = await session.loadToken("tokenUSD");
         let lendingAddress = await session.loadAddress("lendingAddr");
         let lendingInteractor = await createLendingInteractor(session, lendingAddress);
@@ -251,42 +252,25 @@ describe("lending snippet", async function () {
         let accountTokenIdFirstUser = await session.loadBreadcrumb("accountTokenIdFirstUser");
         let paymentAccountNFT = TokenPayment.nonFungible(accountTokenIdFirstUser, accountNonceFirstUser);
 
-        let returnBorrowCode = await lendingInteractor.borrow(firstUser, tokenUSD.identifier, 1000000000000000000, paymentAccountNFT);
+        let returnBorrowCode = await lendingInteractor.borrow(firstUser, tokenUSD.identifier, 7000000000000000000, paymentAccountNFT);
         assert.isTrue(returnBorrowCode.isSuccess());
     });
 
 
-    it("repay ABC token - collateral XYZ", async function () {
+    it("repay USDC token - First user", async function () {
         this.timeout(FiveMinutesInMilliseconds);
-        await session.syncUsers([firstUser, secondUser]);
-        let tokenABC = await session.loadToken("tokenABC");
-        let tokenXYZ = await session.loadToken("tokenXYZ");
-        let borrowedNonceABC = await session.loadBreadcrumb("borrowedNonceABC");
+        await session.syncUsers([firstUser]);
 
+        let tokenUSD = await session.loadToken("tokenUSD");
         let lendingAddress = await session.loadAddress("lendingAddr");
         let lendingInteractor = await createLendingInteractor(session, lendingAddress);
 
-        let liquidityAddressABC = await lendingInteractor.getLiquidityAddress(tokenABC.identifier);
-        let liquidityInteractorABC = await createLiquidityInteractor(session, liquidityAddressABC);
-        // await liquidityInteractorABC.getAggregatorAddress();
-        // await liquidityInteractorABC.getReserves();
+        let accountNonceFirstUser = await session.loadBreadcrumb("accountNonceFirstUser");
+        let accountTokenIdFirstUser = await session.loadBreadcrumb("accountTokenIdFirstUser");
+        let paymentAccountNFT = TokenPayment.nonFungible(accountTokenIdFirstUser, accountNonceFirstUser);
+        let paymentUSD = TokenPayment.fungibleFromAmount(tokenUSD.identifier, "7", tokenUSD.decimals);
 
-        let liquidityAddressXYZ = await lendingInteractor.getLiquidityAddress(tokenXYZ.identifier);
-        let liquidityInteractorXYZ = await createLiquidityInteractor(session, liquidityAddressXYZ);
-        // await liquidityInteractorXYZ.getAggregatorAddress();
-        // await liquidityInteractorXYZ.getReserves();
-
-        let borrowedTokenABC = await liquidityInteractorABC.getBorrowToken();
-        let assetToRepayABC = await liquidityInteractorABC.getPoolAsset();
-
-        // await lendingInteractor.getAssetLoanToValue(tokenABC.identifier);
-        // await lendingInteractor.getAssetLoanToValue(tokenXYZ.identifier);
-
-        let paymentOne = TokenPayment.metaEsdtFromAmount(borrowedTokenABC, borrowedNonceABC, 3.21, tokenXYZ.decimals);
-        let paymentTwo = TokenPayment.fungibleFromAmount(assetToRepayABC, 5, tokenXYZ.decimals);
-        let repayment = [paymentOne, paymentTwo];
-
-        let returnCode = await lendingInteractor.repay(firstUser, repayment, assetToRepayABC);
+        let returnCode = await lendingInteractor.repay(firstUser, paymentAccountNFT, paymentUSD);
         assert.isTrue(returnCode.isSuccess());
     });
 

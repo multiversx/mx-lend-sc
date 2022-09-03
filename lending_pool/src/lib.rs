@@ -243,10 +243,9 @@ pub trait LendingPool:
 
         self.lending_account_in_the_market(nft_account_nonce);
         self.lending_account_token_valid(nft_account_token_id.clone());
-        self.lending_account_token_valid(repay_token_id.clone());
+        self.require_asset_supported(&repay_token_id);
         self.require_amount_greater_than_zero(&repay_amount);
         self.require_non_zero_address(&initial_caller);
-        self.require_asset_supported(&repay_token_id);
 
         require!(
             self.pools_map().contains_key(&repay_token_id),
