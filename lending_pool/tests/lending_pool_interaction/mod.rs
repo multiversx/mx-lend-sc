@@ -211,7 +211,7 @@ where
                 &self.lending_pool_wrapper,
                 &rust_biguint!(0),
                 |sc| {
-                    let result = sc.enter_market(); 
+                    let result = sc.enter_market();
                     account_nonce = result.token_nonce;
                     assert!(account_nonce != 0, "Account nonce didn't change");
                     assert!(
