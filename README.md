@@ -1,4 +1,4 @@
-# elrond-lend-rs
+# mx-lend-rs
 
 ## Introduction
 
