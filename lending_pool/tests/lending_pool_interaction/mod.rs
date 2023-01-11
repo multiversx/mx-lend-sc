@@ -298,7 +298,9 @@ where
         initial_amount: u64,
         owner_nonce: u64,
         remove_amount: u64,
-        expected_collateral_after_deposit: u64,
+        expected_reserves_after_deposit: u64,
+        round: u64,
+        initial_supply_index: u64,
     ) {
         let liquidity_pool_wrapper = match token_id {
             USDC_TOKEN_ID => &self.liquidity_pool_usdc_wrapper,
@@ -321,8 +323,8 @@ where
                             managed_token_id!(token_id),
                             managed_biguint!(initial_amount),
                             owner_nonce,
-                            1,
-                            managed_biguint!(BP),
+                            round,
+                            managed_biguint!(initial_supply_index),
                         ),
                     );
                 },
@@ -331,12 +333,12 @@ where
 
         self.b_mock
             .execute_query(&liquidity_pool_wrapper, |sc| {
-                let actual_deposited_collateral = sc.reserves().get();
+                let actual_collateral = sc.reserves().get();
                 let expected_collateral = elrond_wasm::types::BigUint::from_bytes_be(
-                    &expected_collateral_after_deposit.to_be_bytes(),
+                    &expected_reserves_after_deposit.to_be_bytes(),
                 );
                 assert_eq!(
-                    actual_deposited_collateral, expected_collateral,
+                    actual_collateral, expected_collateral,
                     "Reserve tokens in Liquidity Pool doesn't match!"
                 );
             })
@@ -352,6 +354,8 @@ where
         borrow_amount: u64,
         expected_reserves_after_borrow: u64,
         expected_borrowed_amount_after_borrow: u64,
+        round: u64,
+        initial_borrow_index: u64,
     ) {
         let liquidity_pool_wrapper = match token_id {
             USDC_TOKEN_ID => &self.liquidity_pool_usdc_wrapper,
@@ -374,8 +378,8 @@ where
                             managed_token_id!(token_id),
                             managed_biguint!(initial_amount),
                             owner_nonce,
-                            1,
-                            managed_biguint!(BP),
+                            round,
+                            managed_biguint!(initial_borrow_index),
                         ),
                     );
                 },
@@ -415,9 +419,11 @@ where
         token_id: &[u8],
         initial_amount: u64,
         owner_nonce: u64,
-        repay_amount: u64,
+        repay_with_interest: u64,
         expected_reserves_after_repay: u64,
         expected_borrowed_amount_after_repay: u64,
+        round: u64,
+        borrow_index: u64,
     ) {
         let liquidity_pool_wrapper = match token_id {
             USDC_TOKEN_ID => &self.liquidity_pool_usdc_wrapper,
@@ -431,7 +437,7 @@ where
                 &liquidity_pool_wrapper,
                 USDC_TOKEN_ID,
                 0,
-                &rust_biguint!(repay_amount),
+                &rust_biguint!(repay_with_interest),
                 |sc| {
                     sc.repay(
                         managed_address!(&user_addr),
@@ -439,8 +445,8 @@ where
                             managed_token_id!(token_id),
                             managed_biguint!(initial_amount),
                             owner_nonce,
-                            1,
-                            managed_biguint!(BP),
+                            round,
+                            managed_biguint!(borrow_index),
                         ),
                     );
                 },
@@ -595,6 +601,21 @@ where
                     actual_borrowed_amount, expected_borrowed,
                     "Borrowed amount in Liquidity Pool doesn't match!"
                 );
+            })
+            .assert_ok();
+    }
+
+    pub fn check_index(&mut self, expected_value: BigUint<DebugApi>, token_id: &[u8]) {
+        let liquidity_pool_wrapper = match token_id {
+            USDC_TOKEN_ID => &self.liquidity_pool_usdc_wrapper,
+            EGLD_TOKEN_ID => &self.liquidity_pool_egld_wrapper,
+            _ => todo!(),
+        };
+
+        self.b_mock
+            .execute_query(&liquidity_pool_wrapper, |sc| {
+                let borrow_index = sc.borrow_index().get();
+                assert_eq!(borrow_index, expected_value);
             })
             .assert_ok();
     }

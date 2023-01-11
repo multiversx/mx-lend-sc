@@ -19,6 +19,7 @@ pub const RESERVE_FACTOR: u64 = 100_000_000;
 pub const LIQ_THRESOLD: u64 = 700_000_000;
 pub const ACCOUNT_TOKEN: &[u8] = b"LACC-abcdef";
 pub const ACCOUNT_TICKER: &[u8] = b"LACC";
+pub const DECIMALS: u64 = 1_000_000_000;
 
 // lending pool constants
 
