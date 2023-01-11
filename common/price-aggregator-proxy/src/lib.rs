@@ -70,10 +70,10 @@ pub trait PriceAggregatorModule {
         from_ticker: ManagedBuffer,
         to_ticker: ManagedBuffer,
     ) -> Option<AggregatorResult<Self::Api>> {
+        let price_aggregator_address = self.price_aggregator_address().get();
         if self.price_aggregator_address().is_empty() {
             return None;
         }
-        let price_aggregator_address = self.price_aggregator_address().get();
 
         let result: OptionalValue<AggregatorResultAsMultiValue<Self::Api>> = self
             .aggregator_proxy(price_aggregator_address)

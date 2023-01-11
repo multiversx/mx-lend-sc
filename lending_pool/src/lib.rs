@@ -12,6 +12,7 @@ pub mod utils;
 
 pub use common_structs::*;
 pub use common_tokens::*;
+
 use elrond_wasm::elrond_codec::Empty;
 use liquidity_pool::liquidity::ProxyTrait as _;
 
@@ -26,27 +27,43 @@ pub trait LendingPool:
     + utils::LendingUtilsModule
     + math::LendingMathModule
     + price_aggregator_proxy::PriceAggregatorModule
+    + elrond_wasm_modules::default_issue_callbacks::DefaultIssueCallbacksModule
 {
     #[init]
     fn init(&self, lp_template_address: ManagedAddress) {
         self.liq_pool_template_address().set(&lp_template_address);
     }
 
-    #[endpoint]
-    fn enter_market(&self) -> u64 {
+    #[only_owner]
+    #[payable("EGLD")]
+    #[endpoint(registerAccountToken)]
+    fn register_account_token(&self, token_name: ManagedBuffer, ticker: ManagedBuffer) {
+        let payment_amount = self.call_value().egld_value();
+        self.account_token().issue_and_set_all_roles(
+            EsdtTokenType::NonFungible,
+            payment_amount,
+            token_name,
+            ticker,
+            1,
+            None,
+        );
+    }
+
+    #[endpoint(enterMarket)]
+    fn enter_market(&self) -> EsdtTokenPayment {
         let caller = self.blockchain().get_caller();
         let nft_account_amount = BigUint::from(1u64);
+
         let nft_token_payment =
             self.account_token()
                 .nft_create_and_send(&caller, nft_account_amount, &Empty);
-
         self.account_positions()
             .insert(nft_token_payment.token_nonce);
 
-        nft_token_payment.token_nonce
+        nft_token_payment
     }
 
-    #[endpoint]
+    #[endpoint(exitMarket)]
     fn exit_market(&self) {
         let (_nft_account_token_id, nft_account_nonce, nft_account_amount) =
             self.call_value().single_esdt().into_tuple();
@@ -133,24 +150,25 @@ pub trait LendingPool:
                     .remove_collateral(&initial_caller, amount, dp)
                     .execute_on_dest_context();
 
+                self.deposit_positions(nft_account_nonce)
+                    .remove(&withdraw_token_id);
                 if deposit_position.amount != 0 {
                     self.deposit_positions(nft_account_nonce)
                         .insert(withdraw_token_id, deposit_position);
                 }
-
-                // Return NFT to owner
-                self.send().direct_esdt(
-                    &initial_caller,
-                    &nft_account_token_id,
-                    nft_account_nonce,
-                    &nft_account_amount,
-                );
             }
             None => panic!(
                 "Tokens {} are not available for this account",
                 withdraw_token_id
             ),
         };
+        // Return NFT to owner
+        self.send().direct_esdt(
+            &initial_caller,
+            &nft_account_token_id,
+            nft_account_nonce,
+            &nft_account_amount,
+        );
     }
 
     #[payable("*")]
@@ -187,14 +205,18 @@ pub trait LendingPool:
             asset_to_borrow.clone(),
         );
 
-        let borrow_position = self
+        let borrow_position: BorrowPosition<Self::Api> = self
             .liquidity_pool_proxy(borrow_token_pool_address)
             .borrow(&initial_caller, amount, initial_borrow_position)
             .execute_on_dest_context();
 
-        // TODO: Remove existing position
+        // Update BorrowPosition
         self.borrow_positions(nft_account_nonce)
-            .insert(asset_to_borrow, borrow_position);
+            .remove(&asset_to_borrow);
+        if borrow_position.amount != 0 {
+            self.borrow_positions(nft_account_nonce)
+                .insert(asset_to_borrow, borrow_position);
+        }
 
         // Return NFT to owner
         self.send().direct_esdt(
@@ -217,10 +239,9 @@ pub trait LendingPool:
 
         self.lending_account_in_the_market(nft_account_nonce);
         self.lending_account_token_valid(nft_account_token_id.clone());
-        self.lending_account_token_valid(repay_token_id.clone());
+        self.require_asset_supported(&repay_token_id);
         self.require_amount_greater_than_zero(&repay_amount);
         self.require_non_zero_address(&initial_caller);
-        self.require_asset_supported(&repay_token_id);
 
         match self
             .borrow_positions(nft_account_nonce)
@@ -233,25 +254,26 @@ pub trait LendingPool:
                     .add_esdt_token_transfer(repay_token_id.clone(), repay_nonce, repay_amount)
                     .execute_on_dest_context();
 
-                // TOdo Remove old BorrowPosition
+                // Update BorrowPosition
+                self.borrow_positions(nft_account_nonce)
+                    .remove(&repay_token_id);
                 if borrow_position.amount != 0 {
                     self.borrow_positions(nft_account_nonce)
                         .insert(repay_token_id, borrow_position);
                 }
-
-                // Return NFT to owner
-                self.send().direct_esdt(
-                    &initial_caller,
-                    &nft_account_token_id,
-                    nft_account_nonce,
-                    &nft_account_amount,
-                );
             }
             None => panic!(
                 "Borrowed tokens {} are not available for this account",
                 repay_token_id
             ),
         };
+        // Return NFT to owner
+        self.send().direct_esdt(
+            &initial_caller,
+            &nft_account_token_id,
+            nft_account_nonce,
+            &nft_account_amount,
+        );
     }
 
     #[payable("*")]

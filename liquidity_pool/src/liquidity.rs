@@ -104,7 +104,8 @@ pub trait LiquidityModule:
         // );
         // self.deposit_position().insert(deposit_position);
 
-        self.reserves().update(|x| *x += deposit_amount);
+        self.reserves().update(|x| *x += &deposit_amount);
+        self.supplied_amount().update(|x| *x += deposit_amount);
         ret_deposit_position
     }
 
@@ -137,7 +138,7 @@ pub trait LiquidityModule:
         );
 
         self.update_interest_indexes();
-        if existing_borrow_position.amount != 0 {
+        if ret_borrow_position.amount != 0 {
             ret_borrow_position = self.update_borrows_with_debt(existing_borrow_position);
         }
 
@@ -160,6 +161,7 @@ pub trait LiquidityModule:
         ret_borrow_position
     }
 
+    // Withdraw
     #[only_owner]
     #[payable("*")]
     #[endpoint]
@@ -188,6 +190,10 @@ pub trait LiquidityModule:
             *asset_reserve -= &withdrawal_amount;
         });
 
+        self.supplied_amount().update(|asset_supplied_amount| {
+            require!(*asset_supplied_amount >= amount, "insufficient funds");
+            *asset_supplied_amount -= &amount;
+        });
         deposit_position.amount -= &amount;
 
         self.send()
@@ -204,35 +210,43 @@ pub trait LiquidityModule:
         initial_caller: ManagedAddress,
         borrow_position: BorrowPosition<Self::Api>,
     ) -> BorrowPosition<Self::Api> {
-        let (repay_asset, mut repay_amount) = self.call_value().single_fungible_esdt();
+        let (received_asset, received_amount) = self.call_value().single_fungible_esdt();
         let pool_asset = self.pool_asset().get();
 
         self.require_non_zero_address(&initial_caller);
-        self.require_amount_greater_than_zero(&repay_amount);
+        self.require_amount_greater_than_zero(&received_amount);
         require!(
-            repay_asset == pool_asset,
+            received_asset == pool_asset,
             "asset not supported for this liquidity pool"
         );
 
         self.update_interest_indexes();
+
+        let accumulated_debt = self.get_debt_interest(
+            &borrow_position.amount,
+            &borrow_position.initial_borrow_index,
+        );
+        let amount_without_interest = &received_amount - &accumulated_debt;
+
+        // self.update_interest_indexes();
         let mut ret_borrow_position = self.update_borrows_with_debt(borrow_position);
 
-        let total_owed = ret_borrow_position.amount.clone();
+        let total_owed_with_interest = ret_borrow_position.amount.clone();
 
-        if repay_amount > total_owed {
-            let extra_amount = &repay_amount - &total_owed;
+        if received_amount >= total_owed_with_interest {
+            let extra_amount = &received_amount - &total_owed_with_interest;
             self.send()
-                .direct_esdt(&initial_caller, &repay_asset, 0, &extra_amount);
-            ret_borrow_position.amount -= repay_amount.clone();
-            repay_amount = total_owed;
+                .direct_esdt(&initial_caller, &received_asset, 0, &extra_amount);
+            ret_borrow_position.amount = BigUint::zero();
+        } else {
+            let principal_amount = &received_amount - &accumulated_debt;
+            ret_borrow_position.amount -= &principal_amount;
         }
 
-        ret_borrow_position.amount -= &repay_amount;
-
         self.borrowed_amount()
-            .update(|total| *total -= &repay_amount);
+            .update(|total| *total -= amount_without_interest);
 
-        self.reserves().update(|total| *total += &repay_amount);
+        self.reserves().update(|total| *total += &received_amount);
 
         ret_borrow_position
     }
@@ -245,63 +259,4 @@ pub trait LiquidityModule:
         self.send()
             .direct_esdt(&initial_caller, &pool_asset, 0, &payment_amount);
     }
-    /*
-
-    #[only_owner]
-    #[payable("*")]
-    #[endpoint]
-    fn liquidate(
-        &self,
-        initial_caller: ManagedAddress,
-        liquidatee_account_nonce: u64,
-        liquidation_bonus: BigUint,
-    ) {
-        let (liquidator_asset, liquidator_asset_amount) = self.call_value().single_fungible_esdt();
-
-        self.require_non_zero_address(&initial_caller);
-        self.require_amount_greater_than_zero(&liquidator_asset_amount);
-
-        require!(
-            liquidator_asset == self.pool_asset().get(),
-            "asset is not supported by this pool"
-        );
-
-        // let collateral_value_in_dollars = self.get_collateral_available(account_position);
-        // let collateral_amount_in_dollars = self.get_collateral_available(account_position);
-        // let borrowed_value_in_dollars = self.get_total_borrowed_amount(account_position);
-
-        // let liquidation_threshold = self.liquidation_threshold().get();
-        // let health_factor = self.compute_health_factor(
-        //     &collateral_amount_in_dollars,
-        //     &borrowed_value_in_dollars,
-        //     &liquidation_threshold,
-        // );
-
-        // let bp = self.get_base_precision();
-
-        // require!(health_factor < 1, "health not low enough for liquidation");
-        // require!(
-        //     asset_amount >= collateral_value_in_dollars * liquidation_threshold / &bp,
-        //     "insufficient funds for liquidation"
-        // );
-
-        self.update_interest_indexes();
-
-        // Total borrowed amount is covered/paid by the liquidator with asset_amount
-        self.borrowed_amount()
-            .update(|total| *total -= &asset_amount);
-
-        self.reserves().update(|total| *total += &liquidator_asset_amount);
-
-        let amount_to_return_in_dollars = (asset_amount * (&bp + &liquidation_bonus)) / bp;
-
-        // Go through all DepositPositions and send amount_to_return_in_dollars to Liquidator
-        self.send_amount_in_dollars_to_liquidator(
-            initial_caller,
-            account_position,
-            amount_to_return_in_dollars,
-        );
-    }
-
-    */
 }

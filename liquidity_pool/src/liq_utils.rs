@@ -12,13 +12,13 @@ pub trait UtilsModule:
     #[view(getCapitalUtilisation)]
     fn get_capital_utilisation(&self) -> BigUint {
         let borrowed_amount = self.borrowed_amount().get();
-        let total_amount = self.get_total_supplied_capital();
+        let total_amount = self.supplied_amount().get();
 
         self.compute_capital_utilisation(&borrowed_amount, &total_amount)
     }
 
-    #[view(getTotalSuppliedCapital)]
-    fn get_total_supplied_capital(&self) -> BigUint {
+    #[view(getTotalCapital)]
+    fn get_total_capital(&self) -> BigUint {
         let reserve_amount = self.reserves().get();
         let borrowed_amount = self.borrowed_amount().get();
 
@@ -65,17 +65,18 @@ pub trait UtilsModule:
     }
 
     fn update_supply_index(&self, rewards_increase: BigUint) {
-        let total_amount = self.get_total_supplied_capital();
+        let total_supplied_amount = self.supplied_amount().get();
 
-        if total_amount != BigUint::zero() {
+        if total_supplied_amount != BigUint::zero() {
             self.supply_index()
-                .update(|new_index| *new_index += rewards_increase * BP / total_amount);
+                .update(|new_index| *new_index += rewards_increase * BP / total_supplied_amount);
         }
     }
 
     fn update_rewards_reserves(&self, borrow_rate: &BigUint, delta_rounds: u64) -> BigUint {
         let borrowed_amount = self.borrowed_amount().get();
         let rewards_increase = borrow_rate * &borrowed_amount * delta_rounds / BP;
+
         self.rewards_reserves().update(|rewards_reserves| {
             *rewards_reserves += &rewards_increase;
         });

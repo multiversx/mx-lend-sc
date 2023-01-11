@@ -7,30 +7,35 @@
 elrond_wasm_node::wasm_endpoints! {
     liquidity_pool
     (
-        callBack
+        addCollateral
         borrow
+        borrowIndexLastUpdateRound
         borrowToken
-        depositAsset
+        getAccountPositions
+        getAccountToken
         getAggregatorAddress
-        getBorrowMetadata
+        getBorrowIndex
         getBorrowRate
         getCapitalUtilisation
         getDebtInterest
-        getDepositPosition
         getDepositRate
         getLendToken
         getLiquidationThreshold
         getPoolAsset
         getPoolParams
         getReserves
+        getRewardsReserves
+        getSuppliedAmount
+        getSupplyIndex
         getTotalBorrow
-        issue
-        liquidate
-        reducePositionAfterLiquidation
+        getTotalCapital
+        remove_collateral
         repay
-        setBorrowTokenRoles
-        setLendTokensRoles
+        sendTokens
         setPriceAggregatorAddress
-        withdraw
+        updateBorrowsWithDebt
+        updateCollateralWithInterest
     )
 }
+
+elrond_wasm_node::wasm_empty_callback! {}
