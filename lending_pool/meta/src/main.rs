@@ -1,3 +1,3 @@
 fn main() {
-    elrond_wasm_debug::meta::perform::<lending_pool::AbiProvider>();
+    multiversx_sc_meta::cli_main::<lending_pool::AbiProvider>();
 }

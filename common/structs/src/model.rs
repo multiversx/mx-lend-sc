@@ -1,7 +1,7 @@
 #![no_std]
 
-elrond_wasm::imports!();
-elrond_wasm::derive_imports!();
+multiversx_sc::imports!();
+multiversx_sc::derive_imports!();
 
 pub const BP: u64 = 1_000_000_000_000_000_000;
 pub const MAX_THRESHOLD: u64 = BP / 2;

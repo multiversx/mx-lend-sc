@@ -1,11 +1,10 @@
 [package]
 name = "price-aggregator-proxy"
 version = "0.0.0"
-authors = [ "",]
+authors = [""]
 edition = "2018"
 
 [lib]
 path = "src/lib.rs"
-
-[dependencies.elrond-wasm]
-version = "0.34.1"
+[dependencies.multiversx-sc]
+version = "0.41.0"

@@ -1,6 +1,6 @@
 use constants::*;
 
-use elrond_wasm_debug::rust_biguint;
+use multiversx_sc_scenario::rust_biguint;
 use lending_pool_interaction::LendingSetup;
 
 pub mod constants;

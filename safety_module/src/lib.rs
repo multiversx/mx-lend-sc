@@ -1,12 +1,12 @@
 #![no_std]
 #![allow(unused_attributes)]
 
-elrond_wasm::imports!();
-elrond_wasm::derive_imports!();
+multiversx_sc::imports!();
+multiversx_sc::derive_imports!();
 
 use common_structs::{DepositPosition, BP, SECONDS_PER_YEAR};
 
-#[elrond_wasm::contract]
+#[multiversx_sc::contract]
 pub trait SafetyModule {
     #[init]
     fn init(&self, wegld_token: TokenIdentifier, depositors_apy: BigUint) {

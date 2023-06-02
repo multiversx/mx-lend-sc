@@ -1,14 +1,14 @@
 #![allow(clippy::too_many_arguments)]
 
-elrond_wasm::imports!();
-elrond_wasm::derive_imports!();
+multiversx_sc::imports!();
+multiversx_sc::derive_imports!();
 
 use super::factory;
 use super::proxy;
 
 use price_aggregator_proxy::ProxyTrait as _;
 
-#[elrond_wasm::module]
+#[multiversx_sc::module]
 pub trait RouterModule:
     proxy::ProxyModule + factory::FactoryModule + common_checks::ChecksModule
 {
@@ -87,7 +87,7 @@ pub trait RouterModule:
 
         self.liquidity_pool_proxy(pool_address)
             .set_price_aggregator_address(aggregator)
-            .execute_on_dest_context_ignore_result();
+            .execute_on_dest_context::<IgnoreValue>();
     }
 
     #[only_owner]

@@ -1,8 +1,8 @@
 #![no_std]
 #![allow(clippy::too_many_arguments)]
 
-elrond_wasm::imports!();
-elrond_wasm::derive_imports!();
+multiversx_sc::imports!();
+multiversx_sc::derive_imports!();
 
 pub mod liq_math;
 pub use liq_math::*;
@@ -14,7 +14,7 @@ pub use common_tokens::*;
 pub mod liq_storage;
 pub mod liq_utils;
 
-#[elrond_wasm::contract]
+#[multiversx_sc::contract]
 pub trait LiquidityPool:
     liq_storage::StorageModule
     + tokens::TokensModule

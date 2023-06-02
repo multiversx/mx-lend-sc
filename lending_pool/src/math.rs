@@ -1,8 +1,8 @@
-elrond_wasm::imports!();
+multiversx_sc::imports!();
 
 use common_structs::BP;
 
-#[elrond_wasm::module]
+#[multiversx_sc::module]
 pub trait LendingMathModule {
     fn compute_borrow_rate(
         &self,

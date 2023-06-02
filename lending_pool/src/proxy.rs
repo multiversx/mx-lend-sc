@@ -1,6 +1,6 @@
-elrond_wasm::imports!();
+multiversx_sc::imports!();
 
-#[elrond_wasm::module]
+#[multiversx_sc::module]
 pub trait ProxyModule {
     #[proxy]
     fn liquidity_pool_proxy(&self, sc_address: ManagedAddress) -> liquidity_pool::Proxy<Self::Api>;

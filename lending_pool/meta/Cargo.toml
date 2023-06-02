@@ -1,16 +1,11 @@
 [package]
 name = "lending-pool-meta"
-
 version = "0.0.0"
-authors = [ "you",]
+authors = ["CostinCarabas <costin.carabas@multiversx.com>"]
 edition = "2018"
 publish = false
-
 [dependencies.lending-pool]
 path = ".."
 
-[dependencies.elrond-wasm]
-version = "0.34.1"
-
-[dependencies.elrond-wasm-debug]
-version = "0.34.1"
+[dependencies.multiversx-sc-meta]
+version = "0.41.0"

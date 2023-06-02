@@ -1,7 +1,7 @@
 #![no_std]
 
-elrond_wasm::imports!();
-elrond_wasm::derive_imports!();
+multiversx_sc::imports!();
+multiversx_sc::derive_imports!();
 
 pub struct AggregatorResult<M: ManagedTypeApi> {
     pub round_id: u32,
@@ -17,7 +17,7 @@ pub type AggregatorResultAsMultiValue<M> =
 const DEFAULT_PRICE: u64 = 1_000;
 const DEFAULT_PRICE_DECIMALS: u8 = 2;
 
-#[elrond_wasm::contract]
+#[multiversx_sc::contract]
 pub trait PriceAggregatorMock {
     #[init]
     fn init(&self) {}

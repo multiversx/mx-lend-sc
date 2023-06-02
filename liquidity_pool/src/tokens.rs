@@ -1,11 +1,11 @@
-elrond_wasm::imports!();
-elrond_wasm::derive_imports!();
+multiversx_sc::imports!();
+multiversx_sc::derive_imports!();
 
 use super::liq_math;
 use super::liq_storage;
 use super::liq_utils;
 
-#[elrond_wasm::module]
+#[multiversx_sc::module]
 pub trait TokensModule:
     liq_storage::StorageModule
     + liq_utils::UtilsModule
@@ -21,9 +21,9 @@ pub trait TokensModule:
 
 // can't simply import, we would have a circular dependency
 mod lending_pool_proxy_mod {
-    elrond_wasm::imports!();
+    multiversx_sc::imports!();
 
-    #[elrond_wasm::proxy]
+    #[multiversx_sc::proxy]
     pub trait LendingPool {
         #[endpoint(setTokenIdAfterIssue)]
         fn set_token_id_after_issue(&self, token_id: TokenIdentifier);

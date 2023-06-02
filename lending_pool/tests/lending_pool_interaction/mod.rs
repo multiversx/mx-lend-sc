@@ -1,10 +1,10 @@
-use elrond_wasm::{
-    elrond_codec::Empty,
+use multiversx_sc::{
+    codec::Empty,
     types::{Address, BigUint, EsdtLocalRole},
 };
-use elrond_wasm_debug::{
+use multiversx_sc_scenario::{
     managed_address, managed_biguint, managed_token_id, rust_biguint,
-    testing_framework::{BlockchainStateWrapper, ContractObjWrapper},
+    whitebox::{BlockchainStateWrapper, ContractObjWrapper},
     DebugApi,
 };
 use lending_pool::{
@@ -280,7 +280,7 @@ where
         self.b_mock
             .execute_query(&liquidity_pool_wrapper, |sc| {
                 let actual_deposited_collateral = sc.reserves().get();
-                let expected_collateral = elrond_wasm::types::BigUint::from_bytes_be(
+                let expected_collateral = multiversx_sc::types::BigUint::from_bytes_be(
                     &expected_reserves_after_deposit.to_be_bytes(),
                 );
                 assert_eq!(
@@ -332,7 +332,7 @@ where
         self.b_mock
             .execute_query(&liquidity_pool_wrapper, |sc| {
                 let actual_deposited_collateral = sc.reserves().get();
-                let expected_collateral = elrond_wasm::types::BigUint::from_bytes_be(
+                let expected_collateral = multiversx_sc::types::BigUint::from_bytes_be(
                     &expected_collateral_after_deposit.to_be_bytes(),
                 );
                 assert_eq!(
@@ -385,7 +385,7 @@ where
         self.b_mock
             .execute_query(&liquidity_pool_wrapper, |sc| {
                 let actual_deposited_collateral = sc.reserves().get();
-                let expected_collateral = elrond_wasm::types::BigUint::from_bytes_be(
+                let expected_collateral = multiversx_sc::types::BigUint::from_bytes_be(
                     &expected_reserves_after_borrow.to_be_bytes(),
                 );
                 assert_eq!(
@@ -398,7 +398,7 @@ where
         self.b_mock
             .execute_query(&liquidity_pool_wrapper, |sc| {
                 let actual_borrowed_amount = sc.borrowed_amount().get();
-                let expected_borrowed = elrond_wasm::types::BigUint::from_bytes_be(
+                let expected_borrowed = multiversx_sc::types::BigUint::from_bytes_be(
                     &expected_borrowed_amount_after_borrow.to_be_bytes(),
                 );
                 assert_eq!(
@@ -450,7 +450,7 @@ where
         self.b_mock
             .execute_query(&liquidity_pool_wrapper, |sc| {
                 let actual_deposited_collateral = sc.reserves().get();
-                let expected_collateral = elrond_wasm::types::BigUint::from_bytes_be(
+                let expected_collateral = multiversx_sc::types::BigUint::from_bytes_be(
                     &expected_reserves_after_repay.to_be_bytes(),
                 );
                 assert_eq!(
@@ -463,7 +463,7 @@ where
         self.b_mock
             .execute_query(&liquidity_pool_wrapper, |sc| {
                 let actual_borrowed_amount = sc.borrowed_amount().get();
-                let expected_borrowed = elrond_wasm::types::BigUint::from_bytes_be(
+                let expected_borrowed = multiversx_sc::types::BigUint::from_bytes_be(
                     &expected_borrowed_amount_after_repay.to_be_bytes(),
                 );
                 assert_eq!(
@@ -566,7 +566,7 @@ where
         self.b_mock
             .execute_query(&liquidity_pool_wrapper, |sc| {
                 let actual_deposited_collateral = sc.reserves().get();
-                let expected_collateral = elrond_wasm::types::BigUint::from_bytes_be(
+                let expected_collateral = multiversx_sc::types::BigUint::from_bytes_be(
                     &expected_deposited_collateral.to_be_bytes(),
                 );
                 assert_eq!(
@@ -588,7 +588,7 @@ where
         self.b_mock
             .execute_query(&liquidity_pool_wrapper, |sc| {
                 let actual_borrowed_amount = sc.borrowed_amount().get();
-                let expected_borrowed = elrond_wasm::types::BigUint::from_bytes_be(
+                let expected_borrowed = multiversx_sc::types::BigUint::from_bytes_be(
                     &expected_borrowed_amount.to_be_bytes(),
                 );
                 assert_eq!(
