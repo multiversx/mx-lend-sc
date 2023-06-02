@@ -75,7 +75,7 @@ where
             ));
 
             let account_token_id = managed_token_id!(ACCOUNT_TOKEN);
-            sc.account_token().set_token_id(&account_token_id);
+            sc.account_token().set_token_id(account_token_id);
         })
         .assert_ok();
 

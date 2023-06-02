@@ -87,7 +87,7 @@ pub trait RouterModule:
 
         self.liquidity_pool_proxy(pool_address)
             .set_price_aggregator_address(aggregator)
-            .execute_on_dest_context_ignore_result();
+            .execute_on_dest_context::<IgnoreValue>();
     }
 
     #[only_owner]

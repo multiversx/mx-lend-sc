@@ -320,7 +320,7 @@ pub trait LendingPool:
 
         self.liquidity_pool_proxy(asset_address)
             .send_tokens(&initial_caller, &amount_to_send)
-            .execute_on_dest_context_ignore_result();
+            .execute_on_dest_context::<IgnoreValue>();
     }
 
     #[endpoint(updateCollateralWithInterest)]
@@ -331,7 +331,7 @@ pub trait LendingPool:
             let asset_address = self.get_pool_address(&dp.token_id);
             self.liquidity_pool_proxy(asset_address)
                 .update_collateral_with_interest(dp)
-                .execute_on_dest_context_ignore_result();
+                .execute_on_dest_context::<IgnoreValue>();
         }
     }
 
@@ -343,7 +343,7 @@ pub trait LendingPool:
             let asset_address = self.get_pool_address(&bp.token_id);
             self.liquidity_pool_proxy(asset_address)
                 .update_borrows_with_debt(bp)
-                .execute_on_dest_context_ignore_result();
+                .execute_on_dest_context::<IgnoreValue>();
         }
     }
 

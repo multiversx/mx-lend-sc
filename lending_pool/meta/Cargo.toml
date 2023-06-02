@@ -1,16 +1,14 @@
 [package]
 name = "lending-pool-meta"
-
 version = "0.0.0"
-authors = [ "you",]
+authors = ["you"]
 edition = "2018"
 publish = false
-
 [dependencies.lending-pool]
 path = ".."
 
 [dependencies.elrond-wasm]
-version = "0.34.1"
+version = "0.36.0"
 
 [dependencies.elrond-wasm-debug]
-version = "0.34.1"
+version = "0.36.0"

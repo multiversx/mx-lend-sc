@@ -1,15 +1,14 @@
 [package]
 name = "lending-pool"
 version = "0.0.0"
-authors = [ "you",]
+authors = ["you"]
 edition = "2018"
 publish = false
 
 [lib]
 path = "src/lib.rs"
-
 [dependencies.elrond-wasm]
-version = "0.34.1"
+version = "0.36.0"
 
 [dependencies.liquidity-pool]
 path = "../liquidity_pool"
@@ -26,13 +25,13 @@ path = "../common/checks"
 [dependencies.common-tokens]
 path = "../common/tokens"
 
-[dev-dependencies.elrond-wasm-debug]
-version = "0.34.1"
-
 [dev-dependencies]
 num-bigint = "0.4.2"
 num-traits = "0.2"
 hex = "0.4"
+
+[dev-dependencies.elrond-wasm-debug]
+version = "0.36.0"
 
 [dev-dependencies.aggregator-mock]
 path = "../aggregator_mock"
