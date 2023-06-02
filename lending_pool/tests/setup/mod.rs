@@ -1,7 +1,7 @@
-use elrond_wasm::{storage::mappers::StorageTokenWrapper, types::Address};
-use elrond_wasm_debug::{
+use multiversx_sc::{storage::mappers::StorageTokenWrapper, types::Address};
+use multiversx_sc_scenario::{
     managed_address, managed_biguint, managed_buffer, managed_token_id, rust_biguint,
-    testing_framework::{BlockchainStateWrapper, ContractObjWrapper},
+    whitebox::{BlockchainStateWrapper, ContractObjWrapper},
     DebugApi,
 };
 use price_aggregator_proxy::PriceAggregatorModule;

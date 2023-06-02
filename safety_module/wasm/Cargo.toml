@@ -21,9 +21,5 @@ panic = "abort"
 [dependencies.safety-module]
 path = ".."
 
-[dependencies.elrond-wasm-node]
-version = "0.36.0"
-
-[dependencies.elrond-wasm-output]
-version = "0.34.1"
-features = ["wasm-output-mode"]
+[dependencies.multiversx-sc-wasm-adapter]
+version = "0.41.0"

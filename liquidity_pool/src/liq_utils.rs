@@ -1,11 +1,11 @@
-elrond_wasm::imports!();
-elrond_wasm::derive_imports!();
+multiversx_sc::imports!();
+multiversx_sc::derive_imports!();
 
 use crate::{liq_math, liq_storage};
 
 use common_structs::*;
 
-#[elrond_wasm::module]
+#[multiversx_sc::module]
 pub trait UtilsModule:
     liq_math::MathModule + liq_storage::StorageModule + price_aggregator_proxy::PriceAggregatorModule
 {

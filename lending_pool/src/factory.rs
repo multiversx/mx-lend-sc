@@ -1,12 +1,12 @@
 #![allow(clippy::too_many_arguments)]
 
-elrond_wasm::imports!();
-elrond_wasm::derive_imports!();
+multiversx_sc::imports!();
+multiversx_sc::derive_imports!();
 
 pub mod liq_pool_proxy {
-    elrond_wasm::imports!();
+    multiversx_sc::imports!();
 
-    #[elrond_wasm::proxy]
+    #[multiversx_sc::proxy]
     pub trait LiqPoolProxy {
         #[init]
         fn init(
@@ -22,7 +22,7 @@ pub mod liq_pool_proxy {
     }
 }
 
-#[elrond_wasm::module]
+#[multiversx_sc::module]
 pub trait FactoryModule {
     fn create_pool(
         &self,

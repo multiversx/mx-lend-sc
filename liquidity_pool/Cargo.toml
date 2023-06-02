@@ -7,8 +7,8 @@ publish = false
 
 [lib]
 path = "src/lib.rs"
-[dependencies.elrond-wasm]
-version = "0.36.0"
+[dependencies.multiversx-sc]
+version = "0.41.0"
 
 [dependencies.common-structs]
 path = "../common/structs"
@@ -21,5 +21,5 @@ path = "../common/tokens"
 
 [dependencies.price-aggregator-proxy]
 path = "../common/price-aggregator-proxy"
-[dev-dependencies.elrond-wasm-debug]
-version = "0.36.0"
+[dev-dependencies.multiversx-sc-scenario]
+version = "0.41.0"

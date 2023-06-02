@@ -1,5 +1,5 @@
-elrond_wasm::imports!();
-elrond_wasm::derive_imports!();
+multiversx_sc::imports!();
+multiversx_sc::derive_imports!();
 
 use crate::{math, storage};
 
@@ -9,7 +9,7 @@ use price_aggregator_proxy::AggregatorResult;
 const TOKEN_ID_SUFFIX_LEN: usize = 7; // "dash" + 6 random bytes
 const DOLLAR_TICKER: &[u8] = b"USD";
 
-#[elrond_wasm::module]
+#[multiversx_sc::module]
 pub trait LendingUtilsModule:
     math::LendingMathModule
     + storage::LendingStorageModule

@@ -1,8 +1,8 @@
-elrond_wasm::imports!();
+multiversx_sc::imports!();
 
 use common_structs::{BorrowPosition, DepositPosition};
 
-#[elrond_wasm::module]
+#[multiversx_sc::module]
 pub trait LendingStorageModule {
     #[view(getDepositPositions)]
     #[storage_mapper("deposit_positions")]

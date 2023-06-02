@@ -1,9 +1,9 @@
-elrond_wasm::imports!();
-elrond_wasm::derive_imports!();
+multiversx_sc::imports!();
+multiversx_sc::derive_imports!();
 
 use common_structs::PoolParams;
 
-#[elrond_wasm::module]
+#[multiversx_sc::module]
 pub trait StorageModule {
     #[view(getPoolAsset)]
     #[storage_mapper("pool_asset")]

@@ -1,5 +1,5 @@
-elrond_wasm::imports!();
-elrond_wasm::derive_imports!();
+multiversx_sc::imports!();
+multiversx_sc::derive_imports!();
 
 use common_structs::*;
 
@@ -8,7 +8,7 @@ use super::liq_storage;
 use super::liq_utils;
 use super::tokens;
 
-#[elrond_wasm::module]
+#[multiversx_sc::module]
 pub trait LiquidityModule:
     liq_storage::StorageModule
     + tokens::TokensModule
